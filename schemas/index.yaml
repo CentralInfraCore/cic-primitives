@@ -1,0 +1,61 @@
+---
+metadata:
+  name: cic-primitives
+  version: v0.0.dev
+  description: >
+    CIC meta-schema layer — atomic and aggregate primitives.
+    This index defines the JSON Schema that all primitive YAML files must conform to.
+  owner: Gabor Zoltan Sinko
+  tags:
+    - primitive
+    - meta-schema
+  validatedBy:
+    name: template-schema
+    version: v0.9.5_2025
+  validity:
+    from: "2026-04-30T00:00:00Z"
+    until: "2027-04-30T00:00:00Z"
+
+spec:
+  # JSON Schema for a CIC primitive file (atomic or aggregate)
+  # Placeholder — to be defined as primitive model matures
+  type: object
+  required:
+    - metadata
+    - spec
+  properties:
+    metadata:
+      type: object
+      required:
+        - name
+        - version
+        - description
+        - owner
+        - tags
+        - validatedBy
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        owner:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        validatedBy:
+          type: object
+          required:
+            - name
+            - version
+          properties:
+            name:
+              type: string
+            version:
+              type: string
+    spec:
+      type: object
+      description: Primitive definition — structure varies by atomic/aggregate type
