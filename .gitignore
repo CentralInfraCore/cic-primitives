@@ -1,0 +1,31 @@
+# Tervezett alrepók — külön CentralInfraCore repók, ne kerüljenek ide
+cic-spec/
+cic-yang/
+cic-bindings/
+cic-runtime/
+cic-adapters/
+cic-registry/
+cic-examples/
+cic-docs/
+
+# Tooling / build
+__pycache__/
+*.pyc
+*.pyo
+.pip-cache/
+p_venv/
+*.egg-info/
+.coverage
+.pytest_cache/
+
+# Release artifacts
+release/
+dist/
+*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store

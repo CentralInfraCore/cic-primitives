@@ -1,0 +1,28 @@
+schema_version: "1"
+dependencies:
+  - name: base-repo
+    source: github.com/CentralInfraCore/base-repo
+    tag: base@0.5.0
+    mode: remote-merge
+    purpose: repository-contract
+    imported_paths:
+      - .github/
+      - Makefile
+      - mk/
+      - tools/
+      - docker-compose.yml
+      - Dockerfile
+      - docs/
+      - features/
+      - tests/
+      - project.yaml
+      - project.schema.yaml
+      - md.meta.schema.yaml
+      - requirements.in
+      - requirements.txt
+      - renovate.json
+      - LICENSE.md
+      - LICENSE.yaml
+      - LICENSE.meta.yaml
+      - README.md
+      - feature-list.md
