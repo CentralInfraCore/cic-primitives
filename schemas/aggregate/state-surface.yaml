@@ -17,30 +17,45 @@ metadata:
 spec:
   kind: AggregatePrimitive
 
+  atomic_dependencies:
+    - atomic: Shape
+      ref: schemas/atomic/shape.yaml
+      used_by: [root, nodes]
+    - atomic: Role
+      ref: schemas/atomic/role.yaml
+      used_by: [nodes]
+
   slots:
     root:
       mode: sealed
-      type: TBD
+      type: Shape
+      atomic_ref: schemas/atomic/shape.yaml
+      shape_type: composite
       description: >
-        A state fa gyökere. Nem módosítható — struktúra egységes a teljes CIC-ben.
+        A state fa gyökere — Shape(composite) típusú konténer, config false.
+        Nem módosítható — struktúra egységes a teljes CIC-ben.
 
     nodes:
       mode: required
-      type: "TBD → Shape[] + Role(state|operational|derived|volatile)"
+      type: "Shape[]"
+      atomic_ref: schemas/atomic/shape.yaml
+      role_constraint: [state, operational, derived, volatile]
+      role_ref: schemas/atomic/role.yaml
       description: >
-        Az observable mezők listája. Leszármazottban kötelezően specializálandó.
-        Minden node-hoz Role atom jelzi hogy config, state, derived vagy volatile.
-        Phase 4-ben Shape + Role atomic ref-ek váltják fel a TBD-t.
+        Az observable mezők listája — Shape atomok, Role(state|operational|derived|volatile)
+        megszorítással. Role(config) itt tiltott — state surface nem tartalmaz írható mezőt.
+        Leszármazottban kötelezően specializálandó.
 
     freshness:
       mode: defaulted
-      type: TBD
+      type: object
       default:
         ttl: 60s
         strategy: polling
       description: >
         Mennyi ideig érvényes az observed state és hogyan frissül.
         Stratégiák: polling | streaming | event-driven | push.
+        Nem atomic primitive — adapter-szintű konfiguráció.
 
     source:
       mode: required
@@ -48,6 +63,7 @@ spec:
       description: >
         Ki tölti fel ezt a state surface-t. Adapter referencia — kötelező megadni.
         Például: kubernetes-adapter, snmp-adapter, mock-adapter.
+        Jövőbeli atomic: AdapterRef (BindingSurface scope-ban definiálandó).
 
   semantic_mapping:
     yang:

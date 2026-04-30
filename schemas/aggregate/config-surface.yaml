@@ -17,28 +17,42 @@ metadata:
 spec:
   kind: AggregatePrimitive
 
+  atomic_dependencies:
+    - atomic: Shape
+      ref: schemas/atomic/shape.yaml
+      used_by: [nodes]
+    - atomic: Contract
+      ref: schemas/atomic/contract.yaml
+      used_by: [validation]
+
   slots:
     root:
       mode: sealed
-      type: TBD
+      type: Shape
+      atomic_ref: schemas/atomic/shape.yaml
+      shape_type: composite
       description: >
-        A config fa gyökere. Nem módosítható leszármazottban — minden config node
-        ebből indul ki. A struktúra egységes a teljes CIC-ben.
+        A config fa gyökere — Shape(composite) típusú konténer.
+        Nem módosítható leszármazottban, struktúra egységes a teljes CIC-ben.
 
     nodes:
       mode: required
-      type: "TBD → Shape[]"
+      type: "Shape[]"
+      atomic_ref: schemas/atomic/shape.yaml
+      role_constraint: config
+      role_ref: schemas/atomic/role.yaml
       description: >
-        A konkrét config mezők listája. Leszármazottban kötelezően specializálandó.
-        Phase 4-ben Shape atomic ref-ek váltják fel a TBD-t.
+        A konkrét config mezők listája — Shape atomok, Role(config) megszorítással.
+        Minden node írható desired state mező. Leszármazottban kötelezően specializálandó.
 
     validation:
       mode: defaulted
-      type: "TBD → Contract[]"
+      type: "Contract[]"
+      atomic_ref: schemas/atomic/contract.yaml
       default: []
       description: >
         Kényszerfeltételek listája amelyek a config alkalmazása előtt ellenőrizendők.
-        Phase 4-ben Contract atomic ref-ek váltják fel a TBD-t.
+        Contract típusok: range, pattern, must, when, enum, mandatory, unique.
 
     access:
       mode: defaulted
@@ -47,6 +61,7 @@ spec:
       description: >
         Írási policy referencia — ki módosíthatja ezt a config surface-t.
         Alapértelmezés szerint az entitás szülőjétől örökli.
+        Jövőbeli atomic: PolicyRef (nem része az első 7 atomnak).
 
   semantic_mapping:
     yang:

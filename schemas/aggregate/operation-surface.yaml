@@ -17,14 +17,20 @@ metadata:
 spec:
   kind: AggregatePrimitive
 
+  atomic_dependencies:
+    - atomic: Behavior
+      ref: schemas/atomic/behavior.yaml
+      used_by: [operations]
+
   slots:
     operations:
       mode: required
-      type: "TBD → Behavior[]"
+      type: "Behavior[]"
+      atomic_ref: schemas/atomic/behavior.yaml
       description: >
-        A végrehajtható műveletek listája. Leszármazottban kötelezően specializálandó.
-        Phase 4-ben Behavior atomic ref-ek váltják fel a TBD-t.
-        Típusok: rpc (entitástól független) | action (entitáshoz kötött) | operation (lifecycle).
+        A végrehajtható műveletek listája — Behavior atomok.
+        Leszármazottban kötelezően specializálandó.
+        Behavior típusok: rpc (entitástól független) | action (entitáshoz kötött) | operation (lifecycle).
 
     idempotency:
       mode: defaulted

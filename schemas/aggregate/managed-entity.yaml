@@ -18,18 +18,41 @@ metadata:
 spec:
   kind: AggregatePrimitive
 
+  atomic_dependencies:
+    - atomic: Identity
+      ref: schemas/atomic/identity.yaml
+      used_by: [identity]
+    - atomic: Address
+      ref: schemas/atomic/address.yaml
+      used_by: [binding_surface]
+    - atomic: Event
+      ref: schemas/atomic/event.yaml
+      used_by: [notification_surface]
+
+  aggregate_dependencies:
+    - aggregate: ConfigSurface
+      ref: schemas/aggregate/config-surface.yaml
+      used_by: [config_surface]
+    - aggregate: StateSurface
+      ref: schemas/aggregate/state-surface.yaml
+      used_by: [state_surface]
+    - aggregate: OperationSurface
+      ref: schemas/aggregate/operation-surface.yaml
+      used_by: [operation_surface]
+
   slots:
     identity:
       mode: required
-      type: TBD
+      type: Identity
+      atomic_ref: schemas/atomic/identity.yaml
       description: >
-        Típusazonosság — nem példány azonosítás. Meghatározza mi ez az entitás a CIC-ben.
+        Típusazonosság — Identity atom. Meghatározza mi ez az entitás a CIC-ben.
         Komponensek: kind, namespace, version, base (örökíthető Identity chain).
-        Phase 4-ben Identity atomic ref váltja fel a TBD-t.
 
     config_surface:
       mode: required
       type: ConfigSurface
+      aggregate_ref: schemas/aggregate/config-surface.yaml
       description: >
         Az írható, kívánt állapot felülete. Kötelező — minden ManagedEntity-nek
         van konfigurálható állapota.
@@ -37,6 +60,7 @@ spec:
     state_surface:
       mode: required
       type: StateSurface
+      aggregate_ref: schemas/aggregate/state-surface.yaml
       description: >
         A csak olvasható, aktuális állapot felülete. Kötelező — minden ManagedEntity-nek
         van lekérdezhető aktuális állapota.
@@ -44,6 +68,7 @@ spec:
     operation_surface:
       mode: defaulted
       type: OperationSurface
+      aggregate_ref: schemas/aggregate/operation-surface.yaml
       default: empty
       description: >
         A végrehajtható műveletek felülete. Lehet üres — nem minden entitásnak vannak
@@ -51,11 +76,13 @@ spec:
 
     notification_surface:
       mode: defaulted
-      type: TBD
+      type: "Event[]"
+      atomic_ref: schemas/atomic/event.yaml
       default: empty
       description: >
-        Az aszinkron jelzések felülete. Lehet üres.
-        Phase 4-ben NotificationSurface aggregate ref váltja fel a TBD-t.
+        Az aszinkron jelzések felülete — Event atomok listája.
+        Lehet üres. Jövőbeli NotificationSurface aggregate fogja köré burkolni
+        a subscription és routing logikát.
 
     capability_surface:
       mode: defaulted
@@ -63,23 +90,29 @@ spec:
       default: inherit
       description: >
         Mit tud ez az entitás — feature flags, supported operations, protocol versions.
-        Phase 4-ben CapabilitySurface aggregate ref váltja fel a TBD-t.
+        Jövőbeli CapabilitySurface aggregate (nem része az első körnek).
 
     lifecycle_surface:
       mode: sealed
-      type: TBD
+      type: object
+      states: [create, active, degraded, terminating, terminated]
+      transitions:
+        create: [active]
+        active: [degraded, terminating]
+        degraded: [active, terminating]
+        terminating: [terminated]
       description: >
-        Lifecycle állapotgép — minden ManagedEntity-nek van életciklusa.
-        Nem elhagyható, nem módosítható: create → active → [degraded] → terminating → terminated.
-        Phase 4-ben LifecycleSurface aggregate ref váltja fel a TBD-t.
+        Lifecycle állapotgép — minden ManagedEntity-nek van életciklusa, nem elhagyható.
+        Jövőbeli LifecycleSurface aggregate fogja formálisan definiálni.
 
     binding_surface:
       mode: required
-      type: TBD
+      type: "Address[]"
+      atomic_ref: schemas/atomic/address.yaml
       description: >
-        Legalább egy binding kötelező — hogyan érhető el ez az entitás.
-        Address atomok + adapter referencia. Ez köti össze a primitive modellt a runtime-mal.
-        Phase 4-ben BindingSurface aggregate ref váltja fel a TBD-t.
+        Legalább egy Address atom kötelező — hogyan érhető el ez az entitás.
+        Address rétegek: schema_path, api_path, logical_id.
+        Jövőbeli BindingSurface aggregate köré burkolja az adapter referenciát is.
 
   semantic_mapping:
     yang:
