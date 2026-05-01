@@ -284,6 +284,52 @@ def run_release():
     print("  - [92m✓ project.yaml has been finalized with the release signature.[0m")
     print(f"  - [93mACTION REQUIRED: Please commit the changes and create the tag: git tag {component_name}@v{release_version}[0m")
 
+def run_primitive_validation():
+    """Validates all primitive YAML files in schemas/ against schemas/index.yaml."""
+    primitive_schema_file = CONFIG.get('primitive_schema_file')
+    if not primitive_schema_file:
+        return
+    print("--- Validating primitive schemas ---")
+    try:
+        index = load_yaml(primitive_schema_file)
+        primitive_meta_schema = index['spec']
+        print(f"Primitive meta-schema loaded from {primitive_schema_file}")
+    except Exception as e:
+        print(f"[FATAL] Could not load primitive meta-schema: {e}")
+        sys.exit(1)
+
+    source_dir = CONFIG.get('source_dir', 'schemas')
+    schema_files = glob.glob(
+        os.path.join(source_dir, '**', '*.yaml'),
+        recursive=True
+    )
+    schema_files = [
+        f for f in schema_files
+        if not os.path.basename(f) == 'index.yaml'
+        and not f.endswith('.gitkeep')
+        and os.path.getsize(f) > 0
+    ]
+
+    all_valid = True
+    for schema_file in sorted(schema_files):
+        print(f"  Validating {schema_file}...")
+        try:
+            instance = load_yaml(schema_file)
+            if instance is None:
+                continue
+            validate(instance=instance, schema=primitive_meta_schema)
+            print("  \033[92m✓ OK\033[0m")
+        except Exception as e:
+            print(f"  \033[91m✗ ERROR in {schema_file}: {e}\033[0m")
+            all_valid = False
+
+    if not all_valid:
+        print("\nPrimitive validation failed.")
+        sys.exit(1)
+    else:
+        print(f"\nAll {len(schema_files)} primitive schemas are valid.")
+
+
 def main():
     """Main entrypoint for the script."""
     if len(sys.argv) < 2:
@@ -294,6 +340,7 @@ def main():
 
     if command == 'validate':
         run_validation()
+        run_primitive_validation()
     elif command == 'release':
         run_release()
     else:

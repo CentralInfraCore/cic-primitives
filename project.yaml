@@ -18,6 +18,7 @@ compiler_settings:
   meta_schemas_dir: ./
   source_dir: schemas
   meta_schema_file: md.meta.schema.yaml
+  primitive_schema_file: schemas/index.yaml
   vault_key_name: cic-my-sign-key
 
 x-cic:
