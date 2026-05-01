@@ -367,7 +367,7 @@ entries:
   # Sorrend: index.yaml mint primitive meta-schema → compiler bekötés → domain próba
 
   - task: "primitive-meta-schema"
-    status: pending
+    status: done
     priority: 21
     milestone: compiler-validation
     prompt: |
@@ -382,7 +382,7 @@ entries:
     accept: make validate
 
   - task: "compiler-primitive-validation"
-    status: pending
+    status: done
     priority: 22
     milestone: compiler-validation
     blocked_by: "primitive-meta-schema"
@@ -396,7 +396,7 @@ entries:
     accept: make validate (atomic + aggregate YAML-ok validálva)
 
   - task: "domain-specialization-compatibility-check"
-    status: pending
+    status: done
     priority: 23
     milestone: compiler-validation
     blocked_by: "compiler-primitive-validation"

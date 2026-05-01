@@ -252,16 +252,6 @@ spec:
             shape_type: scalar
             scalar_type: integer
 
-  # ── LifecycleSurface ─────────────────────────────────────────────────────────
-  lifecycle_surface:
-    states: [pending, running, terminating, terminated]
-    initial: pending
-    transitions:
-      pending: [running, terminated]
-      running: [terminating]
-      terminating: [terminated]
-    terminal: [terminated]
-
   # ── BindingSurface ───────────────────────────────────────────────────────────
   binding_surface:
     addresses:

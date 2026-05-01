@@ -330,6 +330,77 @@ def run_primitive_validation():
         print(f"\nAll {len(schema_files)} primitive schemas are valid.")
 
 
+def run_domain_compatibility_check():
+    """Phase 6.3: Verify DomainComposition slot compatibility with base aggregate.
+
+    sealed  → must NOT be defined in DomainComposition
+    required → MUST be defined in DomainComposition
+    defaulted → may be defined (no type enforcement yet — D-008)
+    """
+    primitive_schema_file = CONFIG.get('primitive_schema_file')
+    if not primitive_schema_file:
+        return
+
+    source_dir = CONFIG.get('source_dir', 'schemas')
+    all_files = glob.glob(os.path.join(source_dir, '**', '*.yaml'), recursive=True)
+
+    domain_files = []
+    for f in all_files:
+        if os.path.basename(f) == 'index.yaml' or f.endswith('.gitkeep'):
+            continue
+        try:
+            data = load_yaml(f)
+            if data and data.get('spec', {}).get('kind') == 'DomainComposition':
+                domain_files.append(f)
+        except Exception:
+            pass
+
+    if not domain_files:
+        return
+
+    print("--- Checking DomainComposition compatibility ---")
+    all_valid = True
+
+    for domain_file in sorted(domain_files):
+        print(f"  Checking {domain_file}...")
+        try:
+            domain = load_yaml(domain_file)
+            spec = domain.get('spec', {})
+            base_ref = spec.get('base', {}).get('ref')
+
+            if not base_ref:
+                print(f"  \033[93m⚠ WARNING: no base.ref, skipping\033[0m")
+                continue
+
+            base = load_yaml(base_ref)
+            base_slots = base.get('spec', {}).get('slots', {})
+            domain_slot_keys = set(spec.keys()) - {'kind', 'base'}
+
+            errors = []
+            for slot_name, slot_def in base_slots.items():
+                mode = slot_def.get('mode')
+                if mode == 'sealed' and slot_name in domain_slot_keys:
+                    errors.append(f"sealed slot '{slot_name}' must not be overridden")
+                elif mode == 'required' and slot_name not in domain_slot_keys:
+                    errors.append(f"required slot '{slot_name}' is missing")
+
+            if errors:
+                for err in errors:
+                    print(f"  \033[91m✗ {err}\033[0m")
+                all_valid = False
+            else:
+                print(f"  \033[92m✓ OK\033[0m")
+        except Exception as e:
+            print(f"  \033[91m✗ ERROR: {e}\033[0m")
+            all_valid = False
+
+    if not all_valid:
+        print("\nDomain compatibility check failed.")
+        sys.exit(1)
+    else:
+        print(f"\nAll {len(domain_files)} DomainComposition files are compatible.")
+
+
 def main():
     """Main entrypoint for the script."""
     if len(sys.argv) < 2:
@@ -341,6 +412,7 @@ def main():
     if command == 'validate':
         run_validation()
         run_primitive_validation()
+        run_domain_compatibility_check()
     elif command == 'release':
         run_release()
     else:
