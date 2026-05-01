@@ -13,15 +13,42 @@ project:
   links:
     - name: repository
       url: https://github.com/CentralInfraCore/cic-primitives.git
-
 compiler_settings:
   meta_schemas_dir: ./
   source_dir: schemas
   meta_schema_file: md.meta.schema.yaml
   primitive_schema_file: schemas/index.yaml
   vault_key_name: cic-my-sign-key
-
 x-cic:
   repo_type: primitive
-  # repo_type: primitive — szándék dokumentálva.
-  # A compiler_settings-be akkor kerül, ha a base-repo compiler.py támogatja.
+release:
+  version: 0.1.0
+  timestamp: '2026-05-01T13:11:33.784220+00:00'
+  repository_tree_hash: qmFc3v/e/XbpRFzr/WXYTUmWrNo4DHDFlvmUp28339A=
+  build_hash: Wf0hNHs+s+SG+tDVWGtCKa7USsboHlZOArboEm5RsT8=
+  sign: vault:v1:MEQCIAkU/lvrZbGmP3TUGMUsP45LUs/7boT2XO4M867DOodYAiBM9IIosiCDHEpWbREwz1HuAT3M8p4ny3xHMEeAvwH8Ow==
+  cert: '-----BEGIN CERTIFICATE-----
+
+    MIICBjCCAaygAwIBAgIUSnRMR6RPnEbg296XWPOqq/u5PCwwCgYIKoZIzj0EAwIw
+
+    QzELMAkGA1UEBhMCSFUxGTAXBgNVBAoMEENlbnRyYWxJbmZyYUNvcmUxGTAXBgNV
+
+    BAMMEENJQyBEZXZlbG9wZXIgQ0EwHhcNMjYwMzIwMTMyMjU5WhcNMjYxMjMxMTMy
+
+    MjU5WjBFMQswCQYDVQQGEwJIVTEZMBcGA1UECgwQQ2VudHJhbEluZnJhQ29yZTEb
+
+    MBkGA1UEAwwSR2Fib3IgWm9sdGFuIFNpbmtvMFkwEwYHKoZIzj0CAQYIKoZIzj0D
+
+    AQcDQgAEIG2CVmTfmLB9pLLclj7YmP2eedAjklpy4LGrU2ijoiy6Xqpuybv7OgJe
+
+    i+ez31s65NEV8+X/ByeX1cstR988z6N8MHowCQYDVR0TBAIwADAdBgNVHQ4EFgQU
+
+    yZN6AIX/TNnIJ9GwAa/NRN3ujHAwHwYDVR0jBBgwFoAUXn6CHYzPUqU4JVP8g+OS
+
+    WeDYjhcwDgYDVR0PAQH/BAQDAgeAMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEF
+
+    BQcDBDAKBggqhkjOPQQDAgNIADBFAiEA+bFzXRoJ4PCQbhAAtpkcMjt0vNj5rEW0
+
+    lOMBGDNyaWkCIB1vmM7PcZzv/c9bIrxF5kqv6QXomouhByUfeNUTbpKW
+
+    -----END CERTIFICATE-----'
