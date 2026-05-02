@@ -1,0 +1,8 @@
+tags: [doc, schema, validator]
+category: [concept, meta]
+entrypoint: false
+related_nodes: []
+used_in: []
+description: |
+  Schema-based validation model in CIC: role of schema, validation process,
+  inheritance, signed artifacts.
