@@ -1,5 +1,4 @@
 ---
-version: '3.8'
 
 services:
   # Service for initializing and updating the Python virtual environment cache
