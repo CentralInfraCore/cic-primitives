@@ -166,21 +166,21 @@ def validate_release_prerequisites():
 
         is_valid_next = False
         # Valid next patch? (e.g., 1.2.5 -> 1.2.6)
-        if new_version == latest_version.next_patch():
+        if new_version == latest_version.bump_patch():
             is_valid_next = True
         # Valid next minor? (e.g., 1.2.5 -> 1.3.0)
-        elif new_version == latest_version.next_minor() and new_version.patch == 0:
+        elif new_version == latest_version.bump_minor() and new_version.patch == 0:
             is_valid_next = True
         # Valid next major? (e.g., 1.2.5 -> 2.0.0)
-        elif new_version == latest_version.next_major() and new_version.minor == 0 and new_version.patch == 0:
+        elif new_version == latest_version.bump_major() and new_version.minor == 0 and new_version.patch == 0:
             is_valid_next = True
 
         if not is_valid_next:
             print(f"\033[91m✗ ERROR: Version '{new_version_str}' is not a valid next increment.\033[0m")
             print(f"  The latest version is '{latest_version}'. Allowed next versions are:")
-            print(f"  - Patch: '{latest_version.next_patch()}'")
-            print(f"  - Minor: '{latest_version.next_minor()}'")
-            print(f"  - Major: '{latest_version.next_major()}'")
+            print(f"  - Patch: '{latest_version.bump_patch()}'")
+            print(f"  - Minor: '{latest_version.bump_minor()}'")
+            print(f"  - Major: '{latest_version.bump_major()}'")
             sys.exit(1)
 
     print(f"  \033[92m✓ New version '{new_version_str}' is a valid increment.\033[0m")
