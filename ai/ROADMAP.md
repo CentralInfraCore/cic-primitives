@@ -64,6 +64,22 @@ Töréspont: az első domain repo specializációja.
 | 6.2 | `compiler.py` primitive YAML validáció | concept | 6.1 |
 | 6.3 | domain specializáció semantic compatibility check | concept | 6.2 |
 
+## Phase 8 — Content-level permission system
+
+Kiváltó: cic-compute tervezésekor ugyanaz a ComputeResource objektum különböző
+láthatósággal és írhatósággal jelenik meg user / service / adapter szemszögéből.
+Ez field-szintű jogosultság — nem schema különbség, hanem access context.
+
+| # | Feladat | Státusz | Blokkoló |
+|---|---|---|---|
+| 8.1 | Primitive szintű design döntés (atomic vs aggregate, deklaratív vs runtime) | pending | 6.2 |
+| 8.2 | PolicySurface / Access atomic implementáció | pending | 8.1 |
+
+**Nyitott kérdések:**
+- 8. atom-e (`Policy`/`Access`) vagy új aggregate (`PolicySurface`)?
+- Owner fogalma: user \| service \| adapter — hogyan változhat lifecycle során?
+- Viszony a `Role` atomhoz (config/state/operational)
+
 ## Phase 7 — Signed release
 
 | # | Feladat | Státusz |

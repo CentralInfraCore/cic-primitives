@@ -412,6 +412,50 @@ entries:
       Ez az a pont ahol az első domain repo specializációja törhet — ezt kell lefedni.
     accept: make validate (kubernetes-pod.yaml kompatibilitása ellenőrzött)
 
+  # ── Phase 8: Content-level permission system ────────────────────────────────
+  # Kiváltó: cic-compute ComputeResource tervezésekor derült ki hogy ugyanaz az objektum
+  # más láthatósággal és írhatósággal jelenik meg user vs service vs adapter szemszögéből.
+  # Ez nem schema-szintű különbség — hanem field-szintű jogosultság és láthatóság kérdése.
+  # Minden ManagedEntity minden node-jára: ki olvashatja, ki írhatja, milyen feltétel mellett.
+
+  - task: "policy-access-primitive-design"
+    status: pending
+    priority: 25
+    milestone: policy-surface
+    prompt: |
+      Tervezd meg a content-level permission rendszer primitive szintű modelljét.
+      Kiindulópont: egy ComputeResource cpu_cores mezőjét
+        - a user direktben írhatja (saját managed compute)
+        - egy service írja, a user csak olvashatja (SaaS-rendelt compute)
+        - az adapter kezeli, a user nem is látja (adapter-internal)
+      Ez nem különböző schema — ugyanaz az objektum, különböző access context.
+      Kérdések amelyekre választ kell adni:
+        1. Ez egy új atomic primitive (8. atom: Policy/Access)?
+           Vagy egy új aggregate (PolicySurface / AccessSurface)?
+        2. A field-szintű jogosultság deklaratív (séma) vagy runtime (policy engine)?
+        3. Mi az owner fogalma — user | service | adapter — és hogyan változhat?
+        4. Hogyan viszonyul a meglévő Role atomhoz (config/state/operational)?
+      Lezárási kritérium: döntés dokumentálva DECISIONS-ban, séma terv megvan.
+    blocked_by: "compiler-primitive-validation"
+    accept: DECISIONS.md tartalmaz döntést + schema terv létezik
+
+  - task: "policy-surface-schema"
+    status: pending
+    priority: 26
+    milestone: policy-surface
+    blocked_by: "policy-access-primitive-design"
+    prompt: |
+      Implementáld a content-level permission rendszert a primitive modellbe.
+      A policy-access-primitive-design döntései alapján:
+        - Ha új atomic: schemas/atomic/policy.yaml (vagy access.yaml)
+        - Ha új aggregate: schemas/aggregate/policy-surface.yaml
+      Minden ManagedEntity node-ra deklarálható:
+        - visibility: who_can_read (all | owner | operator | service | none)
+        - writability: who_can_write (user | service | adapter | none)
+        - condition: opcionális feltétel (pl. csak ha owner == user)
+      Bekötés a ManagedEntity aggregate-be (opcionális surface).
+    accept: make validate
+
   # ── Phase 7: Első signed release ────────────────────────────────────────────
 
   - task: "signed-release"
