@@ -424,16 +424,24 @@ entries:
     milestone: policy-surface
     prompt: |
       Tervezd meg a content-level permission rendszer primitive szintű modelljét.
+      Alapelv: X.509 cert PEM az identity anchor.
+        - mTLS-nél a cert már ott van a kérésben — nincs külön identity lookup
+        - Az identitás kinyerése a cert-ből implementációs részletkérdés
+          (DN Subject, SAN, custom extension — mindegy, a cert PEM az alap)
+        - Az objektumon a permission rule cert-alapú identitásra hivatkozik
+      Öröklési modell:
+        - Sub-objektumok öröklik a szülő permission kontextusát
+        - Módosíthatják (szűkíthetik vagy bővíthetik)
+        - inherit: 0 → teljes reset, szülő rule-ok nem érvényesek
       Kiindulópont: egy ComputeResource cpu_cores mezőjét
         - a user direktben írhatja (saját managed compute)
         - egy service írja, a user csak olvashatja (SaaS-rendelt compute)
         - az adapter kezeli, a user nem is látja (adapter-internal)
-      Ez nem különböző schema — ugyanaz az objektum, különböző access context.
       Kérdések amelyekre választ kell adni:
         1. Ez egy új atomic primitive (8. atom: Policy/Access)?
            Vagy egy új aggregate (PolicySurface / AccessSurface)?
-        2. A field-szintű jogosultság deklaratív (séma) vagy runtime (policy engine)?
-        3. Mi az owner fogalma — user | service | adapter — és hogyan változhat?
+        2. Granularitás: field szint vagy surface szint (config_surface egészére)?
+        3. DN wildcard matching kell — pattern nyelv meghatározása
         4. Hogyan viszonyul a meglévő Role atomhoz (config/state/operational)?
       Lezárási kritérium: döntés dokumentálva DECISIONS-ban, séma terv megvan.
     blocked_by: "compiler-primitive-validation"
