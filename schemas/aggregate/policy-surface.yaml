@@ -1,0 +1,75 @@
+---
+metadata:
+  name: PolicySurface
+  version: v0.0.dev
+  description: >
+    Objektum-szintű alapértelmezett jogosultsági szabályok aggregate-je.
+    Az Access atom field-szintű wrapper `inherit: true` esetén innen veszi az alapértéket.
+    Ha egy ManagedEntity-n nincs PolicySurface, a runtime minden mezőt elérhetővé tesz
+    (backward compatible default).
+  owner: Gabor Zoltan Sinko
+  tags:
+    - primitive
+    - aggregate
+    - policy
+    - security
+  validatedBy:
+    name: cic-primitives
+    version: v0.0.dev
+
+spec:
+  kind: AggregatePrimitive
+
+  atomic_dependencies:
+    - atomic: Access
+      ref: schemas/atomic/access.yaml
+      used_by: [default_access, default_modify, surface_rules]
+
+  slots:
+    default_access:
+      mode: defaulted
+      type: "CertPattern[]"
+      atomic_ref: schemas/atomic/access.yaml
+      default: open
+      description: >
+        Ki olvashat bármely mezőt ezen az objektumon — hacsak az Access atom
+        field szinten felül nem írja. `open` = mindenki olvashatja (default).
+
+    default_modify:
+      mode: defaulted
+      type: "CertPattern[]"
+      atomic_ref: schemas/atomic/access.yaml
+      default: owner
+      description: >
+        Ki írhat bármely config mezőt ezen az objektumon — hacsak az Access atom
+        field szinten felül nem írja. `owner` = az objektum tulajdonosa írhatja.
+
+    surface_rules:
+      mode: defaulted
+      type: "SurfaceRule[]"
+      default: empty
+      description: >
+        Surface-szintű szabályok — finomabb granularitás az egész objektum default-jánál,
+        de durvább a field-szintű Access atomnál.
+        Pl.: config_surface egészére más szabály mint a state_surface-re.
+        Struktúra: {surface: config_surface|state_surface|..., access: [...], modify: [...]}
+
+    inherit_policy:
+      mode: defaulted
+      type: boolean
+      default: true
+      description: >
+        Ha true: sub-objektumok öröklik ezt a PolicySurface-t.
+        Ha false: sub-objektumok saját PolicySurface-t definiálnak.
+        Ha 0: teljes reset — sub-objektum PolicySurface-e nulláról épül.
+
+  semantic_mapping:
+    runtime:
+      evaluation_order: >
+        1. field-szintű Access atom (legmagasabb prioritás)
+        2. surface_rules (surface-szintű override)
+        3. default_access / default_modify (objektum-szintű default)
+        4. örökölt PolicySurface szülő objektumból (ha inherit_policy: true)
+      miss_behavior: >
+        Ha nincs PolicySurface az objektumon és a szülőtől sem örökölhető:
+        minden mező elérhető (open default) — backward compatible.

@@ -71,8 +71,8 @@ spec:
       Identity forrás: Subject DN, SAN, vagy custom X.509 extension —
       implementációs részletkérdés, a cert PEM az anchor.
     syntax:
-      format: "field=value" párok, wildcard (*) támogatással
-      combinator: lista = OR (bármely illeszkedő pattern hozzáférést ad)
+      format: '"field=value" párok, wildcard (csillag) támogatással'
+      combinator: "lista = OR — bármely illeszkedő pattern hozzáférést ad"
     examples:
       - pattern: "O=acme-corp"
         meaning: bármely acme-corp cert

@@ -448,7 +448,7 @@ entries:
     accept: DECISIONS.md tartalmaz döntést + schema terv létezik
 
   - task: "policy-surface-schema"
-    status: pending
+    status: done
     priority: 26
     milestone: policy-surface
     blocked_by: "policy-access-primitive-design"
