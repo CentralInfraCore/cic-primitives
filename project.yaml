@@ -22,11 +22,11 @@ compiler_settings:
 x-cic:
   repo_type: primitive
 release:
-  version: 0.1.1
-  timestamp: '2026-05-04T11:07:15.858732+00:00'
-  repository_tree_hash: wlduWZJMDf/1r89bvifMgPurjGgDpsGOif/2/KWClIA=
-  build_hash: vncD65LH31UmDX3K6T02X5nR80GkFrQaNl0LIaPQVT8=
-  sign: vault:v1:MEUCIGLUvSJI7MLPia2wELJhJdpbxZRez4cwVfvTWn4Q1U/nAiEA4VljTnfUovwZE/wQrRxfDodatLkE876XOQfPRnUXIEQ=
+  version: 0.1.2
+  timestamp: '2026-05-04T12:43:51.537399+00:00'
+  repository_tree_hash: ICIjhrN+UjF+tiTxgIxgzZ9Tpd2DQYrCnRXhXWYEe5g=
+  build_hash: qSEb6nHZ2/ghL0gfeg26q5Ln0obNCxh3QHLiH6+xybQ=
+  sign: vault:v1:MEQCIH1llzAAh9oZ0JDiuZxS2IyIejtKgnM+kCvSkHUp6nwKAiBPS6E4IazLadvEz7kMsXsJj/vcNJX3IyGD3/3cBwVZQQ==
   cert: '-----BEGIN CERTIFICATE-----
 
     MIICBjCCAaygAwIBAgIUSnRMR6RPnEbg296XWPOqq/u5PCwwCgYIKoZIzj0EAwIw
