@@ -167,6 +167,51 @@ Ha valaki ExecutionSurface-t igényel, először a Relay execution modelljét ke
 
 ---
 
+## D-011 — Access: a 8. atom (2026-05-04)
+
+**Döntés:** Az Access a 8. irreducibilis szemantikai atom — nem aggregate, nem PolicySurface.
+
+**Miért atomic és nem aggregate:**
+A permission wrapper VALUE szinten él, minden Shape példányon. A `key: 4` és a
+`key: {value: 4, access: [...], modify: [...], inherit: true, default_injection: null}`
+szemantikailag ekvivalens — a compiler normalizálja. Ez nem rárakott réteg, hanem
+a Shape belső struktúrája. Aggregálni nem lehet tovább.
+
+**Viszony a Role atomhoz:** ortogonális.
+- `role` = mit jelent a mező a management modellben (config/state/operational)
+- `access` = ki érheti el — cert-alapú identity
+- Példa: `role: state` + `modify: [OU=adapters,O=cic]` → az adapter írja, user csak olvassa
+
+**Access atom struktúrája:**
+```
+value:             a tényleges adat (Shape típusa határozza meg)
+access:            ki olvashatja — CertPattern lista (OR szemantika)
+modify:            ki írhatja — CertPattern lista (OR szemantika)
+inherit:           true | false | 0
+                   true = sub-objektum örökli
+                   false = nem örökli, sub-objektum default szabályait kapja
+                   0 = teljes reset, újraszámol
+default_injection: mit kap a kérező ha nincs access joga (null = mező nem látható)
+```
+
+**CertPattern nyelv:**
+X.509 Subject field alapú, wildcard `*` támogatással. Lista = OR szemantika.
+- `O=acme` — bármely acme-corp cert
+- `OU=ops,O=acme` — acme operátorok
+- `CN=*,O=partner-a` — partner-a bármely user-je
+Identity forrás: cert PEM mTLS kérésből — DN, SAN, vagy custom extension (implementációs részletkérdés).
+
+**PolicySurface aggregate** (Phase 4.x, külön feladat):
+Objektum-szintű default szabályok — az Access atom `inherit: true` esetén innen veszi
+az alapértéket. Ez aggregate, nem atomic. Blokkolt az Access atom implementációjától.
+
+**Következmény:** `schemas/atomic/access.yaml` létrehozandó (Phase 8.2).
+A Shape atom leírása kiegészítendő: minden Shape érték Access atomba ágyazott.
+Compiler: rövid forma → hosszú forma normalizálás.
+Runtime: mTLS cert kiértékelés az Access szabályok ellen.
+
+---
+
 ## D-010 — Shape atom: permission-aware value wrapper (2026-05-04)
 
 **Döntés:** Minden Shape értéknek két szintaktikailag ekvivalens reprezentációja van:

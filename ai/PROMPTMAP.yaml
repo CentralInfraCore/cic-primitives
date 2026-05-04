@@ -419,7 +419,7 @@ entries:
   # Minden ManagedEntity minden node-jára: ki olvashatja, ki írhatja, milyen feltétel mellett.
 
   - task: "policy-access-primitive-design"
-    status: pending
+    status: done
     priority: 25
     milestone: policy-surface
     prompt: |
