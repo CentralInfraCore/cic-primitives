@@ -164,3 +164,43 @@ failure_policy, ownership, graph_edges) **nem kerül be most**.
 
 **Következmény:** Az ExecutionSurface nyitott bridge marad amíg a Relay modell nincs.
 Ha valaki ExecutionSurface-t igényel, először a Relay execution modelljét kell definiálni.
+
+---
+
+## D-010 — Shape atom: permission-aware value wrapper (2026-05-04)
+
+**Döntés:** Minden Shape értéknek két szintaktikailag ekvivalens reprezentációja van:
+
+```yaml
+# Rövid forma (syntactic sugar):
+cpu_cores: 4
+
+# Hosszú forma (ekvivalens, kibontott):
+cpu_cores:
+  value: 4
+  access: [...]          # ki olvashatja — cert-alapú identity
+  modify: [...]          # ki írhatja
+  inherit: true          # sub-objektumok öröklik-e ezt a szabályt (false = nem, 0 = reset)
+  default_injection: null  # mit kapjon a kérező ha nincs access joga
+```
+
+**Miért:** Az adat és a jogosultság elválaszthatatlan — nem kell külön policy fájl,
+path referencia vagy szinkronizáció. A permission szabály az értékkel együtt utazik.
+`default_injection` megakadályozza az információ-szivárgást és a null/error hibákat.
+
+**Identity anchor:** X.509 cert PEM — az mTLS kérésben már ott van, nincs külön lookup.
+Az `access`/`modify` listában cert-alapú identitás szerepel (DN, SAN, vagy custom extension
+— implementációs részletkérdés, a cert PEM az alap).
+
+**Normalizálás:** A compiler a rövid formát mindig kibontja hosszúvá az örökölt/default
+szabályok alapján. A runtime mindig a kibontott formán dolgozik. A schema-k rövid formában
+írhatók — csak ott kell long form ahol permission override szükséges.
+
+**Öröklés:**
+- `inherit: true` → sub-objektum örökli a szülő permission szabályait erre a mezőre
+- `inherit: false` → nem örökli, sub-objektum default szabályait kapja
+- `inherit: 0` → teljes reset, a sub-objektum teljesen újraszámolja
+
+**Következmény:** A Shape atom belső struktúrája ez — nem két különböző típus.
+A Phase 8 implementáció ezt a struktúrát dolgozza ki részletesen (atomic szintű spec,
+compiler normalizáció, runtime kiértékelés).
