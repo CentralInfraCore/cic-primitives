@@ -65,6 +65,28 @@ spec:
           <érték> = injektált default (pl. 0, "", false) — egységes viselkedés,
                     nem szivárog ki hogy a mező létezik-e és mi az értéke
 
+      conformance:
+        type: enum
+        values: [implemented, not_implemented, deprecated]
+        default: implemented
+        description: >
+          Eszköz-szintű implementációs státusz — elkülönül a jogosultság-alapú
+          láthatóságtól (D-012).
+
+          implemented     (default) — mező létezik és kezelhető az eszközön
+          not_implemented — mező NEM létezik az eszközön:
+                            olvasás: default_injection értéke (tipikusan null)
+                            írás: HARD REJECT — "field not implemented on device X"
+                            TILOS csendes elfogadás — a Relay visszadobja a write-ot
+          deprecated      — mező létezik de kerülendő:
+                            olvasás: értéke visszaadva
+                            írás: WARNING + elfogadás
+
+          Különbség a jogosultság hiánytól:
+            access: []  → PERMISSION DENIED (te nem férsz hozzá)
+            not_implemented → HARD REJECT (az eszköz nem tudja kezelni)
+          A kérező különböző hibát kap — nem összetéveszthető.
+
   cert_pattern:
     description: >
       X.509 cert alapú identity pattern. A kérező mTLS cert-je ellen értékelődik.
@@ -95,6 +117,10 @@ spec:
     runtime:
       evaluation: mTLS cert kiértékelés a CertPattern lista ellen
       miss_behavior: default_injection visszaadása ha nincs access joga
+      conformance_enforcement: >
+        not_implemented mezőre érkező write-ot a Relay NEM droppolja —
+        explicit "field not implemented on device X" hibával visszadobja.
+        Különbözik a permission denied hibától: a kérő tudja mi a valódi ok.
     yang:
       note: >
         YANG NACM (RFC 8341) analóg — de field szinten, nem path alapon.

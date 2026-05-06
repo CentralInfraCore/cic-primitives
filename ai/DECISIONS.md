@@ -212,6 +212,46 @@ Runtime: mTLS cert kiértékelés az Access szabályok ellen.
 
 ---
 
+## D-012 — Access atom: conformance dimenzió (2026-05-06)
+
+**Döntés:** Az Access atom `conformance` mezővel bővül, amely az eszköz-szintű
+implementációs státuszt hordozza — elkülönítve a jogosultság-alapú láthatóságtól.
+
+**Két alapvetően különböző eset:**
+
+| | Jogosultság hiány | Nem implementált |
+|---|---|---|
+| Olvasás | null / mező nem látszik | null / mező nem látszik |
+| Írás | PERMISSION DENIED | HARD REJECT — "not implemented on device X" |
+| Jelentés | a mező létezik, te nem férsz hozzá | a mező NEM LÉTEZIK az eszközön |
+
+**Miért nem ugyanaz:** Ha egy write csendes elfogadás helyett hard reject nélkül elveszik,
+az operátor azt hiheti a konfig alkalmazva lett — miközben az eszközön semmi sem történt.
+Példa: `dhcp_enabled: true` beírva egy DHCP-t nem támogató switch-re → silent failure →
+az operátor DHCP-t feltételez ahol nincs.
+
+**A `conformance` mező értékei:**
+```
+implemented      (default) — mező létezik és kezelhető az eszközön
+not_implemented  — mező NEM létezik az eszközön, write HARD REJECT-tel zár
+deprecated       — mező létezik de kerülendő, write WARNING + elfogadás
+```
+
+**Runtime enforcement `not_implemented` esetén:**
+- Olvasás: `default_injection` értéke (tipikusan null → mező nem látszik)
+- Írás: hard error, NEM permission denied — "field 'X' is not implemented on device Y"
+- Csendes elfogadás: TILOS — a Relay nem droppolhatja a write-ot
+
+**Hol jelenik meg:** Az adapter binding deklarálja device-szinten melyik mezők
+`not_implemented`. A séma (RFC-derivált) teljes mezőlistát tartalmaz — a conformance
+az adapter runtime annotációja, nem séma-szintű eltávolítás.
+
+**Következmény:** `schemas/atomic/access.yaml` kiegészítendő `conformance` mezővel.
+A Relay runtime enforcelja: `not_implemented` mezőre érkező write-ot nem droppolja,
+hanem explicit hibával visszadobja a kérőnek.
+
+---
+
 ## D-010 — Shape atom: permission-aware value wrapper (2026-05-04)
 
 **Döntés:** Minden Shape értéknek két szintaktikailag ekvivalens reprezentációja van:
