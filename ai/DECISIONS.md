@@ -164,3 +164,51 @@ failure_policy, ownership, graph_edges) **nem kerül be most**.
 
 **Következmény:** Az ExecutionSurface nyitott bridge marad amíg a Relay modell nincs.
 Ha valaki ExecutionSurface-t igényel, először a Relay execution modelljét kell definiálni.
+
+---
+
+## D-013 — build_hash és source_hash szétválasztása (2026-05-08)
+
+**Státusz:** nyitott — döntés szükséges (BACKLOG B-005)
+
+**Helyzet:**
+A `compiler.py` `run_release()` függvényében:
+```python
+build_hash = source_hash  # egyelőre — tényleges build env nincs még
+```
+A két hash mindig azonos. A signed release-ben mindkettő szerepel, de tartalmilag redundáns.
+
+**Döntés:**
+Ha a CIC pipeline valaha schema fordítási lépést kap (pyang compile, OpenAPI generátor,
+code gen), a `build_hash` a build artifact hash-e lesz — nem a forrásé.
+Addig a placeholder elfogadható, de explicit KNOWN_LIMITATION státusszal kell jelölni.
+
+**Azonnali teendő:**
+A `project.yaml` release blokkjában dokumentálni:
+```yaml
+release:
+  _known_limitation: build_hash == source_hash (no separate build step yet)
+```
+Így a signed artifact önleíró marad.
+
+---
+
+## D-014 — Cross-domain referenciák típuskezelése (2026-05-08)
+
+**Státusz:** nyitott — döntés szükséges (BACKLOG B-008)
+
+**Helyzet:**
+CIC objektumok közötti hivatkozások (pl. StorageResource → ComputeResource, KubernetesNode → KubernetesCluster)
+jelenleg plain `string` típusú mezők. A `logical_id` formátum (`cic:{domain}:{...}`) dokumentált,
+de schema szinten nincs kényszerítve.
+
+**Döntés opciók:**
+1. **Szemantikus típus a Shape atomban:** `type: cic-reference` — a compiler ellenőrzi a formátumot,
+   a runtime (Relay) ellenőrzi a target létezését. Ez a legtisztább megoldás.
+2. **Pattern constraint:** a meglévő string mezőhöz `contract: [{type: pattern, expression: "^cic:[a-z]+:"}]`
+   — minimális változás, de nem ad domain-specifikus információt.
+3. **Elfogadás:** a cross-domain referencia runtime constraint, nem schema constraint.
+   A Relay validálja, a schema nem.
+
+**Ajánlott:** opció 1 — a CIC modell értéke részben a tipizált referencia láncon múlik.
+Ha ez csak string, a schema-driven tooling nem tudja feloldani a dependency gráfot.
