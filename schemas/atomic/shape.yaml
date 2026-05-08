@@ -36,6 +36,11 @@ spec:
       reference:
         description: Más node-ra mutató pointer (YANG leafref)
         note: a cél node-nak léteznie kell a sémában
+        subtypes:
+          leafref: intra-schema referencia — a cél ugyanabban a sémában él
+          cic-reference: cross-domain CIC objektum referencia — más domain logical_id-jére mutat
+                         formátum: "cic:{domain}:{backend}:{provider}:{location}:{id}"
+                         a reference_target mező jelzi a célzott Kind-ot
       choice:
         description: Kizáró alternatívák — pontosan egy aktív (YANG choice/case)
 
@@ -62,6 +67,20 @@ spec:
       description:
         type: string
         description: A field szemantikája — mit jelent, mire való
+      semantic_type:
+        type: string
+        optional: true
+        description: >
+          Szemantikus típus annotáció — pontosítja a scalar_type: string értelmét.
+          cic-reference: a mező értéke egy CIC managed entity logical_id-je.
+          Kötelező együtt a reference_target mezővel.
+      reference_target:
+        type: string
+        optional: true
+        description: >
+          A célzott CIC Kind — csak semantic_type: cic-reference esetén értelmezett.
+          Formátum: "cic:{namespace}:{Kind}" (pl. "cic:compute:ComputeResource").
+          A Relay ezt használja a referencia feloldásához és validálásához.
 
   semantic_mapping:
     yang:
