@@ -295,29 +295,27 @@ compiler normalizáció, runtime kiértékelés).
 
 ---
 
-## D-013 — build_hash és source_hash szétválasztása (2026-05-08)
+## D-013 — build_hash és source_hash szétválasztása (2026-05-08, lezárva 2026-05-24)
 
-**Státusz:** nyitott — döntés szükséges (BACKLOG B-005)
+**Státusz:** lezárva — a PrimitiveRelease bundle modell felváltotta
 
-**Helyzet:**
-A `compiler.py` `run_release()` függvényében:
-```python
-build_hash = source_hash  # egyelőre — tényleges build env nincs még
-```
-A két hash mindig azonos. A signed release-ben mindkettő szerepel, de tartalmilag redundáns.
+**Helyzet (eredeti):**
+A régi release modellben `build_hash = source_hash` placeholder volt a `project.yaml`-ban.
 
-**Döntés:**
-Ha a CIC pipeline valaha schema fordítási lépést kap (pyang compile, OpenAPI generátor,
-code gen), a `build_hash` a build artifact hash-e lesz — nem a forrásé.
-Addig a placeholder elfogadható, de explicit KNOWN_LIMITATION státusszal kell jelölni.
+**Döntés (végleges):**
+A `PrimitiveRelease` bundle nem tartalmaz `build_hash`-t. A `release.content_hash`
+a `specs[]` canonical JSON hash-e — ez egyszerre forrás és build hash, mivel a
+primitive rétegnek nincs önálló fordítási lépése.
 
-**Azonnali teendő:**
-A `project.yaml` release blokkjában dokumentálni:
+Ha a jövőben tényleges build artifact keletkezik (pyang compile, OpenAPI generátor,
+code gen), a bundle kiterjeszthető `build_hash` mezővel. Addig nem kell placeholder.
+
 ```yaml
 release:
-  _known_limitation: build_hash == source_hash (no separate build step yet)
+  content_hash: sha256(canonical_json(specs[]))   # forrás + build azonos
+  sign: vault:v1:ecdsa...
+  cert: PEM...
 ```
-Így a signed artifact önleíró marad.
 
 ---
 

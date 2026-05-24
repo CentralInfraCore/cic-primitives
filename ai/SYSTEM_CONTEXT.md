@@ -63,21 +63,17 @@ Választott mechanizmus (döntés: 2026-04-30):
 A `base-repo` merge után elérhetők:
 
 ```
-tools/compiler.py     CLI: validate, release, get-name
-tools/schemalib/      Schema pipeline
-  ├── loader.py       YAML betöltés $ref feloldással
-  ├── validator.py    Integritás ellenőrzés + jsonschema validálás
-  └── artifact.py     Checksum, signing payload, artefaktum összeállítás
-tools/releaselib/     Git/Vault service absztrakciók
+tools/compiler.py     CLI: validate | release | verify-release <artifact>
+tools/release.sh      DEPRECATED — fatálisan kilép, ne használd
 mk/infra.mk           Makefile include
 ```
 
-Signing mechanizmus (commit-msg hook):
-1. `git write-tree` → staged tree snapshot
-2. Determinisztikus tar stream → SHA256 digest
-3. Vault Transit: ECDSA SHA256 aláírás
-4. X.509 cert (CIC Root CA → fejlesztő)
-5. `[signing-metadata]` → commit message
+Release pipeline:
+1. `compiler.py release` → per-schema `meta_hash` (raw bytes SHA256)
+2. `specs[]` canonical JSON → `content_hash` (SHA256 base64)
+3. Vault Transit: ECDSA SHA256 aláírás (`prehashed=true`)
+4. X.509 cert (Vault KV v2, `VAULT_CERT_PATH` vagy `VAULT_CERT` env)
+5. `release/<project-name>-vX.Y.Z.yaml` kiírva (PrimitiveRelease bundle)
 
 ---
 
@@ -165,26 +161,37 @@ Phase 1–7 végrehajtva. A repo első signed release-szel lezárt.
 | AI governance (README, MAINTENANCE_CONTRACT, invalid examples) | **defined** |
 | első signed release (`primitives/@v0.1.0`) | **defined** — Phase 7 |
 | ExecutionSurface aggregate | **concept** — D-009, Relay modell után |
-| build_hash tényleges build env-vel | **concept** — jelenleg = source_hash |
+| PrimitiveRelease bundle (`compiler.py release`) | **defined** — `release/<name>-vX.Y.Z.yaml` |
+| `verify-release` parancs | **defined** — content_hash + meta_hash ellenőrzés |
+| Vault signature verification (`verify-release`) | **concept** — ECDSA ellenőrzés Vault pubkey-jel |
+| build_hash tényleges build env-vel | **n/a** — D-013 lezárva, content_hash váltja fel |
 | `make release` yq PATH fix | **defined** — yq telepítve a Dockerfile-ban |
 
 ---
 
-## Release folyamat (Phase 7 tanulságok)
+## Release folyamat (PrimitiveRelease bundle modell)
 
 ```bash
-# Előfeltételek
+# 1. Release ágra váltás
 git checkout -b primitives/releases/vX.Y.Z
-tools/vault-sign-agent.sh -k <developer.key> -c <developer.crt>
 
-# Release
+# 2. Vault env
 export VAULT_ADDR="https://127.0.0.1:18200"
 export VAULT_TOKEN=$(cat $XDG_RUNTIME_DIR/vault/sign-token)
-export VAULT_SKIP_VERIFY=1
-make release
+export VAULT_CACERT=/path/to/ca.pem          # vagy VAULT_SKIP_VERIFY=1 dev módban
+export VAULT_CERT_PATH="secret/cic-cert/pem" # KV v2 mount/secret/key formátum
 
-git add project.yaml
+# 3. Release bundle generálás
+make release
+# → validál → specs[] összeáll → content_hash → Vault sign → release/cic-primitives-vX.Y.Z.yaml
+
+# 4. Commit + tag
+git add release/cic-primitives-vX.Y.Z.yaml
+git commit -m "release: X.Y.Z"
 git tag -a "primitives/@vX.Y.Z" -m "release: X.Y.Z"
+
+# 5. Ellenőrzés
+python tools/compiler.py verify-release release/cic-primitives-vX.Y.Z.yaml
 ```
 
 Dockerfile követelmény: `git`, `curl`, `jq`, `yq` + `safe.directory /app`.

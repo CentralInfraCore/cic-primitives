@@ -60,9 +60,9 @@ Töréspont: az első domain repo specializációja.
 
 | # | Feladat | Státusz | Blokkoló |
 |---|---|---|---|
-| 6.1 | `schemas/index.yaml` → primitive meta-schema | concept | — |
-| 6.2 | `compiler.py` primitive YAML validáció | concept | 6.1 |
-| 6.3 | domain specializáció semantic compatibility check | concept | 6.2 |
+| 6.1 | `schemas/index.yaml` → primitive meta-schema | ✓ done | — |
+| 6.2 | `compiler.py` primitive YAML validáció | ✓ done | 6.1 |
+| 6.3 | domain specializáció semantic compatibility check | ✓ done | 6.2 |
 
 ## Phase 8 — Content-level permission system
 
@@ -72,20 +72,18 @@ Ez field-szintű jogosultság — nem schema különbség, hanem access context.
 
 | # | Feladat | Státusz | Blokkoló |
 |---|---|---|---|
-| 8.1 | Primitive szintű design döntés (atomic vs aggregate, deklaratív vs runtime) | pending | 6.2 |
-| 8.2 | PolicySurface / Access atomic implementáció | pending | 8.1 |
-
-**Nyitott kérdések:**
-- 8. atom-e (`Policy`/`Access`) vagy új aggregate (`PolicySurface`)?
-- Owner fogalma: user \| service \| adapter — hogyan változhat lifecycle során?
-- Viszony a `Role` atomhoz (config/state/operational)
+| 8.1 | Primitive szintű design döntés (atomic vs aggregate, deklaratív vs runtime) | ✓ done — D-012 | — |
+| 8.2 | Access atom implementáció (8. atom) | ✓ done — `schemas/atomic/access.yaml` | 8.1 |
+| 8.3 | PolicySurface aggregate | concept | Relay execution modell |
 
 ## Phase 7 — Signed release
 
 | # | Feladat | Státusz |
 |---|---|---|
-| 7.1 | make release VERSION=0.1.0 | concept — Vault setup szükséges |
-| 7.2 | Artifact más repó dependencies/-be | concept |
+| 7.1 | PrimitiveRelease bundle model | ✓ done — `compiler.py release` → `release/<name>-vX.Y.Z.yaml` |
+| 7.2 | `verify-release` parancs | ✓ done — content_hash + meta_hash ellenőrzés |
+| 7.3 | Vault signature verification | concept — Vault public key / cert-alapú ECDSA ellenőrzés |
+| 7.4 | Artifact más repó `dependencies/`-be | concept |
 
 ---
 
@@ -94,9 +92,10 @@ Ez field-szintű jogosultság — nem schema különbség, hanem access context.
 | ID | Kérdés | Státusz |
 |---|---|---|
 | D-006 | repo_type: primitive | **LEZÁRVA** — `x-cic.repo_type: primitive` |
+| D-013 | build_hash vs source_hash | **LEZÁRVA** — nincs build_hash, csak content_hash |
 
 ## Megjegyzés
 
-- Phase 1–5: **defined** (YAML fájlok léteznek, make validate zöld)
+- Phase 1–6: **defined** (YAML fájlok léteznek, make validate zöld)
 - Phase 4.4–4.7 (NotificationSurface, CapabilitySurface, LifecycleSurface, BindingSurface): ManagedEntity-ben defaulted/sealed slot-ként dokumentálva, önálló aggregate séma még nincs
-- Phase 6: Vault + signing pipeline szükséges
+- Phase 7: bundle modell kész, Vault signature verification következő lépés

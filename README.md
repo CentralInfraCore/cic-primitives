@@ -51,9 +51,10 @@ make release     # signed artifact (Vault szükséges)
 | Primitive meta-schema validáció | **defined** | `schemas/index.yaml` + `compiler.py` — `make validate` zöld |
 | sealed/required slot enforcement | **defined** | domain specializáció kompatibilitás ellenőrzött |
 | KubernetesPod domain példa | **defined** | `schemas/examples/kubernetes-pod.yaml` |
-| Signed release pipeline | **defined** | Vault Transit + ECDSA, `primitives/@v0.1.3` kiadva |
+| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], content_hash, Vault sign |
+| verify-release | **defined** | `make verify-release FILE=...` — schema + content_hash + meta_hash ellenőrzés |
+| Vault signature verification | **concept** | ECDSA ellenőrzés Vault pubkey-jel — következő fázis |
 | defaulted slot merge szemantika | **draft** | replace/deep_merge/append/union — D-008, első domain override-nál dől el |
-| build provenance | **draft** | `build_hash == source_hash` — külön build lépés még nincs |
 | LifecycleSurface / CapabilitySurface / NotificationSurface | **concept** | Relay execution modell előfeltétel |
 | ExecutionSurface aggregate | **concept** | D-009, Relay modell előfeltétel |
 | Schema/API/runtime kódgenerálás | **not implemented** | a `semantic_mapping` mezők irányt adnak, de generator nincs |

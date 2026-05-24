@@ -7,6 +7,7 @@ cryptography
 pytest
 pytest-mock
 pytest-cov
+mutmut<2.0
 
 # Linting and Formatting
 ruff
