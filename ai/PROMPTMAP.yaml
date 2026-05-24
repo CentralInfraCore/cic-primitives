@@ -1,7 +1,7 @@
 version: 1
 context: cic-primitives
 
-# Státuszok: pending | in_progress | done | blocked
+# Statuses: pending | in_progress | done | blocked
 
 entries:
 
@@ -12,15 +12,15 @@ entries:
     priority: 1
     milestone: bootstrap
     prompt: |
-      Inicializáld a cic-primitives repót a base-repo mintájára:
+      Initialize the cic-primitives repo following the base-repo pattern:
         1. git init
         2. git remote add base git@github.com:CentralInfraCore/base-repo.git
         3. git fetch base
         4. git merge base@0.5.0 --allow-unrelated-histories
-      Ellenőrizd hogy a tooling (tools/, mk/, Makefile, docker-compose.yml,
-      .github/workflows/ci.yml, md.meta.schema.yaml, go.meta.schema.yaml) megjelent.
-      Ha merge konfliktus van a meglévő fájlokon (.claude/, .mcp.json, primitive.txt,
-      ai/, CLAUDE.md): tartsd meg a cic-primitives verziót, fogadd el a base toolingot.
+      Verify that the tooling (tools/, mk/, Makefile, docker-compose.yml,
+      .github/workflows/ci.yml, md.meta.schema.yaml, go.meta.schema.yaml) is present.
+      If there are merge conflicts on existing files (.claude/, .mcp.json, primitive.txt,
+      ai/, CLAUDE.md): keep the cic-primitives version, accept the base tooling.
     accept: ls tools/ && ls mk/ && ls Makefile
 
   - task: "dependency-yaml"
@@ -29,9 +29,9 @@ entries:
     milestone: bootstrap
     blocked_by: "git-bootstrap"
     prompt: |
-      Hozd létre a dependency.yaml fájlt a repo gyökerében (D-007).
-      Ez dokumentálja az összes remote-merge dependency-t — kötelező minden merge után frissíteni.
-      Tartalom:
+      Create the dependency.yaml file at the repo root (D-007).
+      This documents all remote-merge dependencies — must be updated after every merge.
+      Content:
         schema_version: "1"
         dependencies:
           - name: base-repo
@@ -44,7 +44,7 @@ entries:
               - Makefile
               - mk/
               - tools/
-      Szabály: csak pinnelt tag (nem branch, nem HEAD) kerülhet ide.
+      Rule: only pinned tags are allowed (not branches, not HEAD).
     accept: 'grep "tag: base@0.5.0" dependency.yaml'
 
   - task: "project-yaml"
@@ -52,15 +52,15 @@ entries:
     priority: 3
     milestone: bootstrap
     prompt: |
-      Hozd létre a project.yaml fájlt a CIC-Schemas project.yaml mintájára.
-      Kötelező mezők:
+      Create the project.yaml file following the CIC-Schemas project.yaml pattern.
+      Required fields:
         metadata.name: cic-primitives
         metadata.description: CIC meta-schema layer — atomic and aggregate primitives
         metadata.license: CC-BY-NC-SA-4.0
         metadata.main_branch: main
         metadata.owner: Gabor Zoltan Sinko
-        compiler_settings.repo_type: # elhagyva — compiler még nem támogatja (D-006)
-        x-cic.repo_type: primitive             # szándék dokumentálva, tooling pending
+        compiler_settings.repo_type: # omitted — compiler does not support it yet (D-006)
+        x-cic.repo_type: primitive             # intent documented, tooling pending
         compiler_settings.component_name: cic-primitives
         compiler_settings.meta_schemas_dir: ./
         compiler_settings.source_dir: schemas
@@ -68,43 +68,43 @@ entries:
         compiler_settings.dependencies_dir: dependencies
         compiler_settings.release_dir: release
         compiler_settings.vault_key_name: cic-my-sign-key
-    accept: make validate (dry run — séma nélkül is strukturálisan helyes)
+    accept: make validate (dry run — structurally valid even without schema)
 
   - task: "schema-directory-structure"
     status: done
     priority: 4
     milestone: bootstrap
     prompt: |
-      Hozd létre a schemas/ könyvtárstruktúrát:
+      Create the schemas/ directory structure:
         schemas/
-          atomic/     (üres, .gitkeep)
-          aggregate/  (üres, .gitkeep)
-          index.yaml  (meta-meta-séma placeholder)
-        dependencies/ (üres, .gitkeep)
-      A schemas/index.yaml kezdetben csak metadata blokk, üres spec-kel.
+          atomic/     (empty, .gitkeep)
+          aggregate/  (empty, .gitkeep)
+          index.yaml  (meta-meta-schema placeholder)
+        dependencies/ (empty, .gitkeep)
+      schemas/index.yaml initially contains only a metadata block with an empty spec.
       validatedBy: template-schema v0.9.5_2025
-      Másold be a dependencies/template-schema-v0.9.5_2025.yaml fájlt a CIC-Schemas-ból.
+      Copy dependencies/template-schema-v0.9.5_2025.yaml from CIC-Schemas.
     accept: ls schemas/atomic/ && ls schemas/aggregate/ && ls dependencies/
 
-  # ── Phase 2: Aggregate skeletons (contract-first, atomic ref nélkül) ─────────
-  # D-002: aggregate-first. Skeleton = slot definíciók sealed/defaulted/required
-  # módokkal. Atomic type referenciák Phase 4-ben kerülnek be.
+  # ── Phase 2: Aggregate skeletons (contract-first, without atomic refs) ───────
+  # D-002: aggregate-first. Skeleton = slot definitions with sealed/defaulted/required
+  # modes. Atomic type references are added in Phase 4.
 
   - task: "aggregate-config-surface-skeleton"
     status: done
     priority: 5
     milestone: aggregate-skeleton
     prompt: |
-      Definiáld a ConfigSurface aggregate skeleton sémáját: schemas/aggregate/config-surface.yaml
-      Csak a contract struktúra kell — atomic type referencia még nem szükséges (type: TBD).
-      Slot struktúra (sealed/defaulted/required explicit, D-005):
-        root:       sealed   — a config fa gyökere, nem módosítható
-        nodes:      required — konkrét config mezők (type: TBD → Shape atoms Phase 4-ben)
-        validation: defaulted — kényszerfeltételek listája (type: TBD → Contract atoms)
-        access:     defaulted — írási policy referencia
-      Szemantikai mapping (dokumentált, nem generált):
+      Define the ConfigSurface aggregate skeleton schema: schemas/aggregate/config-surface.yaml
+      Only the contract structure is needed — atomic type references not yet required (type: TBD).
+      Slot structure (sealed/defaulted/required explicit, D-005):
+        root:       sealed   — root of the config tree, not overridable
+        nodes:      required — concrete config fields (type: TBD → Shape atoms in Phase 4)
+        validation: defaulted — list of constraints (type: TBD → Contract atoms)
+        access:     defaulted — write policy reference
+      Semantic mapping (documented, not generated):
         YANG: /config container
-        API:  PUT/PATCH metódusok
+        API:  PUT/PATCH methods
         Runtime: desired state store
     accept: grep -E "sealed|defaulted|required" schemas/aggregate/config-surface.yaml
 
@@ -113,13 +113,13 @@ entries:
     priority: 6
     milestone: aggregate-skeleton
     prompt: |
-      Definiáld a StateSurface aggregate skeleton sémáját: schemas/aggregate/state-surface.yaml
-      Slot struktúra:
-        root:       sealed   — a state fa gyökere
-        nodes:      required — observable mezők (type: TBD → Shape + Role(state) atoms)
-        freshness:  defaulted — érvényességi TTL / polling interval
-        source:     required  — ki tölti fel (adapter ref)
-      Szemantikai mapping:
+      Define the StateSurface aggregate skeleton schema: schemas/aggregate/state-surface.yaml
+      Slot structure:
+        root:       sealed   — root of the state tree
+        nodes:      required — observable fields (type: TBD → Shape + Role(state) atoms)
+        freshness:  defaulted — validity TTL / polling interval
+        source:     required  — who populates it (adapter ref)
+      Semantic mapping:
         YANG: /state container, config false
         API:  GET only
         Runtime: observed state store
@@ -130,13 +130,13 @@ entries:
     priority: 7
     milestone: aggregate-skeleton
     prompt: |
-      Definiáld az OperationSurface aggregate skeleton sémáját: schemas/aggregate/operation-surface.yaml
-      Slot struktúra:
-        operations:  required — Behavior atomok listája (type: TBD)
-        idempotency: defaulted — alapból nem idempotens
+      Define the OperationSurface aggregate skeleton schema: schemas/aggregate/operation-surface.yaml
+      Slot structure:
+        operations:  required — list of Behavior atoms (type: TBD)
+        idempotency: defaulted — not idempotent by default
         timeout:     defaulted — 30s
-        audit:       sealed   — minden művelet loggolva, nem kikapcsolható
-      Szemantikai mapping:
+        audit:       sealed   — every operation is logged, cannot be disabled
+      Semantic mapping:
         YANG: rpc + action
         API:  POST /operations/{name}
         Runtime: operation dispatcher
@@ -147,18 +147,18 @@ entries:
     priority: 8
     milestone: aggregate-skeleton
     prompt: |
-      Definiáld a ManagedEntity aggregate skeleton sémáját: schemas/aggregate/managed-entity.yaml
-      Ez a legfontosabb aggregate — minden domain objektum ebből specializálódik.
-      Komponensek (mode explicit, type referencia Phase 4-ben):
-        identity:             required — típusazonosság
+      Define the ManagedEntity aggregate skeleton schema: schemas/aggregate/managed-entity.yaml
+      This is the most important aggregate — every domain object specializes from it.
+      Components (mode explicit, type references in Phase 4):
+        identity:             required — type identity
         config_surface:       required — (type: ConfigSurface)
         state_surface:        required — (type: StateSurface)
-        operation_surface:    defaulted — lehet üres
-        notification_surface: defaulted — lehet üres
+        operation_surface:    defaulted — may be empty
+        notification_surface: defaulted — may be empty
         capability_surface:   defaulted
-        lifecycle_surface:    sealed   — minden entitásnak van lifecycle-ja
-        binding_surface:      required — legalább egy binding kell
-      Szemantikai mapping (skeleton szinten dokumentált):
+        lifecycle_surface:    sealed   — every entity has a lifecycle
+        binding_surface:      required — at least one binding required
+      Semantic mapping (documented at skeleton level):
         YAML → YANG container
         API  → RESTCONF resource
         Runtime → reconcile loop entry point
@@ -171,14 +171,14 @@ entries:
     priority: 9
     milestone: atomic
     prompt: |
-      Definiáld a Shape atomic primitive sémáját: schemas/atomic/shape.yaml
-      A Shape az adat struktúráját írja le — milyen mezők, milyen típusok.
-      Metadata + spec struktúra a template-schema mintájára.
-      A spec-nek le kell írnia:
-        - fields: lista (name, type, optional?, description)
-        - type rendszer: scalar | composite | collection | reference | choice
-        - nullable, default értékek kezelése
-      Lezárási kritérium: ebből hogyan lesz YAML séma node?
+      Define the Shape atomic primitive schema: schemas/atomic/shape.yaml
+      Shape describes the data structure — what fields, what types.
+      Metadata + spec structure following the template-schema pattern.
+      The spec must describe:
+        - fields: list (name, type, optional?, description)
+        - type system: scalar | composite | collection | reference | choice
+        - nullable, default value handling
+      Closing criterion: how does this become a YAML schema node?
     accept: make validate
 
   - task: "atomic-role"
@@ -186,13 +186,13 @@ entries:
     priority: 10
     milestone: atomic
     prompt: |
-      Definiáld a Role atomic primitive sémáját: schemas/atomic/role.yaml
-      A Role azt írja le, mit jelent egy node menedzsment szempontból.
-      Értékek: config | state | operational | key | reference | derived | volatile
-      config = írható, kívánt állapot
-      state = olvasható, aktuális állapot (config: false YANG-ban)
-      key = lista kulcs
-      reference = más node-ra mutató pointer
+      Define the Role atomic primitive schema: schemas/atomic/role.yaml
+      Role describes what a node means from a management perspective.
+      Values: config | state | operational | key | reference | derived | volatile
+      config = writable, desired state
+      state = readable, observed state (config: false in YANG)
+      key = list key
+      reference = pointer to another node
     accept: make validate
 
   - task: "atomic-behavior"
@@ -200,13 +200,13 @@ entries:
     priority: 11
     milestone: atomic
     prompt: |
-      Definiáld a Behavior atomic primitive sémáját: schemas/atomic/behavior.yaml
-      A Behavior azt írja le, milyen műveletek hajthatók végre egy entitáson.
-      Típusok: rpc | action | operation
-      rpc = kérés/válasz, entitástól független
-      action = entitáshoz kötött, állapotot módosít
-      operation = magasabb szintű, lifecycle-hoz kötött (start/stop/drain/migrate)
-      Minden behavior-nak van: name, input schema ref, output schema ref, idempotent flag
+      Define the Behavior atomic primitive schema: schemas/atomic/behavior.yaml
+      Behavior describes what operations can be executed on an entity.
+      Types: rpc | action | operation
+      rpc = request/response, entity-independent
+      action = entity-bound, modifies state
+      operation = higher-level, lifecycle-bound (start/stop/drain/migrate)
+      Every behavior has: name, input schema ref, output schema ref, idempotent flag
     accept: make validate
 
   - task: "atomic-contract"
@@ -214,12 +214,12 @@ entries:
     priority: 12
     milestone: atomic
     prompt: |
-      Definiáld a Contract atomic primitive sémáját: schemas/atomic/contract.yaml
-      A Contract kényszerfeltételeket ír le.
-      Típusok: range | pattern | must | when | enum | mandatory | unique
-      must = XPath/JPath kifejezés ami igaznak kell legyen
-      when = feltétel: node csak akkor aktív ha igaz
-      Minden contractnak van: type, expression, error_message
+      Define the Contract atomic primitive schema: schemas/atomic/contract.yaml
+      Contract describes constraints.
+      Types: range | pattern | must | when | enum | mandatory | unique
+      must = XPath/JPath expression that must be true
+      when = condition: node is only active if true
+      Every contract has: type, expression, error_message
     accept: make validate
 
   - task: "atomic-address"
@@ -227,12 +227,12 @@ entries:
     priority: 13
     milestone: atomic
     prompt: |
-      Definiáld az Address atomic primitive sémáját: schemas/atomic/address.yaml
-      Az Address azt írja le, hogyan érhető el egy entitás a rendszerben.
-      Rétegek: schema_path (belső fa pozíció) | api_path (HTTP/RESTCONF URL) | logical_id (UUID/name)
+      Define the Address atomic primitive schema: schemas/atomic/address.yaml
+      Address describes how an entity is reachable in the system.
+      Layers: schema_path (internal tree position) | api_path (HTTP/RESTCONF URL) | logical_id (UUID/name)
       schema_path: /resources/resource/{id}/config
       api_path: /restconf/data/cic:resources/resource={id}
-      Fontos: az address nem az entitás tulajdonsága — hanem a bindingé
+      Important: the address is not a property of the entity — it belongs to the binding
     accept: make validate
 
   - task: "atomic-identity"
@@ -240,11 +240,11 @@ entries:
     priority: 14
     milestone: atomic
     prompt: |
-      Definiáld az Identity atomic primitive sémáját: schemas/atomic/identity.yaml
-      Az Identity típusazonosságot ír le — nem példány azonosítást.
-      Komponensek: kind (típus neve) | namespace (CIC névtér) | version | base (örökíthető)
-      Hasonló a YANG identity/identityref-hez, de általánosabb.
-      Egy ManagedEntity Identity példa:
+      Define the Identity atomic primitive schema: schemas/atomic/identity.yaml
+      Identity describes type identity — not instance identity.
+      Components: kind (type name) | namespace (CIC namespace) | version | base (inheritable)
+      Similar to YANG identity/identityref, but more general.
+      A ManagedEntity Identity example:
         kind: NetworkInterface
         namespace: cic:network
         version: v1
@@ -256,16 +256,16 @@ entries:
     priority: 15
     milestone: atomic
     prompt: |
-      Definiáld az Event atomic primitive sémáját: schemas/atomic/event.yaml
-      Az Event aszinkron jelzéseket ír le.
-      Mezők: name | trigger (state-change | threshold | lifecycle | explicit) | payload schema ref
-      state-change: egy node értéke megváltozott
-      threshold: egy mért érték átlépte a határt
-      lifecycle: create/update/delete történt
-      explicit: action/rpc váltotta ki
+      Define the Event atomic primitive schema: schemas/atomic/event.yaml
+      Event describes asynchronous notifications.
+      Fields: name | trigger (state-change | threshold | lifecycle | explicit) | payload schema ref
+      state-change: a node value changed
+      threshold: a measured value crossed a boundary
+      lifecycle: create/update/delete occurred
+      explicit: triggered by an action/rpc
     accept: make validate
 
-  # ── Phase 4: Aggregate completion (atomic ref-ek bekötése) ───────────────────
+  # ── Phase 4: Aggregate completion (wiring in atomic refs) ────────────────────
 
   - task: "aggregate-config-surface-complete"
     status: done
@@ -273,17 +273,17 @@ entries:
     milestone: aggregate-complete
     blocked_by: "aggregate-config-surface-skeleton, atomic-shape, atomic-contract"
     prompt: |
-      Egészítsd ki a ConfigSurface skeleton-t atomic type referenciákkal.
-      Fájl: schemas/aggregate/config-surface.yaml
+      Complete the ConfigSurface skeleton with atomic type references.
+      File: schemas/aggregate/config-surface.yaml
         nodes:      required → type: Shape[]
         validation: defaulted → type: Contract[]
-      Lezárási kritérium (mind teljesítendő):
-        - sealed/defaulted/required slot-ok: explicitek
-        - atomic dependency list: megvan
-        - YAML mapping: /config container → dokumentált
-        - YANG mapping: container + config true leaf-ek → dokumentált
-        - API mapping: PUT/PATCH metódusok → dokumentált
-        - Runtime mapping: desired state store → dokumentált
+      Closing criteria (all must be satisfied):
+        - sealed/defaulted/required slots: explicit
+        - atomic dependency list: present
+        - YAML mapping: /config container → documented
+        - YANG mapping: container + config true leaves → documented
+        - API mapping: PUT/PATCH methods → documented
+        - Runtime mapping: desired state store → documented
     accept: make validate
 
   - task: "aggregate-state-surface-complete"
@@ -292,15 +292,15 @@ entries:
     milestone: aggregate-complete
     blocked_by: "aggregate-state-surface-skeleton, atomic-shape, atomic-role"
     prompt: |
-      Egészítsd ki a StateSurface skeleton-t atomic type referenciákkal.
-      Fájl: schemas/aggregate/state-surface.yaml
+      Complete the StateSurface skeleton with atomic type references.
+      File: schemas/aggregate/state-surface.yaml
         nodes: required → type: Shape[] + Role(state|operational|derived|volatile)
-      Lezárási kritérium:
-        - sealed/defaulted/required: explicitek
-        - atomic dependency list: megvan
-        - YANG: config false container → dokumentált
-        - API: GET only → dokumentált
-        - Runtime: observed state store → dokumentált
+      Closing criteria:
+        - sealed/defaulted/required: explicit
+        - atomic dependency list: present
+        - YANG: config false container → documented
+        - API: GET only → documented
+        - Runtime: observed state store → documented
     accept: make validate
 
   - task: "aggregate-operation-surface-complete"
@@ -309,15 +309,15 @@ entries:
     milestone: aggregate-complete
     blocked_by: "aggregate-operation-surface-skeleton, atomic-behavior"
     prompt: |
-      Egészítsd ki az OperationSurface skeleton-t atomic type referenciákkal.
-      Fájl: schemas/aggregate/operation-surface.yaml
+      Complete the OperationSurface skeleton with atomic type references.
+      File: schemas/aggregate/operation-surface.yaml
         operations: required → type: Behavior[]
-      Lezárási kritérium:
-        - sealed/defaulted/required: explicitek
-        - atomic dependency list: megvan
-        - YANG: rpc + action → dokumentált
-        - API: POST /operations/{name} → dokumentált
-        - Runtime: operation dispatcher → dokumentált
+      Closing criteria:
+        - sealed/defaulted/required: explicit
+        - atomic dependency list: present
+        - YANG: rpc + action → documented
+        - API: POST /operations/{name} → documented
+        - Runtime: operation dispatcher → documented
     accept: make validate
 
   - task: "aggregate-managed-entity-complete"
@@ -331,18 +331,18 @@ entries:
       aggregate-operation-surface-complete,
       atomic-identity
     prompt: |
-      Egészítsd ki a ManagedEntity skeleton-t teljes kompozícióval.
-      Fájl: schemas/aggregate/managed-entity.yaml
-      Lezárási kritérium:
-        - minden komponens típusa explicit aggregate referencia
-        - sealed/defaulted/required: explicitek
-        - atomic dependency list: megvan
-        - YAML: hogyan lesz belőle YANG container? → dokumentált
-        - API: hogyan lesz belőle RESTCONF resource? → dokumentált
-        - Runtime: hogyan kerül a reconcile loop-ba? → dokumentált
+      Complete the ManagedEntity skeleton with full composition.
+      File: schemas/aggregate/managed-entity.yaml
+      Closing criteria:
+        - every component type is an explicit aggregate reference
+        - sealed/defaulted/required: explicit
+        - atomic dependency list: present
+        - YAML: how does this become a YANG container? → documented
+        - API: how does this become a RESTCONF resource? → documented
+        - Runtime: how does this enter the reconcile loop? → documented
     accept: make validate
 
-  # ── Phase 5: Első domain példa ───────────────────────────────────────────────
+  # ── Phase 5: First domain example ───────────────────────────────────────────
 
   - task: "example-kubernetes-pod"
     status: done
@@ -350,35 +350,35 @@ entries:
     milestone: example
     blocked_by: "aggregate-managed-entity-complete"
     prompt: |
-      Hozd létre az első domain kompozíciós példát: Kubernetes Pod mint ManagedEntity.
-      Fájl: schemas/examples/kubernetes-pod.yaml
-      Ez NEM új primitive — ez a ManagedEntity specializációja:
+      Create the first domain composition example: Kubernetes Pod as a ManagedEntity.
+      File: schemas/examples/kubernetes-pod.yaml
+      This is NOT a new primitive — it is a specialization of ManagedEntity:
         Identity: kind=KubernetesPod, namespace=cic:kubernetes, base=cic:ManagedEntity
         ConfigSurface.nodes: image, replicas, resources.requests, resources.limits, env
         StateSurface.nodes: phase, conditions[], containerStatuses[], podIP
         OperationSurface.operations: restart, drain, scale
         LifecycleSurface: create → running → terminating → terminated
-      Mutasd meg a teljes levezetési láncot:
-        primitive YAML → (tervezett) YANG modul → RESTCONF path → runtime contract
-    accept: séma validálható + a lánc dokumentált
+      Show the complete derivation chain:
+        primitive YAML → (planned) YANG module → RESTCONF path → runtime contract
+    accept: schema is valid + chain is documented
 
-  # ── Phase 6: Primitive YAML validáció bekötése ──────────────────────────────
-  # D-008: compiler.py felelőssége, nem primitive modell
-  # Sorrend: index.yaml mint primitive meta-schema → compiler bekötés → domain próba
+  # ── Phase 6: Primitive YAML validation integration ──────────────────────────
+  # D-008: compiler.py responsibility, not the primitive model
+  # Order: index.yaml as primitive meta-schema → compiler integration → domain trial
 
   - task: "primitive-meta-schema"
     status: done
     priority: 21
     milestone: compiler-validation
     prompt: |
-      Definiáld a `schemas/index.yaml`-t mint primitive meta-sémát.
-      Ez a JSON Schema ami leírja, mi egy érvényes atomic / aggregate YAML fájl.
-      Minimum struktúra:
-        - metadata blokk: name, version, description, owner, tags, validatedBy
-        - spec blokk: kind (AtomicPrimitive | AggregatePrimitive | DomainComposition)
-        - atomic esetén: spec.fields, spec.type_system
-        - aggregate esetén: spec.slots (minden slotnak mode: sealed|defaulted|required)
-      Ez váltja le a jelenlegi placeholder index.yaml-t.
+      Define `schemas/index.yaml` as the primitive meta-schema.
+      This is the JSON Schema describing what a valid atomic / aggregate YAML file looks like.
+      Minimum structure:
+        - metadata block: name, version, description, owner, tags, validatedBy
+        - spec block: kind (AtomicPrimitive | AggregatePrimitive | DomainComposition)
+        - for atomic: spec.fields, spec.type_system
+        - for aggregate: spec.slots (every slot must have mode: sealed|defaulted|required)
+      This replaces the current placeholder index.yaml.
     accept: make validate
 
   - task: "compiler-primitive-validation"
@@ -387,13 +387,13 @@ entries:
     milestone: compiler-validation
     blocked_by: "primitive-meta-schema"
     prompt: |
-      Kösd be a `tools/compiler.py`-ba a primitive YAML validációt.
-      Jelenleg csak `*.meta.yaml` fájlokat validál `md.meta.schema.yaml` ellen.
-      Szükséges változás: `schemas/**/*.yaml` fájlokat is validálja `schemas/index.yaml` ellen.
-      Lezárási kritérium:
-        - `make validate` validálja az összes atomic + aggregate YAML-t
-        - Hibás primitive YAML → validate megbukik, nem csak figyelmeztet
-    accept: make validate (atomic + aggregate YAML-ok validálva)
+      Wire primitive YAML validation into `tools/compiler.py`.
+      Currently it only validates `*.meta.yaml` files against `md.meta.schema.yaml`.
+      Required change: also validate `schemas/**/*.yaml` files against `schemas/index.yaml`.
+      Closing criteria:
+        - `make validate` validates all atomic + aggregate YAMLs
+        - Invalid primitive YAML → validate fails, does not merely warn
+    accept: make validate (atomic + aggregate YAMLs validated)
 
   - task: "domain-specialization-compatibility-check"
     status: done
@@ -401,51 +401,51 @@ entries:
     milestone: compiler-validation
     blocked_by: "compiler-primitive-validation"
     prompt: |
-      Írj semantic compatibility check-et a compiler.py-ba domain specializációkra.
-      Egy DomainComposition (pl. kubernetes-pod.yaml) kompatibilis-e az upstream
-      ManagedEntity aggregate-tel?
-      Ellenőrizendő:
-        - sealed slot nincs felülírva
-        - required slot ki van töltve
-        - defaulted slot felülírása nem sérti a típust
-        - merge stratégia (replace | deep_merge | append | union) — D-008 nyitott rész
-      Ez az a pont ahol az első domain repo specializációja törhet — ezt kell lefedni.
-    accept: make validate (kubernetes-pod.yaml kompatibilitása ellenőrzött)
+      Write a semantic compatibility check in compiler.py for domain specializations.
+      Is a DomainComposition (e.g. kubernetes-pod.yaml) compatible with the upstream
+      ManagedEntity aggregate?
+      Check:
+        - no sealed slot is overridden
+        - all required slots are filled
+        - overriding a defaulted slot does not violate the type
+        - merge strategy (replace | deep_merge | append | union) — D-008 open part
+      This is the point where the first domain repo specialization can break — this must be covered.
+    accept: make validate (kubernetes-pod.yaml compatibility verified)
 
   # ── Phase 8: Content-level permission system ────────────────────────────────
-  # Kiváltó: cic-compute ComputeResource tervezésekor derült ki hogy ugyanaz az objektum
-  # más láthatósággal és írhatósággal jelenik meg user vs service vs adapter szemszögéből.
-  # Ez nem schema-szintű különbség — hanem field-szintű jogosultság és láthatóság kérdése.
-  # Minden ManagedEntity minden node-jára: ki olvashatja, ki írhatja, milyen feltétel mellett.
+  # Trigger: discovered during cic-compute ComputeResource design — the same object
+  # appears with different visibility and writability from user vs service vs adapter perspective.
+  # This is not a schema-level difference — it is a question of field-level access and visibility.
+  # For every node of every ManagedEntity: who can read it, who can write it, under what condition.
 
   - task: "policy-access-primitive-design"
     status: done
     priority: 25
     milestone: policy-surface
     prompt: |
-      Tervezd meg a content-level permission rendszer primitive szintű modelljét.
-      Alapelv: X.509 cert PEM az identity anchor.
-        - mTLS-nél a cert már ott van a kérésben — nincs külön identity lookup
-        - Az identitás kinyerése a cert-ből implementációs részletkérdés
-          (DN Subject, SAN, custom extension — mindegy, a cert PEM az alap)
-        - Az objektumon a permission rule cert-alapú identitásra hivatkozik
-      Öröklési modell:
-        - Sub-objektumok öröklik a szülő permission kontextusát
-        - Módosíthatják (szűkíthetik vagy bővíthetik)
-        - inherit: 0 → teljes reset, szülő rule-ok nem érvényesek
-      Kiindulópont: egy ComputeResource cpu_cores mezőjét
-        - a user direktben írhatja (saját managed compute)
-        - egy service írja, a user csak olvashatja (SaaS-rendelt compute)
-        - az adapter kezeli, a user nem is látja (adapter-internal)
-      Kérdések amelyekre választ kell adni:
-        1. Ez egy új atomic primitive (8. atom: Policy/Access)?
-           Vagy egy új aggregate (PolicySurface / AccessSurface)?
-        2. Granularitás: field szint vagy surface szint (config_surface egészére)?
-        3. DN wildcard matching kell — pattern nyelv meghatározása
-        4. Hogyan viszonyul a meglévő Role atomhoz (config/state/operational)?
-      Lezárási kritérium: döntés dokumentálva DECISIONS-ban, séma terv megvan.
+      Design the primitive-level model for the content-level permission system.
+      Principle: X.509 cert PEM is the identity anchor.
+        - In mTLS the cert is already present in the request — no separate identity lookup needed
+        - Extracting identity from the cert is an implementation detail
+          (DN Subject, SAN, custom extension — doesn't matter, the cert PEM is the anchor)
+        - The permission rule on the object references cert-based identity
+      Inheritance model:
+        - Sub-objects inherit the parent's permission context
+        - They can modify it (restrict or expand)
+        - inherit: 0 → full reset, parent rules do not apply
+      Starting point: a ComputeResource cpu_cores field
+        - the user writes it directly (self-managed compute)
+        - a service writes it, the user can only read (SaaS-ordered compute)
+        - the adapter manages it, the user cannot even see it (adapter-internal)
+      Questions that must be answered:
+        1. Is this a new atomic primitive (8th atom: Policy/Access)?
+           Or a new aggregate (PolicySurface / AccessSurface)?
+        2. Granularity: field level or surface level (entire config_surface)?
+        3. DN wildcard matching needed — define the pattern language
+        4. How does it relate to the existing Role atom (config/state/operational)?
+      Closing criterion: decision documented in DECISIONS, schema plan exists.
     blocked_by: "compiler-primitive-validation"
-    accept: DECISIONS.md tartalmaz döntést + schema terv létezik
+    accept: DECISIONS.md contains the decision + schema plan exists
 
   - task: "policy-surface-schema"
     status: done
@@ -453,18 +453,18 @@ entries:
     milestone: policy-surface
     blocked_by: "policy-access-primitive-design"
     prompt: |
-      Implementáld a content-level permission rendszert a primitive modellbe.
-      A policy-access-primitive-design döntései alapján:
-        - Ha új atomic: schemas/atomic/policy.yaml (vagy access.yaml)
-        - Ha új aggregate: schemas/aggregate/policy-surface.yaml
-      Minden ManagedEntity node-ra deklarálható:
+      Implement the content-level permission system into the primitive model.
+      Based on the decisions from policy-access-primitive-design:
+        - If new atomic: schemas/atomic/policy.yaml (or access.yaml)
+        - If new aggregate: schemas/aggregate/policy-surface.yaml
+      Declarable for every ManagedEntity node:
         - visibility: who_can_read (all | owner | operator | service | none)
         - writability: who_can_write (user | service | adapter | none)
-        - condition: opcionális feltétel (pl. csak ha owner == user)
-      Bekötés a ManagedEntity aggregate-be (opcionális surface).
+        - condition: optional condition (e.g. only if owner == user)
+      Wire into the ManagedEntity aggregate (optional surface).
     accept: make validate
 
-  # ── Phase 7: Első signed release ────────────────────────────────────────────
+  # ── Phase 7: First signed release ───────────────────────────────────────────
 
   - task: "signed-release"
     status: done
@@ -472,13 +472,13 @@ entries:
     milestone: release
     blocked_by: "compiler-primitive-validation"
     prompt: |
-      Hozd létre az első signed release artifact-ot.
+      Create the first signed release artifact.
         make release VERSION=0.1.0
-      Előfeltétel: Vault Transit kulcs (`cic-my-sign-key`) elérhető.
-      Artifact: release/ könyvtárba, checksum + ECDSA aláírás.
+      Prerequisite: Vault Transit key (`cic-my-sign-key`) is available.
+      Artifact: written to the release/ directory, with checksum + ECDSA signature.
     accept: ls release/ && make validate
     notes: |
       Tag: primitives/@v0.1.0
-      Dockerfile-ba kellett: git, curl, jq + safe.directory /app
-      build_hash = source_hash egyelőre (tényleges build env nincs)
-      yq PATH issue: make release-ben tools/release.sh fallback-kel futott
+      Dockerfile required: git, curl, jq + safe.directory /app
+      build_hash = source_hash for now (no actual build env yet)
+      yq PATH issue: make release ran with tools/release.sh fallback
