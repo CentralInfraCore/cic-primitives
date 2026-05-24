@@ -676,7 +676,16 @@ def main():
 
     command = sys.argv[1]
 
-    if command == 'validate':
+    if command in ('--help', '-h', 'help'):
+        print("Usage: python tools/compiler.py <command>")
+        print("")
+        print("Commands:")
+        print("  validate                    Validate all schemas offline (no Vault required).")
+        print("  pledge                      Generate signed developer commitment → commitment.yaml.")
+        print("  release                     Build signed PrimitiveRelease bundle (requires Vault + commitment.yaml).")
+        print("  verify-release <artifact>   Verify a PrimitiveRelease bundle (content_hash + createdBy + validity).")
+        print("  help                        Show this help message.")
+    elif command == 'validate':
         run_validation()
         run_primitive_validation()
         run_domain_compatibility_check()

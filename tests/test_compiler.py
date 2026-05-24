@@ -5,6 +5,7 @@ import yaml
 import sys
 import hashlib
 import base64
+import datetime
 from jsonschema import ValidationError
 
 
@@ -265,6 +266,132 @@ def test_validate_release_first_release(mocker):
     assert component == "primitives/"
 
 
+# ── _load_valid_commitment ────────────────────────────────────────────────────
+
+def test_load_valid_commitment_missing_file(tmp_path, mocker):
+    mocker.patch("os.path.isfile", return_value=False)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_load_valid_commitment_wrong_kind(tmp_path, mocker):
+    mocker.patch("os.path.isfile", return_value=True)
+    mocker.patch("tools.compiler.load_yaml", return_value={"kind": "WrongKind"})
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_load_valid_commitment_expired(mocker):
+    mocker.patch("os.path.isfile", return_value=True)
+    mocker.patch("tools.compiler.load_yaml", return_value={
+        "kind": "DeveloperCommitment",
+        "validity": {"from": "2020-01-01", "until": "2021-01-01"},
+    })
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_load_valid_commitment_ok(mocker):
+    mocker.patch("os.path.isfile", return_value=True)
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    mocker.patch("tools.compiler.load_yaml", return_value={
+        "kind": "DeveloperCommitment",
+        "validity": {"from": str(today), "until": "2099-01-01"},
+        "createdBy": {"name": "Test", "email": "t@example.com", "certificate": "PEM"},
+    })
+    result = compiler._load_valid_commitment()
+    assert result["kind"] == "DeveloperCommitment"
+
+
+# ── run_verify_release ────────────────────────────────────────────────────────
+
+def _make_valid_bundle(specs=None):
+    if specs is None:
+        specs = [{"id": "shape", "source_path": "schemas/atomic/shape.yaml",
+                  "meta_hash": "abc", "spec": {"kind": "AtomicPrimitive"}}]
+    validity = {"from": "2026-01-01", "until": "2099-01-01"}
+    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": "-----BEGIN CERTIFICATE-----\nPEM\n-----END CERTIFICATE-----"}
+    hash_payload = {"createdBy": created_by, "specs": specs, "validity": validity}
+    content_hash = compiler.get_sha256_b64(compiler.to_canonical_json(hash_payload))
+    return {
+        "kind": "PrimitiveRelease",
+        "version": "0.1.5",
+        "timestamp": "2026-05-24T00:00:00+00:00",
+        "validity": validity,
+        "createdBy": created_by,
+        "specs": specs,
+        "release": {"content_hash": content_hash, "sign": "vault:v1:abc123"},
+    }
+
+
+def test_verify_release_ok(mocker, tmp_path):
+    bundle = _make_valid_bundle()
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+
+
+def test_verify_release_missing_cert(mocker, tmp_path):
+    bundle = _make_valid_bundle()
+    del bundle["createdBy"]["certificate"]
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_verify_release_hash_mismatch(mocker, tmp_path):
+    bundle = _make_valid_bundle()
+    bundle["release"]["content_hash"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_verify_release_wrong_kind(mocker, tmp_path):
+    bundle = _make_valid_bundle()
+    bundle["kind"] = "SomethingElse"
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+# ── run_pledge ────────────────────────────────────────────────────────────────
+
+def test_run_pledge_no_vault_vars(mocker):
+    mocker.patch.object(os, "getenv", return_value=None)
+    mocker.patch("tools.compiler.validate_release_prerequisites", return_value=("0.1.5", "primitives/"))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_pledge()
+    assert e.value.code == 1
+
+
+def test_run_pledge_no_cert_path(mocker):
+    mocker.patch.object(os, "getenv", side_effect=lambda k, d=None: {
+        "VAULT_ADDR": "https://vault:8200",
+        "VAULT_TOKEN": "token",
+    }.get(k, d))
+    mocker.patch("tools.compiler.load_project_config", return_value={
+        "project": {"owner": "Dev"},
+        "compiler_settings": {"vault_key_name": "key", "vault_cert_path": None, "owner_email": "", "validity_days": 365},
+    })
+    with pytest.raises(SystemExit) as e:
+        compiler.run_pledge()
+    assert e.value.code == 1
+
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def test_main_no_arguments(mocker):
@@ -276,6 +403,22 @@ def test_main_no_arguments(mocker):
 
 def test_main_unknown_command(mocker):
     mocker.patch.object(sys, "argv", ["compiler.py", "unknown"])
+    with pytest.raises(SystemExit) as e:
+        compiler.main()
+    assert e.value.code == 1
+
+
+def test_main_help(mocker, capsys):
+    mocker.patch.object(sys, "argv", ["compiler.py", "--help"])
+    compiler.main()
+    captured = capsys.readouterr()
+    assert "validate" in captured.out
+    assert "pledge" in captured.out
+    assert "verify-release" in captured.out
+
+
+def test_main_verify_release_missing_arg(mocker):
+    mocker.patch.object(sys, "argv", ["compiler.py", "verify-release"])
     with pytest.raises(SystemExit) as e:
         compiler.main()
     assert e.value.code == 1

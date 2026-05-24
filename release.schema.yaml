@@ -1,0 +1,102 @@
+---
+type: object
+title: "PrimitiveRelease Bundle Schema"
+description: "Defines the structure of a signed release artifact produced by 'python tools/compiler.py release'. One file per release version under release/."
+required:
+  - kind
+  - version
+  - timestamp
+  - validity
+  - createdBy
+  - specs
+  - release
+
+properties:
+  kind:
+    type: string
+    const: PrimitiveRelease
+    description: "Fixed discriminator — identifies this as a primitive release bundle."
+
+  version:
+    type: string
+    description: "Semantic version of this release (e.g. '0.1.5')."
+    pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+
+  timestamp:
+    type: string
+    format: date-time
+    description: "UTC timestamp of the release build (ISO 8601)."
+
+  validity:
+    type: object
+    description: "Developer maintenance commitment window. Taken from commitment.yaml at release time."
+    required:
+      - from
+      - until
+    properties:
+      from:
+        type: string
+        format: date
+        description: "Start date of the maintenance commitment (ISO 8601 date)."
+      until:
+        type: string
+        format: date
+        description: "End date of the maintenance commitment (ISO 8601 date)."
+
+  createdBy:
+    type: object
+    description: "Developer identity block. The certificate is bound inside the content_hash before signing."
+    required:
+      - name
+      - email
+      - certificate
+    properties:
+      name:
+        type: string
+        description: "Full name of the developer."
+      email:
+        type: string
+        format: email
+        description: "Contact email of the developer."
+      certificate:
+        type: string
+        description: "PEM-encoded X.509 developer certificate (identity anchor, cryptographically bound to content_hash)."
+
+  specs:
+    type: array
+    description: "Inline schema definitions. Each entry is one source schema file, inlined at release time."
+    minItems: 1
+    items:
+      type: object
+      required:
+        - id
+        - source_path
+        - meta_hash
+        - spec
+      properties:
+        id:
+          type: string
+          description: "Schema identifier — basename of the source file without extension."
+        source_path:
+          type: string
+          description: "Relative path to the original source file in the repo (traceability)."
+        meta_hash:
+          type: string
+          description: "SHA256 (base64) of the raw source file bytes at release time."
+        spec:
+          type: object
+          description: "Full inline content of the schema file."
+
+  release:
+    type: object
+    description: "Cryptographic provenance block. content_hash is computed over canonical JSON of {createdBy, specs, validity} — the developer certificate is cryptographically bound inside the hash."
+    required:
+      - content_hash
+      - sign
+    properties:
+      content_hash:
+        type: string
+        description: "SHA256 (base64) of canonical JSON (sorted keys, no whitespace) of {createdBy, specs, validity}. Tamper-proof seal including developer identity."
+      sign:
+        type: string
+        description: "Vault Transit ECDSA signature over content_hash (prehashed=true)."
