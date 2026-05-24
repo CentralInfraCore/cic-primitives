@@ -68,25 +68,32 @@ def get_reproducible_repo_hash(tree_id):
     # Create a tar archive from the tree object
     archive_proc = subprocess.Popen(
         ['git', 'archive', '--format=tar', tree_id],
-        stdout=subprocess.PIPE
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
     )
-    # Hash the tar stream
     digest_proc = subprocess.Popen(
         ['openssl', 'dgst', '-sha256', '-binary'],
         stdin=archive_proc.stdout,
         stdout=subprocess.PIPE
     )
-    # Base64 encode the hash
     b64_proc = subprocess.Popen(
         ['openssl', 'base64', '-A'],
         stdin=digest_proc.stdout,
         stdout=subprocess.PIPE,
         text=True
     )
-    archive_proc.stdout.close()  # Allow archive_proc to receive a SIGPIPE
+    archive_proc.stdout.close()
 
     repo_hash_b64 = b64_proc.communicate()[0].strip()
+    archive_proc.wait()
+    digest_proc.wait()
 
+    if archive_proc.returncode != 0:
+        print("\033[91m✗ ERROR: git archive failed.\033[0m")
+        sys.exit(1)
+    if digest_proc.returncode != 0:
+        print("\033[91m✗ ERROR: openssl dgst failed.\033[0m")
+        sys.exit(1)
     if b64_proc.returncode != 0:
         print("\033[91m✗ ERROR: Failed to calculate reproducible repository hash.\033[0m")
         sys.exit(1)
@@ -121,12 +128,8 @@ def validate_release_prerequisites():
     print("--- Validating Release Prerequisites ---")
     project_config = load_project_config(full_config=True)['project']
 
-    # Sanitize the component name by removing any trailing '/main' or '|main'
-    # to ensure it represents the core component prefix.
     raw_component_name = project_config.get('main_branch', 'main')
-    print(f"'{raw_component_name}'")
     component_name = re.sub(r'main$', '', raw_component_name)
-    print(f"'{component_name}'")
 
     # 1. Check for clean git state
     git_status = run_git_command(['git', 'status', '--porcelain'])

@@ -97,7 +97,7 @@ spec:
                       type: string
                       enum: [sealed, defaulted, required]
 
-    # DomainComposition must have base.aggregate
+    # DomainComposition must have base.aggregate and base.ref
     - if:
         properties:
           spec:
@@ -111,7 +111,9 @@ spec:
             properties:
               base:
                 type: object
-                required: [aggregate]
+                required: [aggregate, ref]
                 properties:
                   aggregate:
+                    type: string
+                  ref:
                     type: string
