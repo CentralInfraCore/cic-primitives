@@ -1,0 +1,1272 @@
+kind: PrimitiveRelease
+version: 0.1.4
+timestamp: '2026-05-24T16:38:02.380933+00:00'
+specs:
+- id: config-surface
+  source_path: schemas/aggregate/config-surface.yaml
+  meta_hash: ns/EvKhtlPqGtK3H8nirLYYoiyx1Z3VqW3RPogvSOZs=
+  spec:
+    metadata:
+      name: ConfigSurface
+      version: v0.0.dev
+      description: "The writable desired-state surface of a ManagedEntity. All configuration\
+        \ changes arrive through this surface \u2014 it is the desired state container.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - aggregate
+      - config
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AggregatePrimitive
+      atomic_dependencies:
+      - atomic: Shape
+        ref: schemas/atomic/shape.yaml
+        used_by:
+        - nodes
+      - atomic: Contract
+        ref: schemas/atomic/contract.yaml
+        used_by:
+        - validation
+      slots:
+        root:
+          mode: sealed
+          type: Shape
+          atomic_ref: schemas/atomic/shape.yaml
+          shape_type: composite
+          description: "Root of the config tree \u2014 Shape(composite) container.\
+            \ Not overridable in derived types; structure is uniform across the entire\
+            \ CIC.\n"
+        nodes:
+          mode: required
+          type: Shape[]
+          atomic_ref: schemas/atomic/shape.yaml
+          role_constraint: config
+          role_ref: schemas/atomic/role.yaml
+          description: "The concrete config fields \u2014 Shape atoms with Role(config)\
+            \ constraint. Every node is a writable desired-state field. Must be specialised\
+            \ in derived types.\n"
+        validation:
+          mode: defaulted
+          type: Contract[]
+          atomic_ref: schemas/atomic/contract.yaml
+          default: []
+          description: 'Constraints verified before the configuration is applied.
+            Contract types: range, pattern, must, when, enum, mandatory, unique.
+
+            '
+        access:
+          mode: defaulted
+          type: TBD
+          default: inherit
+          description: "Write policy reference \u2014 who may modify this config surface.\
+            \ Defaults to inherited from the entity's parent. Future: PolicyRef aggregate\
+            \ based on the Access atom (atom 8).\n"
+      semantic_mapping:
+        yang:
+          construct: container
+          name: config
+          flag: config true
+          note: every leaf/container child appears as config true
+        api:
+          methods:
+          - PUT
+          - PATCH
+          path: /{resource}/config
+          note: full replacement via PUT, partial modification via PATCH
+        runtime:
+          role: desired-state-store
+          note: this is the state the reconciler converges toward
+- id: managed-entity
+  source_path: schemas/aggregate/managed-entity.yaml
+  meta_hash: 0c8CwQtlQZLKJz9qitL0Eb7rOcKPtNnipyX5Vqheg7Q=
+  spec:
+    metadata:
+      name: ManagedEntity
+      version: v0.0.dev
+      description: "The base compositional unit of CIC \u2014 every domain object\
+        \ specializes from this. Not a standalone object: it is the semantic contract\
+        \ on which switch interfaces, kubernetes pods, databases, services, and anything\
+        \ else are built. The object is always a consequence, never a starting point.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - aggregate
+      - core
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AggregatePrimitive
+      atomic_dependencies:
+      - atomic: Identity
+        ref: schemas/atomic/identity.yaml
+        used_by:
+        - identity
+      - atomic: Address
+        ref: schemas/atomic/address.yaml
+        used_by:
+        - binding_surface
+      - atomic: Event
+        ref: schemas/atomic/event.yaml
+        used_by:
+        - notification_surface
+      - atomic: Access
+        ref: schemas/atomic/access.yaml
+        used_by:
+        - policy_surface
+        - implicit on every field value
+      aggregate_dependencies:
+      - aggregate: ConfigSurface
+        ref: schemas/aggregate/config-surface.yaml
+        used_by:
+        - config_surface
+      - aggregate: StateSurface
+        ref: schemas/aggregate/state-surface.yaml
+        used_by:
+        - state_surface
+      - aggregate: OperationSurface
+        ref: schemas/aggregate/operation-surface.yaml
+        used_by:
+        - operation_surface
+      - aggregate: PolicySurface
+        ref: schemas/aggregate/policy-surface.yaml
+        used_by:
+        - policy_surface
+      slots:
+        identity:
+          mode: required
+          type: Identity
+          atomic_ref: schemas/atomic/identity.yaml
+          description: "Type identity \u2014 Identity atom. Defines what this entity\
+            \ is within CIC. Components: kind, namespace, version, base (inheritable\
+            \ Identity chain).\n"
+        config_surface:
+          mode: required
+          type: ConfigSurface
+          aggregate_ref: schemas/aggregate/config-surface.yaml
+          description: "The writable desired-state surface. Required \u2014 every\
+            \ ManagedEntity has a configurable state.\n"
+        state_surface:
+          mode: required
+          type: StateSurface
+          aggregate_ref: schemas/aggregate/state-surface.yaml
+          description: "The read-only observed-state surface. Required \u2014 every\
+            \ ManagedEntity has a queryable current state.\n"
+        operation_surface:
+          mode: defaulted
+          type: OperationSurface
+          aggregate_ref: schemas/aggregate/operation-surface.yaml
+          default: empty
+          description: "The executable operations surface. May be empty \u2014 not\
+            \ every entity has explicit operations (e.g. a simple config node has\
+            \ no restart).\n"
+        notification_surface:
+          mode: defaulted
+          type: Event[]
+          status: placeholder
+          blocked_by: "NotificationSurface aggregate (no model yet \u2014 notification\
+            \ routing prerequisite)"
+          atomic_ref: schemas/atomic/event.yaml
+          default: empty
+          description: "The asynchronous notifications surface \u2014 list of Event\
+            \ atoms. May be empty. Formal NotificationSurface aggregate follows the\
+            \ notification routing model.\n"
+        policy_surface:
+          mode: defaulted
+          type: PolicySurface
+          aggregate_ref: schemas/aggregate/policy-surface.yaml
+          default: open
+          description: "Object-level default access control rules. The Access atom's\
+            \ field-level wrapper uses this as the default when inherit: true. If\
+            \ missing: all fields are accessible (open default \u2014 backward compatible).\
+            \ Evaluation order: field Access \u2192 surface_rules \u2192 default_access/modify\
+            \ \u2192 inherited.\n"
+        capability_surface:
+          mode: defaulted
+          type: TBD
+          status: placeholder
+          blocked_by: "CapabilitySurface aggregate (no model yet \u2014 Relay capability\
+            \ declaration system prerequisite)"
+          default: inherit
+          description: "What this entity can do \u2014 feature flags, supported operations,\
+            \ protocol versions. Formal CapabilitySurface aggregate follows the Relay\
+            \ capability model.\n"
+        lifecycle_surface:
+          mode: sealed
+          type: TBD
+          status: placeholder
+          blocked_by: "LifecycleSurface aggregate (no model yet \u2014 Relay execution\
+            \ model prerequisite)"
+          states:
+          - create
+          - active
+          - degraded
+          - terminating
+          - terminated
+          transitions:
+            create:
+            - active
+            active:
+            - degraded
+            - terminating
+            degraded:
+            - active
+            - terminating
+            terminating:
+            - terminated
+          description: "Lifecycle state machine \u2014 every ManagedEntity has a lifecycle,\
+            \ non-optional. Formal LifecycleSurface aggregate follows the Relay execution\
+            \ model.\n"
+        binding_surface:
+          mode: required
+          type: Address[]
+          atomic_ref: schemas/atomic/address.yaml
+          description: "At least one Address atom is required \u2014 how this entity\
+            \ is reachable. Address layers: schema_path, api_path, logical_id. A future\
+            \ BindingSurface aggregate will also wrap the adapter reference.\n"
+      semantic_mapping:
+        yang:
+          construct: container
+          note: "ManagedEntity maps to a YANG container. Inside: config_surface \u2192\
+            \ container config { ... } state_surface  \u2192 container state { config\
+            \ false; ... } operation_surface \u2192 rpc/action definitions notification_surface\
+            \ \u2192 notification definitions\n"
+        api:
+          base_path: /{resource-type}/{resource-id}
+          endpoints:
+          - path: /config
+            methods:
+            - GET
+            - PUT
+            - PATCH
+          - path: /state
+            methods:
+            - GET
+          - path: /operations/{name}
+            methods:
+            - POST
+          note: "RESTCONF resource \u2014 collection + instance pattern"
+        runtime:
+          role: reconcile-loop-entry
+          note: "For every ManagedEntity, the reconciler: observe state_surface \u2192\
+            \ compare config_surface \u2192 if drift \u2192 execute operation or direct\
+            \ apply.\n"
+- id: operation-surface
+  source_path: schemas/aggregate/operation-surface.yaml
+  meta_hash: T7UNN8adgMsydc3/yumFDpSOCdqeqt4Grg4moZatb6w=
+  spec:
+    metadata:
+      name: OperationSurface
+      version: v0.0.dev
+      description: 'The executable operations surface of a ManagedEntity. Covers rpcs,
+        actions, and lifecycle operations.
+
+        '
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - aggregate
+      - operation
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AggregatePrimitive
+      atomic_dependencies:
+      - atomic: Behavior
+        ref: schemas/atomic/behavior.yaml
+        used_by:
+        - operations
+      slots:
+        operations:
+          mode: required
+          type: Behavior[]
+          atomic_ref: schemas/atomic/behavior.yaml
+          description: "The list of executable operations \u2014 Behavior atoms. Must\
+            \ be specialised in derived types. Behavior types: rpc (entity-independent)\
+            \ | action (entity-bound) | operation (lifecycle).\n"
+        idempotency:
+          mode: defaulted
+          type: boolean
+          default: false
+          description: 'Default idempotency flag for all operations in the operations
+            slot. Overridable per operation in the Behavior atom.
+
+            '
+        timeout:
+          mode: defaulted
+          type: duration
+          default: 30s
+          description: 'Default timeout for all operations in the operations slot.
+            Overridable per operation in the Behavior atom.
+
+            '
+        audit:
+          mode: sealed
+          type: boolean
+          value: true
+          description: "Every operation execution is logged. Cannot be disabled. A\
+            \ fundamental requirement of the CIC management loop \u2014 auditability.\n"
+      semantic_mapping:
+        yang:
+          constructs:
+          - rpc
+          - action
+          note: 'rpc = top-level, entity-independent (e.g. validate-config). action
+            = entity-bound, sibling of config/state container (e.g. restart).
+
+            '
+        api:
+          methods:
+          - POST
+          path: /{resource}/operations/{operation-name}
+          note: "every operation is a POST endpoint \u2014 no idempotent HTTP verb\
+            \ mapping"
+        runtime:
+          role: operation-dispatcher
+          note: the runtime invokes the adapter's corresponding handler
+- id: policy-surface
+  source_path: schemas/aggregate/policy-surface.yaml
+  meta_hash: +A+3eylgODROJr8v5pXNW/nROqzylrIig6vRjEpwmRI=
+  spec:
+    metadata:
+      name: PolicySurface
+      version: v0.0.dev
+      description: 'Aggregate of object-level default access control rules. The Access
+        atom''s field-level wrapper uses this as the default when inherit: true. If
+        a ManagedEntity has no PolicySurface, the runtime makes every field accessible
+        (backward compatible open default).
+
+        '
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - aggregate
+      - policy
+      - security
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AggregatePrimitive
+      atomic_dependencies:
+      - atomic: Access
+        ref: schemas/atomic/access.yaml
+        used_by:
+        - default_access
+        - default_modify
+        - surface_rules
+      slots:
+        default_access:
+          mode: defaulted
+          type: CertPattern[]
+          atomic_ref: schemas/atomic/access.yaml
+          default: open
+          description: "Who may read any field on this object \u2014 unless the Access\
+            \ atom overrides at field level. `open` = anyone may read (default).\n"
+        default_modify:
+          mode: defaulted
+          type: CertPattern[]
+          atomic_ref: schemas/atomic/access.yaml
+          default: owner
+          description: "Who may write any config field on this object \u2014 unless\
+            \ the Access atom overrides at field level. `owner` = the object's owner\
+            \ may write.\n"
+        surface_rules:
+          mode: defaulted
+          type: SurfaceRule[]
+          default: empty
+          description: "Surface-level rules \u2014 finer granularity than the whole-object\
+            \ default, coarser than field-level Access atom. E.g. different rules\
+            \ for config_surface vs state_surface. Structure: {surface: config_surface|state_surface|...,\
+            \ access: [...], modify: [...]}\n"
+        inherit_policy:
+          mode: defaulted
+          type: boolean
+          default: true
+          description: "If true: sub-objects inherit this PolicySurface. If false:\
+            \ sub-objects define their own PolicySurface. If 0: full reset \u2014\
+            \ sub-object's PolicySurface is built from scratch.\n"
+      semantic_mapping:
+        runtime:
+          evaluation_order: '1. field-level Access atom (highest priority) 2. surface_rules
+            (surface-level override) 3. default_access / default_modify (object-level
+            default) 4. inherited PolicySurface from parent object (if inherit_policy:
+            true)
+
+            '
+          miss_behavior: "If the object has no PolicySurface and none can be inherited\
+            \ from parent: all fields are accessible (open default) \u2014 backward\
+            \ compatible.\n"
+- id: state-surface
+  source_path: schemas/aggregate/state-surface.yaml
+  meta_hash: qY9QsW16+lnIrdf4eymj25B0FQrtxeBPWhdgZAZ7wZI=
+  spec:
+    metadata:
+      name: StateSurface
+      version: v0.0.dev
+      description: "The read-only observed-state surface of a ManagedEntity. Populated\
+        \ by the adapter \u2014 shows what is actually present in the system.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - aggregate
+      - state
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AggregatePrimitive
+      atomic_dependencies:
+      - atomic: Shape
+        ref: schemas/atomic/shape.yaml
+        used_by:
+        - root
+        - nodes
+      - atomic: Role
+        ref: schemas/atomic/role.yaml
+        used_by:
+        - nodes
+      slots:
+        root:
+          mode: sealed
+          type: Shape
+          atomic_ref: schemas/atomic/shape.yaml
+          shape_type: composite
+          description: "Root of the state tree \u2014 Shape(composite) container,\
+            \ config false. Not overridable \u2014 structure is uniform across the\
+            \ entire CIC.\n"
+        nodes:
+          mode: required
+          type: Shape[]
+          atomic_ref: schemas/atomic/shape.yaml
+          role_constraint:
+          - state
+          - operational
+          - derived
+          - volatile
+          role_ref: schemas/atomic/role.yaml
+          description: "The observable fields \u2014 Shape atoms with Role(state|operational|derived|volatile)\
+            \ constraint. Role(config) is forbidden here \u2014 state surface contains\
+            \ no writable fields. Must be specialised in derived types.\n"
+        freshness:
+          mode: defaulted
+          type: object
+          default:
+            ttl: 60s
+            strategy: polling
+          description: "How long the observed state is valid and how it is refreshed.\
+            \ Strategies: polling | streaming | event-driven | push. Not an atomic\
+            \ primitive \u2014 adapter-level configuration.\n"
+        source:
+          mode: required
+          type: TBD
+          description: "Who populates this state surface. Adapter reference \u2014\
+            \ must be specified. Examples: kubernetes-adapter, snmp-adapter, mock-adapter.\
+            \ Future atomic: AdapterRef (to be defined in BindingSurface scope).\n"
+      semantic_mapping:
+        yang:
+          construct: container
+          name: state
+          flag: config false
+          note: "every child node is config false \u2014 not writable via NETCONF/RESTCONF"
+        api:
+          methods:
+          - GET
+          path: /{resource}/state
+          note: "read-only \u2014 PUT/PATCH/DELETE not permitted"
+        runtime:
+          role: observed-state-store
+          note: written by the adapter, read by the reconciler for drift calculation
+- id: access
+  source_path: schemas/atomic/access.yaml
+  meta_hash: CfuKjoXaFAo1kE/RV02rD3lKN6G1KjCn8qAirv6zlC0=
+  spec:
+    metadata:
+      name: Access
+      version: v0.0.dev
+      description: "Atomic primitive wrapping every Shape value with access control.\
+        \ Two syntactically equivalent representations:\n  key: value\n  key: {value:\
+        \ value, access: [...], modify: [...], inherit: true, default_injection: null}\n\
+        The compiler normalizes the short form to the long form by filling in inherited\
+        \ rules. The runtime always evaluates the expanded form.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - access
+      - security
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      fields:
+        description: Internal structure of the Access atom
+        properties:
+          value:
+            type: any
+            description: "The actual data \u2014 its type is determined by the enclosing\
+              \ Shape. Short form: `key: value` is equivalent to `key: {value: value,\
+              \ ...}`.\n"
+          access:
+            type: list<CertPattern>
+            default: inherit
+            description: "Who may read this value \u2014 CertPattern list, OR semantics.\
+              \ Empty list: nobody may read (only default_injection is visible). default\
+              \ = inherited from the parent object's PolicySurface rules.\n"
+          modify:
+            type: list<CertPattern>
+            default: inherit
+            description: "Who may write this value \u2014 CertPattern list, OR semantics.\
+              \ Empty list: nobody may modify (read-only for all requestors). Adapter\
+              \ cert appears here for state/operational fields.\n"
+          inherit:
+            type: boolean | 0
+            default: true
+            description: "Whether sub-objects inherit this rule for this field. true\
+              \  = inherits (default) false = does not inherit; sub-object gets its\
+              \ own default rules 0     = full reset \u2014 sub-object recomputes\
+              \ from its PolicySurface\n"
+          default_injection:
+            type: any
+            default: null
+            description: "What the requestor receives when they lack access to the\
+              \ value. null    = field does not appear in the response (information\
+              \ hiding) <value> = injected default (e.g. 0, \"\", false) \u2014 uniform\
+              \ behaviour,\n          does not leak whether the field exists or what\
+              \ its value is\n"
+          conformance:
+            type: enum
+            values:
+            - implemented
+            - not_implemented
+            - deprecated
+            default: implemented
+            description: "Device-level implementation status \u2014 separate from\
+              \ permission-based visibility (D-012).\nimplemented     (default) \u2014\
+              \ field exists and is manageable on the device not_implemented \u2014\
+              \ field does NOT exist on the device:\n                  read: returns\
+              \ default_injection value (typically null)\n                  write:\
+              \ HARD REJECT \u2014 \"field not implemented on device X\"\n       \
+              \           Silent acceptance is FORBIDDEN \u2014 the Relay rejects\
+              \ the write\ndeprecated      \u2014 field exists but should be avoided:\n\
+              \                  read: value returned\n                  write: WARNING\
+              \ + accepted\n\nDifference from missing permission:\n  access: []  \
+              \    \u2192 PERMISSION DENIED (you cannot access it)\n  not_implemented\
+              \ \u2192 HARD REJECT (the device cannot handle it)\nThe requestor receives\
+              \ a distinct error \u2014 the two cases are not interchangeable.\n"
+      cert_pattern:
+        description: "X.509 certificate-based identity pattern. Evaluated against\
+          \ the requestor's mTLS cert. Identity source: Subject DN, SAN, or custom\
+          \ X.509 extension \u2014 implementation detail; the cert PEM is the anchor.\n"
+        syntax:
+          format: '"field=value" pairs, wildcard (*) supported'
+          combinator: "list = OR \u2014 any matching pattern grants access"
+        examples:
+        - pattern: O=acme-corp
+          meaning: any acme-corp certificate
+        - pattern: OU=operators,O=acme-corp
+          meaning: acme-corp operator group
+        - pattern: CN=*,O=partner-a
+          meaning: any user of partner-a
+        - pattern: OU=adapters,O=cic
+          meaning: CIC adapter service accounts (for state/operational fields)
+      semantic_mapping:
+        role_relation: "Access atom is orthogonal to Role atom. Role = what the field\
+          \ means (config/state/operational). Access = who may reach it. Combined:\
+          \ role: state + modify: [OU=adapters,O=cic] \u2192 adapter writes, user\
+          \ reads.\n"
+        compiler:
+          short_form: "key: value \u2192 key: {value: value, ...inherited rules}"
+          normalization: compiler fills in inherited PolicySurface rules
+        runtime:
+          evaluation: mTLS cert evaluated against the CertPattern list
+          miss_behavior: default_injection returned when access is denied
+          conformance_enforcement: "A write to a not_implemented field is NOT silently\
+            \ dropped by the Relay \u2014 it is rejected with an explicit \"field\
+            \ not implemented on device X\" error. Distinct from permission denied:\
+            \ the requestor knows the real reason.\n"
+        yang:
+          note: "Analogous to YANG NACM (RFC 8341) \u2014 but at field level, not\
+            \ path level. During YANG derivation, Access metadata can be translated\
+            \ to NACM rules.\n"
+        api:
+          note: 'Fields the requestor cannot access are filtered from the RESTCONF
+            response or returned with their default_injection value.
+
+            '
+- id: address
+  source_path: schemas/atomic/address.yaml
+  meta_hash: a0lxNNBeqhcEru3z8is8aFx/7Qiz47GFFoQHji2Nxz4=
+  spec:
+    metadata:
+      name: Address
+      version: v0.0.dev
+      description: "Atomic primitive describing how and where an entity can be reached\
+        \ by the management plane, the API, and the runtime. Important: Address is\
+        \ not a property of the entity itself \u2014 it belongs to the BindingSurface.\
+        \ An entity may exist without an address; the address is meaningful in the\
+        \ binding context.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - address
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      layers:
+        schema_path:
+          description: "Internal schema-tree position \u2014 how the CIC model identifies\
+            \ the entity. Hierarchical, slash-separated path in the schema tree.\n"
+          format: /{module}:{container}/{list}={key}/{sub-container}
+          example: /cic-network:interfaces/interface=eth0/config
+          used_by:
+          - compiler
+          - validator
+          - schema-registry
+        api_path:
+          description: "HTTP/RESTCONF URL \u2014 how an API client reaches the entity.\
+            \ Built from schema_path following RESTCONF conventions.\n"
+          format: /restconf/data/{module}:{container}/{list}={key}
+          example: /restconf/data/cic-network:interfaces/interface=eth0
+          used_by:
+          - api-gateway
+          - client
+          - openapi-spec
+        logical_id:
+          description: "Logical identifier \u2014 human-friendly, system-independent\
+            \ name for the entity. Not necessarily globally unique \u2014 unique within\
+            \ its namespace.\n"
+          formats:
+            uuid: 550e8400-e29b-41d4-a716-446655440000
+            name: eth0 / default-ns / prod-cluster
+            composite: namespace:kind:name
+          used_by:
+          - runtime
+          - audit-log
+          - notification
+      fields:
+        description: "Fields of an Address definition \u2014 at least one layer is\
+          \ required"
+        properties:
+          schema_path:
+            type: string
+            optional: true
+            description: Schema-tree path (see layers.schema_path)
+          api_path:
+            type: string
+            optional: true
+            description: HTTP/RESTCONF URL (see layers.api_path)
+          logical_id:
+            type: string
+            optional: true
+            description: Logical identifier (see layers.logical_id)
+          namespace:
+            type: string
+            description: 'CIC namespace in which this address is interpreted. E.g.
+              cic:network, cic:kubernetes, cic:compute
+
+              '
+          note:
+            type: string
+            optional: true
+            description: Free-text note about the Address context
+      constraints:
+      - type: must
+        expression: schema_path or api_path or logical_id
+        error_message: At least one Address layer is required
+      semantic_mapping:
+        yang:
+          note: "YANG has no direct Address concept \u2014 schema_path maps to YANG\
+            \ node XPath, api_path maps to RESTCONF instance-identifier.\n"
+        api:
+          note: "api_path \u2192 OpenAPI servers + paths combination"
+        runtime:
+          note: "logical_id \u2192 runtime lookup key in the entity store"
+- id: behavior
+  source_path: schemas/atomic/behavior.yaml
+  meta_hash: y2S1NS6Y4AiMiHhKoSQTxP/KzKv2dfaXu2Fx0Bw0dIM=
+  spec:
+    metadata:
+      name: Behavior
+      version: v0.0.dev
+      description: 'Atomic primitive describing an executable operation on an entity.
+        Behavior defines what interactions are possible between the management plane
+        and the entity beyond config/state read-write. OperationSurface.operations
+        is composed of Behaviors.
+
+        '
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - behavior
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      types:
+        rpc:
+          description: "Request/response \u2014 entity-independent, top-level operation.\
+            \ Not bound to any specific instance. E.g. validate-config, ping, dry-run.\n"
+          yang_mapping: top-level rpc statement
+          api_mapping: POST /operations/{name} (not resource-specific path)
+          runtime_mapping: global handler, no instance context
+          properties:
+            synchronous: true
+            stateful: false
+        action:
+          description: 'Entity-bound, state-modifying operation. Runs on the specific
+            instance. E.g. restart, drain, flush-cache, force-reconcile.
+
+            '
+          yang_mapping: action statement inside container/list
+          api_mapping: POST /{resource}/{id}/operations/{name}
+          runtime_mapping: instance-bound handler, has entity context
+          properties:
+            synchronous: varies
+            stateful: true
+        operation:
+          description: "Higher-level lifecycle-bound operation \u2014 typically multi-step\
+            \ with orchestrated execution. E.g. migrate, scale, upgrade, backup/restore.\n"
+          yang_mapping: "action statement \u2014 but handled by orchestration layer"
+          api_mapping: "POST /{resource}/{id}/operations/{name} \u2192 async job"
+          runtime_mapping: workflow engine / long-running job
+          properties:
+            synchronous: false
+            stateful: true
+            returns: job-reference
+      fields:
+        description: Required and optional fields of a Behavior definition
+        properties:
+          name:
+            type: string
+            description: "Operation name \u2014 verb form recommended (restart, drain,\
+              \ validate)"
+          type:
+            type: string
+            enum:
+            - rpc
+            - action
+            - operation
+            description: Behavior type (see types above)
+          input:
+            type: reference
+            description: "Input parameter schema \u2014 Shape reference or inline\
+              \ Shape. May be empty if the operation takes no parameters.\n"
+            optional: true
+          output:
+            type: reference
+            description: "Output structure schema \u2014 Shape reference or inline\
+              \ Shape. May be empty if the operation returns no data.\n"
+            optional: true
+          idempotent:
+            type: boolean
+            default: false
+            description: 'If true, executing the operation multiple times produces
+              the same result. Affects retry logic and audit interpretation.
+
+              '
+          description:
+            type: string
+            description: Purpose and side-effects of the operation
+      semantic_mapping:
+        yang:
+          rpc: rpc <name> { input { ... } output { ... } }
+          action: action <name> { input { ... } output { ... } }
+        api:
+          note: "every Behavior is exposed as a POST endpoint \u2014 no idempotent\
+            \ HTTP verb mapping"
+        runtime:
+          note: the dispatcher selects sync/async handler based on type
+- id: contract
+  source_path: schemas/atomic/contract.yaml
+  meta_hash: L/z0zL6kN3/T3y+xoW1rPMJEiPImbZNVhIXvXOy7jS0=
+  spec:
+    metadata:
+      name: Contract
+      version: v0.0.dev
+      description: "Atomic primitive describing a constraint \u2014 what conditions\
+        \ must hold for a node's value or activation. Contract fills the ConfigSurface.validation\
+        \ slot, but may be attached to any Shape field.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - contract
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      types:
+        range:
+          description: "Numeric value bound \u2014 minimum, maximum, or both"
+          yang_mapping: range statement in type
+          example: 'range: 1..65535'
+        pattern:
+          description: "Regular expression \u2014 string format validation"
+          yang_mapping: pattern statement in type
+          example: 'pattern: ^[a-z][a-z0-9-]*$'
+        must:
+          description: "Logical constraint as XPath/JPath expression \u2014 must be\
+            \ true before the configuration is applied. May express cross-node relationships.\n"
+          yang_mapping: must statement
+          example: 'must: count(../interface) > 0'
+        when:
+          description: "Conditional activation \u2014 the node is valid/active only\
+            \ when the expression is true. When false, the node is ignored (as if\
+            \ it did not exist).\n"
+          yang_mapping: when statement
+          example: 'when: ../mode = ''layer3'''
+        enum:
+          description: "Enumerated value set \u2014 only these values are valid"
+          yang_mapping: enumeration type
+          example: 'enum: [up, down, testing, unknown]'
+        mandatory:
+          description: "The node must be present \u2014 cannot be omitted, cannot\
+            \ be null. Stronger than optional: false because it is enforced at validation\
+            \ time.\n"
+          yang_mapping: mandatory true
+          example: 'mandatory: true'
+        unique:
+          description: "Intra-list uniqueness \u2014 the specified field combination\
+            \ must be unique across all list instances.\n"
+          yang_mapping: unique statement in list
+          example: 'unique: ip-address port'
+      fields:
+        description: Required and optional fields of a Contract definition
+        properties:
+          type:
+            type: string
+            enum:
+            - range
+            - pattern
+            - must
+            - when
+            - enum
+            - mandatory
+            - unique
+            description: Constraint type (see types above)
+          expression:
+            type: string
+            description: "The concrete constraint content \u2014 format varies by\
+              \ type. range: \"min..max\" | pattern: regex | must/when: XPath | enum:\
+              \ value list\n"
+          error_message:
+            type: string
+            description: 'Message returned by the validator when the constraint is
+              not satisfied. Should be human-friendly and actionable.
+
+              '
+            optional: true
+          description:
+            type: string
+            description: "Why this constraint exists \u2014 the business/semantic\
+              \ rationale"
+            optional: true
+      semantic_mapping:
+        yang:
+          range: type integer { range '...'; }
+          pattern: type string { pattern '...'; }
+          must: must '...' { error-message '...'; }
+          when: when '...';
+          enum: type enumeration { enum up; enum down; }
+          mandatory: mandatory true;
+          unique: unique '...';
+        api:
+          note: "Contracts \u2192 OpenAPI enum/pattern/minimum/maximum/required constraints"
+        runtime:
+          note: "Contracts \u2192 pre-apply validation, error message returned via\
+            \ API"
+- id: event
+  source_path: schemas/atomic/event.yaml
+  meta_hash: IzHhprOwIjcGM8cjlWgHWR4nzW58k/LInM+GX8uQDwA=
+  spec:
+    metadata:
+      name: Event
+      version: v0.0.dev
+      description: "Atomic primitive describing an asynchronous notification \u2014\
+        \ what a ManagedEntity can emit to the management plane on its own initiative.\
+        \ Event is not request/response: the source entity fires it, subscribed observers\
+        \ receive it. NotificationSurface is composed of Events.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - event
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      triggers:
+        state_change:
+          description: "A node value changed \u2014 the observed state differs from\
+            \ the previous value. E.g. interface oper-status: up \u2192 down, pod\
+            \ phase: Running \u2192 Failed.\n"
+          yang_mapping: notification triggered by state transition
+          typical_payload:
+          - previous_value
+          - current_value
+          - timestamp
+          - entity_ref
+        threshold:
+          description: "A measured value crossed a boundary \u2014 upward or downward.\
+            \ E.g. CPU utilization > 90%, error_rate > threshold, queue depth critical.\n"
+          yang_mapping: notification triggered by threshold crossing
+          typical_payload:
+          - metric_name
+          - threshold_value
+          - current_value
+          - direction
+          - timestamp
+        lifecycle:
+          description: "The entity's lifecycle state changed \u2014 create, update,\
+            \ delete, or state machine transition (active \u2192 degraded \u2192 terminating).\n"
+          yang_mapping: notification triggered by lifecycle transition
+          typical_payload:
+          - previous_state
+          - current_state
+          - entity_ref
+          - timestamp
+          - actor
+        explicit:
+          description: "Triggered explicitly by an action or rpc \u2014 not automatic,\
+            \ but produced as a side-effect of an executed Behavior. E.g. backup-completed,\
+            \ reconcile-finished, config-applied.\n"
+          yang_mapping: notification triggered by rpc/action execution
+          typical_payload:
+          - operation_name
+          - operation_result
+          - entity_ref
+          - timestamp
+      fields:
+        description: Required and optional fields of an Event definition
+        properties:
+          name:
+            type: string
+            description: "Event name \u2014 past-tense verb form recommended (state-changed,\
+              \ threshold-crossed)"
+            mandatory: true
+          trigger:
+            type: string
+            enum:
+            - state_change
+            - threshold
+            - lifecycle
+            - explicit
+            description: What triggers this event (see triggers above)
+            mandatory: true
+          payload:
+            type: reference
+            description: "Schema of the emitted data \u2014 Shape reference or inline\
+              \ Shape. What the event contains that the observer receives.\n"
+            optional: true
+          severity:
+            type: string
+            enum:
+            - info
+            - warning
+            - error
+            - critical
+            default: info
+            description: "Event severity \u2014 affects alerting and routing logic"
+          description:
+            type: string
+            description: What this event means and what reaction it requires
+            optional: true
+      semantic_mapping:
+        yang:
+          construct: notification
+          format: "notification <name> {\n  leaf trigger { ... }\n  container payload\
+            \ { ... }\n}\n"
+          note: "YANG notification = push, not poll \u2014 server sends to client"
+        api:
+          note: "Event \u2192 WebSocket push / SSE stream / webhook POST. RESTCONF:\
+            \ GET /restconf/streams/{stream} subscription.\n"
+        runtime:
+          note: "Event \u2192 message bus (NATS/Kafka/AMQP) topic publish. NotificationSurface\
+            \ registers Events in the runtime event registry.\n"
+- id: identity
+  source_path: schemas/atomic/identity.yaml
+  meta_hash: Pn5F2UQ6jyH4+6qPzugiCmQc1qK8Xp/pZIyXF3zMIDA=
+  spec:
+    metadata:
+      name: Identity
+      version: v0.0.dev
+      description: "Atomic primitive describing type identity \u2014 not instance\
+        \ identification, but describing WHAT this entity is in the CIC model. Identity\
+        \ defines an entity's type, namespace, version, and inheritance chain. Analogous\
+        \ to YANG identity/identityref, but more general and versioned.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - identity
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      fields:
+        description: Required and optional fields of an Identity definition
+        properties:
+          kind:
+            type: string
+            description: "Type name \u2014 PascalCase. Identifies the entity type\
+              \ within its namespace. E.g. NetworkInterface, KubernetesPod, PostgresDatabase,\
+              \ ManagedSwitch.\n"
+            mandatory: true
+          namespace:
+            type: string
+            description: "CIC namespace \u2014 reverse domain or cic: prefix convention.\
+              \ E.g. cic:network, cic:kubernetes, cic:compute, cic:storage. Together\
+              \ with kind, provides a globally unique type identifier.\n"
+            mandatory: true
+          version:
+            type: string
+            description: "Identity version \u2014 semantic versioning. Incremented\
+              \ when the schema changes, not when entity instances change.\n"
+            pattern: ^v(0|[1-9]\d*)\.(0|[1-9]\d*)(\.dev)?$
+            mandatory: true
+          base:
+            type: reference
+            description: "Inheritance chain \u2014 which Identity this type specializes\
+              \ from. Multi-level inheritance is supported: KubernetesPod \u2192 ManagedEntity.\
+              \ If absent: this is a root Identity (e.g. ManagedEntity itself).\n"
+            optional: true
+            example: cic:ManagedEntity
+          abstract:
+            type: boolean
+            default: false
+            description: "If true, this Identity cannot be instantiated directly \u2014\
+              \ it may only serve as a base for other Identities. E.g. ManagedEntity\
+              \ is abstract.\n"
+          description:
+            type: string
+            description: What this type represents in the domain
+            optional: true
+      inheritance_rules:
+        description: "Rules for Identity inheritance \u2014 how semantics propagate\
+          \ along the chain.\n"
+        rules:
+        - A derived type inherits the aggregate surfaces of its base (ConfigSurface,
+          StateSurface, etc.)
+        - A derived type may narrow (sealed) or extend (required/defaulted) the base
+          slots
+        - Every level of the inheritance chain is independently validatable
+        - Circular inheritance is forbidden
+      examples:
+        managed_entity:
+          kind: ManagedEntity
+          namespace: cic:core
+          version: v0.1.dev
+          abstract: true
+        network_interface:
+          kind: NetworkInterface
+          namespace: cic:network
+          version: v0.1.dev
+          base: cic:core:ManagedEntity
+        kubernetes_pod:
+          kind: KubernetesPod
+          namespace: cic:kubernetes
+          version: v0.1.dev
+          base: cic:core:ManagedEntity
+      semantic_mapping:
+        yang:
+          identity: identity <kind> { base <base>; }
+          identityref: type identityref { base <kind>; }
+          note: "YANG identity only describes namespace and inheritance \u2014 CIC\
+            \ Identity adds versioning and carries aggregate surfaces.\n"
+        api:
+          note: "Identity \u2192 OpenAPI discriminator / x-cic-kind extension"
+        runtime:
+          note: "kind + namespace \u2192 runtime type registry lookup, handler dispatch"
+- id: role
+  source_path: schemas/atomic/role.yaml
+  meta_hash: abOY2NUtolaNNhhkQbFOoGYhusvxbdDBsENdWbaw0SM=
+  spec:
+    metadata:
+      name: Role
+      version: v0.0.dev
+      description: "Atomic primitive describing the management semantics of a node\
+        \ \u2014 what this node means from the management plane perspective. Role\
+        \ does not describe the data (that is Shape's job), but how the system handles\
+        \ it: writable, read-only, key, etc.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - role
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      values:
+        config:
+          description: "Writable desired state. Set by the management plane \u2014\
+            \ this is the desired state.\n"
+          yang_mapping: leaf/container without 'config false'
+          api_mapping: PUT/PATCH request body
+          runtime_mapping: "desired state store \u2014 reconciler target"
+        state:
+          description: 'Read-only current state. Populated by the adapter from the
+            real system.
+
+            '
+          yang_mapping: config false
+          api_mapping: GET only
+          runtime_mapping: "observed state store \u2014 reconciler source"
+        operational:
+          description: "Operational data \u2014 computed or collected at runtime (e.g.\
+            \ byte counter, uptime, error count). Not configurable, not stored as\
+            \ desired state.\n"
+          yang_mapping: "config false \u2014 typically under state container"
+          api_mapping: GET only
+          runtime_mapping: telemetry / metrics feed
+        key:
+          description: "List key \u2014 unique identifier of a list instance. Must\
+            \ always be present, not modifiable after the list entry is created.\n"
+          yang_mapping: key statement in list
+          api_mapping: URL path parameter (e.g. /interfaces/interface={name})
+          runtime_mapping: lookup key in state/config store
+        reference:
+          description: 'Pointer to another node. The referenced node must exist (referential
+            integrity).
+
+            '
+          yang_mapping: leafref
+          api_mapping: "string value \u2014 external resource identifier"
+          runtime_mapping: foreign key / join key
+        derived:
+          description: "Value computed from other fields \u2014 cannot be stored independently,\
+            \ always derivable. E.g. admin_state + oper_state \u2192 effective_state.\n"
+          yang_mapping: "config false \u2014 computed, not sourced from adapter"
+          api_mapping: "GET only \u2014 read-only computed field"
+          runtime_mapping: computed on read, not stored
+        volatile:
+          description: 'Short-lived, non-persistent state. Not stored in desired state,
+            discardable after cache TTL. E.g. last_seen timestamp, instantaneous connection_count
+            snapshot.
+
+            '
+          yang_mapping: config false
+          api_mapping: "GET only \u2014 best-effort freshness"
+          runtime_mapping: short-lived cache, not persisted
+- id: shape
+  source_path: schemas/atomic/shape.yaml
+  meta_hash: 7BjExov7SguGc31xfd1ZGMsMTnab8Lm4fEvN3om5oys=
+  spec:
+    metadata:
+      name: Shape
+      version: v0.0.dev
+      description: "Atomic primitive describing data structure \u2014 what fields\
+        \ exist and what types they have. Shape defines how a config or state node\
+        \ looks from a data-structure perspective. All ConfigSurface.nodes and StateSurface.nodes\
+        \ are composed of Shape atoms.\n"
+      owner: Gabor Zoltan Sinko
+      tags:
+      - primitive
+      - atomic
+      - shape
+      validatedBy:
+        name: cic-primitives
+        version: v0.0.dev
+    spec:
+      kind: AtomicPrimitive
+      type_system:
+        description: 'The possible types for a Shape. Every field has exactly one
+          type.
+
+          '
+        values:
+          scalar:
+            description: "Simple value \u2014 string, integer, boolean, number"
+            subtypes:
+            - string
+            - integer
+            - boolean
+            - number
+            - bytes
+          composite:
+            description: "Nested structure \u2014 a set of named fields (YANG container)"
+            note: "recursive \u2014 composite may contain composite"
+          collection:
+            description: Ordered list or associative set of elements (YANG list /
+              leaf-list)
+            variants:
+              list: ordered or keyed elements (YANG list with key)
+              set: unkeyed elements (YANG leaf-list)
+          reference:
+            description: Pointer to another node (YANG leafref)
+            note: the target node must exist in the schema
+            subtypes:
+              leafref: "intra-schema reference \u2014 target lives in the same schema"
+              cic-reference: "Cross-domain CIC object reference \u2014 points to the\
+                \ logical_id of another domain entity. Format: cic:{domain}:{backend}:{provider}:{location}:{id}.\
+                \ The reference_target field identifies the target Kind.\n"
+          choice:
+            description: "Mutually exclusive alternatives \u2014 exactly one active\
+              \ (YANG choice/case)"
+      fields:
+        description: Structure of a Shape field descriptor
+        properties:
+          name:
+            type: string
+            description: "Field name \u2014 CamelCase or snake_case, consistent within\
+              \ the namespace"
+          type:
+            type: string
+            description: Field type, one of the type_system values
+          optional:
+            type: boolean
+            default: false
+            description: If true, the field may be absent from an instance
+          nullable:
+            type: boolean
+            default: false
+            description: If true, the field value may be null
+          default:
+            type: any
+            description: Default value when the field is absent and optional is true
+          description:
+            type: string
+            description: "Field semantics \u2014 what it means and what it is for"
+          semantic_type:
+            type: string
+            optional: true
+            description: "Semantic type annotation \u2014 refines the meaning of scalar_type:\
+              \ string. cic-reference: the field value is the logical_id of a CIC\
+              \ managed entity. Must be used together with the reference_target field.\n"
+          reference_target:
+            type: string
+            optional: true
+            description: "The target CIC Kind \u2014 only meaningful when semantic_type:\
+              \ cic-reference. Format: \"cic:{namespace}:{Kind}\" (e.g. \"cic:compute:ComputeResource\"\
+              ). The Relay uses this to resolve and validate the reference.\n"
+      semantic_mapping:
+        yang:
+          scalar: leaf
+          composite: container
+          collection.list: list (with key)
+          collection.set: leaf-list
+          reference: leafref
+          choice: choice + case
+        api:
+          note: "Shape \u2192 OpenAPI schema properties / JSON Schema"
+        runtime:
+          note: "Shape \u2192 Go struct field / Python dataclass field"
+release:
+  content_hash: xOgmofjUCN3jkasKXIVPHnjFcZ5hxx+zyDQRBskS7Rg=
+  sign: vault:v1:MEYCIQDcyYF4MPR8F7zTGzyDTph9cTcnLHW14oQsrxnr+X5F5AIhAL/l2ObJZN6FmkN2Zu0k/FM2ZiUF7BKVq42X2ZdmOw9K
+  cert: ''
