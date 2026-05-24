@@ -258,6 +258,110 @@ def _vault_get_cert(vault_addr, vault_token, cert_path, verify_tls):
     return resp.json()['data']['data'][key]
 
 
+def _load_valid_commitment():
+    """Loads commitment.yaml and verifies it is present and within its validity window."""
+    if not os.path.isfile('commitment.yaml'):
+        print("\033[91m✗ ERROR: commitment.yaml not found. Run 'make pledge' first.\033[0m")
+        sys.exit(1)
+    commitment = load_yaml('commitment.yaml')
+    if commitment.get('kind') != 'DeveloperCommitment':
+        print(f"\033[91m✗ ERROR: commitment.yaml has unexpected kind: {commitment.get('kind')}\033[0m")
+        sys.exit(1)
+    validity = commitment.get('validity', {})
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    valid_from = datetime.date.fromisoformat(validity.get('from', '1970-01-01'))
+    valid_until = datetime.date.fromisoformat(validity.get('until', '1970-01-01'))
+    if not (valid_from <= today <= valid_until):
+        print(f"\033[91m✗ ERROR: Developer commitment is not valid today. Run 'make pledge' to renew.\033[0m")
+        print(f"  valid_from: {valid_from}, valid_until: {valid_until}, today: {today}")
+        sys.exit(1)
+    print(f"  \033[92m✓ Developer commitment valid: {valid_from} → {valid_until}\033[0m")
+    return commitment
+
+
+def run_pledge():
+    """Generates a signed developer commitment (validity + createdBy) to commitment.yaml.
+
+    This is a pre-release step. The developer asserts responsibility for the project
+    for the declared validity period, binding their X.509 certificate to the hash
+    before Vault signs it.
+    """
+    print("--- Developer Pledge ---")
+
+    vault_addr = os.getenv('VAULT_ADDR')
+    vault_token = os.getenv('VAULT_TOKEN')
+    vault_cacert = os.getenv('VAULT_CACERT')
+
+    if not vault_addr or not vault_token:
+        print("[FATAL] VAULT_ADDR and VAULT_TOKEN must be set.")
+        sys.exit(1)
+
+    verify_tls = vault_cacert if vault_cacert else False
+    if not vault_cacert:
+        print("\033[93m[WARNING] Vault TLS verification is disabled.\033[0m")
+
+    full_config = load_project_config(full_config=True)
+    project = full_config.get('project', {})
+    settings = full_config.get('compiler_settings', {})
+
+    vault_key = settings.get('vault_key_name', 'cic-my-sign-key')
+    vault_cert_path = settings.get('vault_cert_path') or os.getenv('VAULT_CERT_PATH')
+    owner_name = project.get('owner', '')
+    owner_email = settings.get('owner_email') or next(
+        (c['value'] for c in project.get('contacts', []) if c.get('type') == 'email'), ''
+    )
+    validity_days = int(settings.get('validity_days', 365))
+
+    if not vault_cert_path:
+        print("[FATAL] vault_cert_path must be set in project.yaml (compiler_settings) or VAULT_CERT_PATH env.")
+        sys.exit(1)
+
+    # 1. Fetch developer certificate from Vault KV
+    print(f"  Fetching certificate from Vault ({vault_cert_path})...")
+    cert_pem = _vault_get_cert(vault_addr, vault_token, vault_cert_path, verify_tls)
+    print("  \033[92m✓ Certificate obtained.\033[0m")
+
+    # 2. Build validity and createdBy blocks
+    now = datetime.datetime.now(datetime.timezone.utc)
+    valid_from = now.strftime('%Y-%m-%d')
+    valid_until = (now + datetime.timedelta(days=validity_days)).strftime('%Y-%m-%d')
+
+    validity = {'from': valid_from, 'until': valid_until}
+    created_by = {
+        'name': owner_name,
+        'email': owner_email,
+        'certificate': cert_pem,
+    }
+
+    # 3. Hash the pledge payload — certificate is inside the payload before signing
+    pledge_payload = {'createdBy': created_by, 'validity': validity}
+    content_hash = get_sha256_b64(to_canonical_json(pledge_payload))
+    print(f"  Pledge hash: {content_hash[:24]}...")
+
+    # 4. Sign via Vault Transit
+    print(f"  Signing with Vault key '{vault_key}'...")
+    signature = _vault_sign(content_hash, vault_addr, vault_token, vault_key, verify_tls)
+    print("  \033[92m✓ Pledge signed.\033[0m")
+
+    # 5. Write commitment.yaml
+    commitment = {
+        'kind': 'DeveloperCommitment',
+        'created': now.isoformat(),
+        'validity': validity,
+        'createdBy': created_by,
+        'pledge': {
+            'content_hash': content_hash,
+            'sign': signature,
+        },
+    }
+    write_yaml('commitment.yaml', commitment)
+    print(f"\n  \033[92m✓ commitment.yaml created.\033[0m")
+    print(f"  Developer : {owner_name} <{owner_email}>")
+    print(f"  Valid from: {valid_from}")
+    print(f"  Valid until: {valid_until}")
+    print(f"\n  \033[93mNext step: commit commitment.yaml, then run 'make release'.\033[0m")
+
+
 def run_release():
     """Builds a signed PrimitiveRelease bundle artifact into release/."""
     print("--- Running Schema Release ---")
@@ -275,12 +379,18 @@ def run_release():
     if not vault_cacert:
         print("\033[93m[WARNING] Vault TLS verification is disabled. Do not use in production.\033[0m")
 
-    # 1. Validate everything before building the artifact
+    # 1. Load and verify developer commitment (must exist and be within validity window)
+    print("--- Verifying Developer Commitment ---")
+    commitment = _load_valid_commitment()
+    validity = commitment['validity']
+    created_by = commitment['createdBy']
+
+    # 2. Validate everything before building the artifact
     run_validation()
     run_primitive_validation()
     run_domain_compatibility_check()
 
-    # 2. Collect schema files: atomic + aggregate, no examples, no index
+    # 3. Collect schema files: atomic + aggregate, no examples, no index
     source_dir = CONFIG.get('source_dir', 'schemas')
     all_files = glob.glob(os.path.join(source_dir, '**', '*.yaml'), recursive=True)
     schema_files = sorted([
@@ -293,7 +403,7 @@ def run_release():
 
     print(f"--- Building release bundle ({len(schema_files)} schemas) ---")
 
-    # 3. Build specs[] — per-schema hash over raw file bytes, inline content
+    # 4. Build specs[] — per-schema hash over raw file bytes, inline content
     specs = []
     for schema_file in schema_files:
         with open(schema_file, 'rb') as fh:
@@ -307,25 +417,18 @@ def run_release():
         })
         print(f"  - {schema_file}: {meta_hash[:16]}...")
 
-    # 4. Bundle content hash over canonical JSON of specs[]
-    content_hash = get_sha256_b64(to_canonical_json(specs))
+    # 5. Bundle content hash over canonical JSON of {specs, validity, createdBy}
+    #    The developer certificate is inside createdBy, so it is cryptographically
+    #    bound to the hash before Vault signs it.
+    hash_payload = {'createdBy': created_by, 'specs': specs, 'validity': validity}
+    content_hash = get_sha256_b64(to_canonical_json(hash_payload))
     print(f"  - Bundle content hash: {content_hash[:16]}...")
 
-    # 5. Sign via Vault Transit (one call for the entire bundle)
+    # 6. Sign via Vault Transit (one call for the entire bundle)
     vault_key = CONFIG.get('vault_key_name', 'cic-my-sign-key')
     print(f"  - Signing with Vault key '{vault_key}'...")
     signature = _vault_sign(content_hash, vault_addr, vault_token, vault_key, verify_tls)
     print("  \033[92m✓ Vault signature obtained.\033[0m")
-
-    # 6. Get certificate (Vault KV v2 path or direct env var)
-    vault_cert_path = os.getenv('VAULT_CERT_PATH')
-    if vault_cert_path:
-        cert = _vault_get_cert(vault_addr, vault_token, vault_cert_path, verify_tls)
-        print("  \033[92m✓ Certificate obtained from Vault.\033[0m")
-    else:
-        cert = os.getenv('VAULT_CERT', '')
-        if not cert:
-            print("\033[93m[WARNING] Neither VAULT_CERT_PATH nor VAULT_CERT set — cert field empty.\033[0m")
 
     # 7. Assemble and write the bundle artifact
     project_name = load_project_config(full_config=True).get('project', {}).get('name', 'XXprimitivesXX')
@@ -333,11 +436,12 @@ def run_release():
         'kind': 'PrimitiveRelease',
         'version': release_version,
         'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'validity': validity,
+        'createdBy': created_by,
         'specs': specs,
         'release': {
             'content_hash': content_hash,
             'sign': signature,
-            'cert': cert,
         },
     }
 
@@ -502,8 +606,35 @@ def run_verify_release(artifact_path):
     specs = bundle.get('specs', [])
     print(f"  specs[]: {len(specs)} entries")
 
+    validity = bundle.get('validity')
+    created_by = bundle.get('createdBy')
+
+    # Verify developer commitment fields
+    if not created_by or not created_by.get('certificate'):
+        print(f"  \033[91m✗ createdBy.certificate missing — bundle lacks developer commitment\033[0m")
+        sys.exit(1)
+    print(f"  createdBy: {created_by.get('name')} <{created_by.get('email')}>")
+
+    if validity:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        valid_from = datetime.date.fromisoformat(validity.get('from', '1970-01-01'))
+        valid_until = datetime.date.fromisoformat(validity.get('until', '1970-01-01'))
+        if valid_from <= today <= valid_until:
+            print(f"  \033[92m✓ Maintenance commitment valid: {valid_from} → {valid_until}\033[0m")
+        else:
+            print(f"  \033[93m⚠ Maintenance commitment expired: {valid_from} → {valid_until} (today: {today})\033[0m")
+    else:
+        print(f"  \033[93m⚠ No validity block found in bundle\033[0m")
+
     recorded_hash = bundle.get('release', {}).get('content_hash', '')
-    recomputed_hash = get_sha256_b64(to_canonical_json(specs))
+
+    # content_hash is computed over {specs, validity, createdBy} — cert is inside createdBy
+    if validity and created_by:
+        hash_payload = {'createdBy': created_by, 'specs': specs, 'validity': validity}
+        recomputed_hash = get_sha256_b64(to_canonical_json(hash_payload))
+    else:
+        # Legacy bundles without validity/createdBy
+        recomputed_hash = get_sha256_b64(to_canonical_json(specs))
 
     if recomputed_hash == recorded_hash:
         print(f"\n  \033[92m✓ content_hash verified: {recomputed_hash[:24]}...\033[0m")
@@ -540,7 +671,7 @@ def run_verify_release(artifact_path):
 def main():
     """Main entrypoint for the script."""
     if len(sys.argv) < 2:
-        print("Usage: python tools/compiler.py [validate|release|verify-release <artifact>]")
+        print("Usage: python tools/compiler.py [validate|pledge|release|verify-release <artifact>]")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -549,6 +680,8 @@ def main():
         run_validation()
         run_primitive_validation()
         run_domain_compatibility_check()
+    elif command == 'pledge':
+        run_pledge()
     elif command == 'release':
         run_release()
     elif command == 'verify-release':

@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate release verify-release test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate pledge release verify-release test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -32,6 +32,10 @@ build:
 validate:
 	@echo "--- Validating all schemas against the meta-schema ---"
 	@docker compose exec builder python tools/compiler.py validate
+
+pledge:
+	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
+	@docker compose exec builder python tools/compiler.py pledge
 
 release:
 	@echo "--- Building and signing release schemas ---"
@@ -111,7 +115,8 @@ help:
 	@echo ""
 	@echo "Main Tasks:"
 	@echo "  validate      Run fast, offline validation of all schemas."
-	@echo "  release       Build, checksum, and sign all non-dev schemas (requires Vault)."
+	@echo "  pledge        Generate a signed developer commitment (validity + createdBy) to commitment.yaml."
+	@echo "  release       Build, checksum, and sign all non-dev schemas (requires Vault + commitment.yaml)."
 	@echo "  verify-release FILE=<path>  Verify a PrimitiveRelease bundle (content_hash + meta_hash)."
 	@echo "  test          Run pytest for the compiler infrastructure code."
 	@echo "  mutation-test Run mutmut mutation tests against tools/compiler.py."

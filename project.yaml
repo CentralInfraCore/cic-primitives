@@ -19,5 +19,8 @@ compiler_settings:
   meta_schema_file: md.meta.schema.yaml
   primitive_schema_file: schemas/index.yaml
   vault_key_name: cic-my-sign-key
+  vault_cert_path: "cic-my-sign-key/crt/bar"
+  owner_email: sinkog@centralinfracore.hu
+  validity_days: 365
 x-cic:
   repo_type: primitive
