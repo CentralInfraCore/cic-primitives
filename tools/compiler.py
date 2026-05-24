@@ -258,6 +258,61 @@ def _vault_get_cert(vault_addr, vault_token, cert_path, verify_tls):
     return resp.json()['data']['data'][key]
 
 
+def _verify_cert_signature(cert_pem, vault_signature, content_hash_b64):
+    """Verifies a Vault Transit ECDSA signature against a PEM certificate's public key.
+
+    vault_signature format: "vault:v1:<base64-DER>"
+    content_hash_b64: base64-encoded SHA256 digest (the pre-hashed input to Vault Transit)
+
+    Returns (ok: bool, reason: str)
+    """
+    try:
+        from cryptography.x509 import load_pem_x509_certificate
+        from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
+        from cryptography.hazmat.primitives.asymmetric import utils as asym_utils
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.exceptions import InvalidSignature
+    except ImportError:
+        return False, "cryptography library not available (pip install cryptography)"
+
+    try:
+        cert = load_pem_x509_certificate(cert_pem.encode('utf-8'))
+        public_key = cert.public_key()
+    except Exception as e:
+        return False, f"Certificate parse error: {e}"
+
+    # Certificate temporal validity
+    now = datetime.datetime.now(datetime.timezone.utc)
+    try:
+        not_before = cert.not_valid_before_utc
+        not_after = cert.not_valid_after_utc
+    except AttributeError:
+        # cryptography < 42 compat
+        not_before = cert.not_valid_before.replace(tzinfo=datetime.timezone.utc)
+        not_after = cert.not_valid_after.replace(tzinfo=datetime.timezone.utc)
+
+    if now < not_before or now > not_after:
+        return False, f"Certificate not valid: {not_before.date()} → {not_after.date()}"
+
+    # Extract DER signature bytes from Vault Transit format
+    prefix = "vault:v1:"
+    if not vault_signature.startswith(prefix):
+        return False, f"Unexpected signature format (expected 'vault:v1:...'): {vault_signature[:24]}"
+    try:
+        sig_bytes = base64.b64decode(vault_signature[len(prefix):])
+        hash_bytes = base64.b64decode(content_hash_b64)
+    except Exception as e:
+        return False, f"Base64 decode error: {e}"
+
+    try:
+        public_key.verify(sig_bytes, hash_bytes, ECDSA(asym_utils.Prehashed(hashes.SHA256())))
+        return True, "OK"
+    except InvalidSignature:
+        return False, "Signature does not match certificate public key"
+    except Exception as e:
+        return False, f"Verification error: {e}"
+
+
 def _load_valid_commitment():
     """Loads commitment.yaml and verifies it is present and within its validity window."""
     if not os.path.isfile('commitment.yaml'):
@@ -675,8 +730,43 @@ def run_verify_release(artifact_path, strict=False):
         if local_checked:
             print(f"  \033[92m✓ meta_hash verified for {local_checked} local source files\033[0m")
 
+    # Signature verification against certificate public key
+    print(f"\n--- Signature Verification ---")
+    cert_pem = created_by.get('certificate', '') if created_by else ''
+    release_sign = bundle.get('release', {}).get('sign', '')
+
+    if cert_pem and release_sign and recorded_hash:
+        ok, reason = _verify_cert_signature(cert_pem, release_sign, recorded_hash)
+        if ok:
+            print(f"  \033[92m✓ Release signature verified (ECDSA, certificate public key)\033[0m")
+        else:
+            print(f"  \033[91m✗ Release signature FAILED: {reason}\033[0m")
+            sys.exit(1)
+    else:
+        print(f"  \033[93m⚠ Skipping release signature check (cert or sign missing)\033[0m")
+
+    # Optional pledge signature verification if commitment.yaml is present
+    if os.path.isfile('commitment.yaml'):
+        try:
+            commitment = load_yaml('commitment.yaml')
+            pledge = commitment.get('pledge', {})
+            pledge_hash = pledge.get('content_hash', '')
+            pledge_sign = pledge.get('sign', '')
+            pledge_cert = commitment.get('createdBy', {}).get('certificate', '')
+            if pledge_cert and pledge_sign and pledge_hash:
+                ok, reason = _verify_cert_signature(pledge_cert, pledge_sign, pledge_hash)
+                if ok:
+                    print(f"  \033[92m✓ Pledge signature verified (commitment.yaml)\033[0m")
+                else:
+                    print(f"  \033[91m✗ Pledge signature FAILED: {reason}\033[0m")
+                    sys.exit(1)
+        except Exception as e:
+            print(f"  \033[93m⚠ Could not verify pledge signature: {e}\033[0m")
+    else:
+        print(f"  \033[93m⚠ commitment.yaml not found — pledge signature not verified\033[0m")
+
+    print(f"  \033[93m⚠ CA chain verification not configured (no trust root bundle)\033[0m")
     print(f"\n  \033[92m✓ Artifact integrity OK\033[0m")
-    print(f"  \033[93mNote: Vault signature verification not yet implemented.\033[0m")
 
 
 def main():

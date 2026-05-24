@@ -266,6 +266,38 @@ def test_validate_release_first_release(mocker):
     assert component == "primitives/"
 
 
+# ── _verify_cert_signature ───────────────────────────────────────────────────
+
+def test_verify_cert_signature_ok():
+    private_key, cert_pem = _make_test_key_and_cert()
+    content_hash = compiler.get_sha256_b64(b"test payload")
+    signature = _sign_hash(private_key, content_hash)
+    ok, reason = compiler._verify_cert_signature(cert_pem, signature, content_hash)
+    assert ok, reason
+
+
+def test_verify_cert_signature_wrong_key():
+    _, cert_pem = _make_test_key_and_cert()
+    other_key, _ = _make_test_key_and_cert()
+    content_hash = compiler.get_sha256_b64(b"test payload")
+    # Sign with a different key — verification against cert must fail
+    signature = _sign_hash(other_key, content_hash)
+    ok, reason = compiler._verify_cert_signature(cert_pem, signature, content_hash)
+    assert not ok
+
+
+def test_verify_cert_signature_bad_format():
+    _, cert_pem = _make_test_key_and_cert()
+    ok, reason = compiler._verify_cert_signature(cert_pem, "not-vault-format", "AAAA")
+    assert not ok
+    assert "format" in reason.lower()
+
+
+def test_verify_cert_signature_invalid_cert():
+    ok, reason = compiler._verify_cert_signature("NOT A CERT", "vault:v1:AAAA", "AAAA")
+    assert not ok
+
+
 # ── _load_valid_commitment ────────────────────────────────────────────────────
 
 def test_load_valid_commitment_missing_file(tmp_path, mocker):
@@ -308,14 +340,52 @@ def test_load_valid_commitment_ok(mocker):
 
 # ── run_verify_release ────────────────────────────────────────────────────────
 
-def _make_valid_bundle(specs=None):
+def _make_test_key_and_cert():
+    """Generates an ephemeral ECDSA P-256 key pair and self-signed certificate for tests."""
+    from cryptography.hazmat.primitives.asymmetric.ec import generate_private_key, SECP256R1
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography import x509
+    from cryptography.x509.oid import NameOID
+
+    private_key = generate_private_key(SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test Dev")])
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .not_valid_before(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1))
+        .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365))
+        .serial_number(x509.random_serial_number())
+        .public_key(private_key.public_key())
+        .sign(private_key, hashes.SHA256())
+    )
+    cert_pem = cert.public_bytes(serialization.Encoding.PEM).decode()
+    return private_key, cert_pem
+
+
+def _sign_hash(private_key, content_hash_b64):
+    """Signs a pre-hashed digest with an ECDSA private key, returns vault:v1:... format."""
+    from cryptography.hazmat.primitives.asymmetric.ec import ECDSA
+    from cryptography.hazmat.primitives.asymmetric import utils as asym_utils
+    from cryptography.hazmat.primitives import hashes
+
+    hash_bytes = base64.b64decode(content_hash_b64)
+    sig_bytes = private_key.sign(hash_bytes, ECDSA(asym_utils.Prehashed(hashes.SHA256())))
+    return "vault:v1:" + base64.b64encode(sig_bytes).decode()
+
+
+def _make_valid_bundle(specs=None, private_key=None, cert_pem=None):
+    """Builds a PrimitiveRelease bundle with a real ECDSA signature."""
+    if private_key is None or cert_pem is None:
+        private_key, cert_pem = _make_test_key_and_cert()
     if specs is None:
         specs = [{"id": "shape", "source_path": "schemas/atomic/shape.yaml",
                   "meta_hash": "abc", "spec": {"kind": "AtomicPrimitive"}}]
     validity = {"from": "2026-01-01", "until": "2099-01-01"}
-    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": "-----BEGIN CERTIFICATE-----\nPEM\n-----END CERTIFICATE-----"}
+    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": cert_pem}
     hash_payload = {"createdBy": created_by, "specs": specs, "validity": validity}
     content_hash = compiler.get_sha256_b64(compiler.to_canonical_json(hash_payload))
+    signature = _sign_hash(private_key, content_hash)
     return {
         "kind": "PrimitiveRelease",
         "version": "0.1.5",
@@ -323,7 +393,7 @@ def _make_valid_bundle(specs=None):
         "validity": validity,
         "createdBy": created_by,
         "specs": specs,
-        "release": {"content_hash": content_hash, "sign": "vault:v1:abc123"},
+        "release": {"content_hash": content_hash, "sign": signature},
     }
 
 
@@ -357,6 +427,20 @@ def test_verify_release_hash_mismatch(mocker, tmp_path):
     assert e.value.code == 1
 
 
+def test_verify_release_bad_signature(mocker, tmp_path):
+    """A tampered signature (wrong key) must fail verification."""
+    bundle = _make_valid_bundle()
+    # Replace signature with one from a different key
+    other_key, _ = _make_test_key_and_cert()
+    bundle["release"]["sign"] = _sign_hash(other_key, bundle["release"]["content_hash"])
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
 def test_verify_release_wrong_kind(mocker, tmp_path):
     bundle = _make_valid_bundle()
     bundle["kind"] = "SomethingElse"
@@ -368,7 +452,7 @@ def test_verify_release_wrong_kind(mocker, tmp_path):
     assert e.value.code == 1
 
 
-def test_verify_release_strict_meta_hash_mismatch_fails(tmp_path):
+def test_verify_release_strict_meta_hash_mismatch_fails(tmp_path, mocker):
     """--strict: meta_hash mismatch against a local source file is a hard failure."""
     src = tmp_path / "shape.yaml"
     src.write_bytes(b"different content")
@@ -376,12 +460,14 @@ def test_verify_release_strict_meta_hash_mismatch_fails(tmp_path):
     bundle = _make_valid_bundle(specs=specs)
     artifact = tmp_path / "release.yaml"
     artifact.write_text(yaml.dump(bundle))
+    # signature verification passes — testing strict meta_hash logic specifically
+    mocker.patch("tools.compiler._verify_cert_signature", return_value=(True, "OK"))
     with pytest.raises(SystemExit) as e:
         compiler.run_verify_release(str(artifact), strict=True)
     assert e.value.code == 1
 
 
-def test_verify_release_non_strict_meta_hash_mismatch_warns(tmp_path, capsys):
+def test_verify_release_non_strict_meta_hash_mismatch_warns(tmp_path, capsys, mocker):
     """Default (non-strict): meta_hash mismatch is only a warning."""
     src = tmp_path / "shape.yaml"
     src.write_bytes(b"different content")
@@ -389,6 +475,7 @@ def test_verify_release_non_strict_meta_hash_mismatch_warns(tmp_path, capsys):
     bundle = _make_valid_bundle(specs=specs)
     artifact = tmp_path / "release.yaml"
     artifact.write_text(yaml.dump(bundle))
+    mocker.patch("tools.compiler._verify_cert_signature", return_value=(True, "OK"))
     compiler.run_verify_release(str(artifact), strict=False)
     captured = capsys.readouterr()
     assert "WARNING" in captured.out or "⚠" in captured.out
