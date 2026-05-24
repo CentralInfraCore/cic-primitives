@@ -98,27 +98,16 @@ properties:
 
   x-cic:
     type: object
-    description: "CIC-specific extension fields — repo type declaration and known limitations."
+    description: "CIC-specific extension fields — repo type declaration."
     properties:
       repo_type:
         type: string
         description: "Semantic repo type (primitive | schema | domain | adapter). Not yet enforced by compiler."
         enum: [primitive, schema, domain, adapter]
-      known_limitations:
-        type: array
-        description: "Documented known limitations of this repo's current implementation."
-        items:
-          type: object
-          required: [id, description]
-          properties:
-            id:
-              type: string
-            description:
-              type: string
 
   release:
     type: object
-    description: "Cryptographic provenance block — populated by the release pipeline, not hand-edited."
+    description: "Cryptographic provenance block — present only on releases/* branches and tagged commits. Populated by the release pipeline, not hand-edited."
     properties:
       version:
         type: string
@@ -132,7 +121,7 @@ properties:
         description: "Reproducible SHA256 (base64) of the Git tree at release — source provenance."
       build_hash:
         type: string
-        description: "Reproducible SHA256 (base64) of the build artifact. Currently equals repository_tree_hash (no separate build step — see x-cic.known_limitations)."
+        description: "Reproducible SHA256 (base64) of the build artifact."
       sign:
         type: string
         description: "Vault Transit ECDSA signature over the release block content."

@@ -21,39 +21,3 @@ compiler_settings:
   vault_key_name: cic-my-sign-key
 x-cic:
   repo_type: primitive
-  known_limitations:
-    - id: build_hash_equals_source_hash
-      description: >
-        build_hash == source_hash — no separate build step yet.
-        Will diverge when pyang compile or code generation is introduced.
-release:
-  version: 0.1.3
-  timestamp: '2026-05-06T19:31:38.749781+00:00'
-  repository_tree_hash: S30JPiXbPpw6qIXaNICcDl6Zc9qWQBmfaT+dy58ra7A=
-  build_hash: pI0FZNR+UOWGaQ5zsLv/OVNTmxIj2KkyFHMsoHSTaL4=
-  sign: vault:v1:MEUCIQC3uCk9Y9kXYIAZ8YXrYXm7ZrcLfIQDi80ZIq96JM1TJwIgDQKGQYuUU79wJto6fVdhrv9u8zlzIiDbSWZjGJu1GFE=
-  cert: '-----BEGIN CERTIFICATE-----
-
-    MIICBjCCAaygAwIBAgIUSnRMR6RPnEbg296XWPOqq/u5PCwwCgYIKoZIzj0EAwIw
-
-    QzELMAkGA1UEBhMCSFUxGTAXBgNVBAoMEENlbnRyYWxJbmZyYUNvcmUxGTAXBgNV
-
-    BAMMEENJQyBEZXZlbG9wZXIgQ0EwHhcNMjYwMzIwMTMyMjU5WhcNMjYxMjMxMTMy
-
-    MjU5WjBFMQswCQYDVQQGEwJIVTEZMBcGA1UECgwQQ2VudHJhbEluZnJhQ29yZTEb
-
-    MBkGA1UEAwwSR2Fib3IgWm9sdGFuIFNpbmtvMFkwEwYHKoZIzj0CAQYIKoZIzj0D
-
-    AQcDQgAEIG2CVmTfmLB9pLLclj7YmP2eedAjklpy4LGrU2ijoiy6Xqpuybv7OgJe
-
-    i+ez31s65NEV8+X/ByeX1cstR988z6N8MHowCQYDVR0TBAIwADAdBgNVHQ4EFgQU
-
-    yZN6AIX/TNnIJ9GwAa/NRN3ujHAwHwYDVR0jBBgwFoAUXn6CHYzPUqU4JVP8g+OS
-
-    WeDYjhcwDgYDVR0PAQH/BAQDAgeAMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEF
-
-    BQcDBDAKBggqhkjOPQQDAgNIADBFAiEA+bFzXRoJ4PCQbhAAtpkcMjt0vNj5rEW0
-
-    lOMBGDNyaWkCIB1vmM7PcZzv/c9bIrxF5kqv6QXomouhByUfeNUTbpKW
-
-    -----END CERTIFICATE-----'
