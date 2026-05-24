@@ -83,12 +83,13 @@ spec:
     notification_surface:
       mode: defaulted
       type: "Event[]"
+      status: placeholder
+      blocked_by: NotificationSurface aggregate (nincs modell — notification routing előfeltétel)
       atomic_ref: schemas/atomic/event.yaml
       default: empty
       description: >
         Az aszinkron jelzések felülete — Event atomok listája.
-        Lehet üres. Jövőbeli NotificationSurface aggregate fogja köré burkolni
-        a subscription és routing logikát.
+        Lehet üres. Formális NotificationSurface aggregate notification routing modell után.
 
     policy_surface:
       mode: defaulted
@@ -104,14 +105,18 @@ spec:
     capability_surface:
       mode: defaulted
       type: TBD
+      status: placeholder
+      blocked_by: CapabilitySurface aggregate (nincs modell — Relay capability deklaráció rendszer előfeltétel)
       default: inherit
       description: >
         Mit tud ez az entitás — feature flags, supported operations, protocol versions.
-        Jövőbeli CapabilitySurface aggregate (nem része az első körnek).
+        Formális CapabilitySurface aggregate a Relay capability modell után.
 
     lifecycle_surface:
       mode: sealed
-      type: object
+      type: TBD
+      status: placeholder
+      blocked_by: LifecycleSurface aggregate (nincs modell — Relay execution modell előfeltétel)
       states: [create, active, degraded, terminating, terminated]
       transitions:
         create: [active]
@@ -120,7 +125,7 @@ spec:
         terminating: [terminated]
       description: >
         Lifecycle állapotgép — minden ManagedEntity-nek van életciklusa, nem elhagyható.
-        Jövőbeli LifecycleSurface aggregate fogja formálisan definiálni.
+        Formális LifecycleSurface aggregate a Relay execution modell után.
 
     binding_surface:
       mode: required
