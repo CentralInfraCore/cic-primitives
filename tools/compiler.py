@@ -572,9 +572,14 @@ def run_domain_compatibility_check():
         print(f"\nAll {len(domain_files)} DomainComposition files are compatible.")
 
 
-def run_verify_release(artifact_path):
-    """Verifies a PrimitiveRelease bundle: schema validation, content_hash, and meta_hash checks."""
-    print(f"--- Verifying release artifact: {artifact_path} ---")
+def run_verify_release(artifact_path, strict=False):
+    """Verifies a PrimitiveRelease bundle: schema validation, content_hash, and meta_hash checks.
+
+    strict=True: meta_hash mismatches against local source files are a hard failure.
+    strict=False (default): meta_hash mismatches are reported as warnings only.
+    """
+    mode_label = " [STRICT]" if strict else ""
+    print(f"--- Verifying release artifact: {artifact_path}{mode_label} ---")
 
     try:
         bundle = load_yaml(artifact_path)
@@ -655,12 +660,18 @@ def run_verify_release(artifact_path):
             if actual_meta != recorded_meta:
                 mismatches.append(f"{src}: recorded={recorded_meta[:12]}... actual={actual_meta[:12]}...")
 
+    local_checked = sum(1 for e in specs if os.path.isfile(e.get('source_path', '')))
+
     if mismatches:
-        print(f"\n  \033[93m⚠ meta_hash mismatches (source files differ from bundle):\033[0m")
+        label = "\033[91m✗\033[0m" if strict else "\033[93m⚠\033[0m"
+        severity = "ERROR" if strict else "WARNING"
+        print(f"\n  {label} meta_hash {severity}: source files differ from bundle ({len(mismatches)}/{local_checked}):")
         for m in mismatches:
             print(f"    {m}")
+        if strict:
+            print(f"  \033[91m✗ Strict mode: working tree must match the release bundle exactly.\033[0m")
+            sys.exit(1)
     else:
-        local_checked = sum(1 for e in specs if os.path.isfile(e.get('source_path', '')))
         if local_checked:
             print(f"  \033[92m✓ meta_hash verified for {local_checked} local source files\033[0m")
 
@@ -680,11 +691,13 @@ def main():
         print("Usage: python tools/compiler.py <command>")
         print("")
         print("Commands:")
-        print("  validate                    Validate all schemas offline (no Vault required).")
-        print("  pledge                      Generate signed developer commitment → commitment.yaml.")
-        print("  release                     Build signed PrimitiveRelease bundle (requires Vault + commitment.yaml).")
-        print("  verify-release <artifact>   Verify a PrimitiveRelease bundle (content_hash + createdBy + validity).")
-        print("  help                        Show this help message.")
+        print("  validate                             Validate all schemas offline (no Vault required).")
+        print("  pledge                               Generate signed developer commitment → commitment.yaml.")
+        print("  release                              Build signed PrimitiveRelease bundle (requires Vault + commitment.yaml).")
+        print("  verify-release <artifact> [--strict] Verify a PrimitiveRelease bundle.")
+        print("                                         Default: meta_hash mismatches are warnings.")
+        print("                                         --strict: meta_hash mismatch is a hard failure.")
+        print("  help                                 Show this help message.")
     elif command == 'validate':
         run_validation()
         run_primitive_validation()
@@ -695,9 +708,10 @@ def main():
         run_release()
     elif command == 'verify-release':
         if len(sys.argv) < 3:
-            print("Usage: python tools/compiler.py verify-release <path/to/artifact.yaml>")
+            print("Usage: python tools/compiler.py verify-release <path/to/artifact.yaml> [--strict]")
             sys.exit(1)
-        run_verify_release(sys.argv[2])
+        strict = '--strict' in sys.argv[3:]
+        run_verify_release(sys.argv[2], strict=strict)
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)

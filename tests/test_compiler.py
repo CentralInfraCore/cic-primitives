@@ -368,6 +368,32 @@ def test_verify_release_wrong_kind(mocker, tmp_path):
     assert e.value.code == 1
 
 
+def test_verify_release_strict_meta_hash_mismatch_fails(tmp_path):
+    """--strict: meta_hash mismatch against a local source file is a hard failure."""
+    src = tmp_path / "shape.yaml"
+    src.write_bytes(b"different content")
+    specs = [{"id": "shape", "source_path": str(src), "meta_hash": "AAAA", "spec": {}}]
+    bundle = _make_valid_bundle(specs=specs)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact), strict=True)
+    assert e.value.code == 1
+
+
+def test_verify_release_non_strict_meta_hash_mismatch_warns(tmp_path, capsys):
+    """Default (non-strict): meta_hash mismatch is only a warning."""
+    src = tmp_path / "shape.yaml"
+    src.write_bytes(b"different content")
+    specs = [{"id": "shape", "source_path": str(src), "meta_hash": "AAAA", "spec": {}}]
+    bundle = _make_valid_bundle(specs=specs)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    compiler.run_verify_release(str(artifact), strict=False)
+    captured = capsys.readouterr()
+    assert "WARNING" in captured.out or "⚠" in captured.out
+
+
 # ── run_pledge ────────────────────────────────────────────────────────────────
 
 def test_run_pledge_no_vault_vars(mocker):
