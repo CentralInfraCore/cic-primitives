@@ -166,7 +166,7 @@ Phase 1–7 végrehajtva. A repo első signed release-szel lezárt.
 | első signed release (`primitives/@v0.1.0`) | **defined** — Phase 7 |
 | ExecutionSurface aggregate | **concept** — D-009, Relay modell után |
 | build_hash tényleges build env-vel | **concept** — jelenleg = source_hash |
-| `make release` yq PATH fix | **concept** — release.sh Makefile integrációban |
+| `make release` yq PATH fix | **defined** — yq telepítve a Dockerfile-ban |
 
 ---
 
@@ -183,10 +183,8 @@ export VAULT_TOKEN=$(cat $XDG_RUNTIME_DIR/vault/sign-token)
 export VAULT_SKIP_VERIFY=1
 make release
 
-# Ha a make release yq PATH hibán bukik:
-tools/release.sh project.yaml
 git add project.yaml
 git tag -a "primitives/@vX.Y.Z" -m "release: X.Y.Z"
 ```
 
-Dockerfile követelmény: `git`, `curl`, `jq` + `safe.directory /app`.
+Dockerfile követelmény: `git`, `curl`, `jq`, `yq` + `safe.directory /app`.
