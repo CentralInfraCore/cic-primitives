@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate release test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate pledge release verify-release test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -33,15 +33,26 @@ validate:
 	@echo "--- Validating all schemas against the meta-schema ---"
 	@docker compose exec builder python tools/compiler.py validate
 
+pledge:
+	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
+	@docker compose exec builder python tools/compiler.py pledge
+
 release:
 	@echo "--- Building and signing release schemas ---"
 	@docker compose exec builder python tools/compiler.py release
-	@tools/release.sh project.yaml
-	@git add project.yaml
+
+verify-release:
+	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml"; exit 1; fi
+	@docker compose exec builder python tools/compiler.py verify-release $(FILE)
 
 test:
 	@echo "--- Running pytest for the compiler infrastructure ---"
 	@docker compose exec builder python -m pytest --cov=tools.compiler --cov-report=term-missing tests/
+
+mutation-test:
+	@echo "--- Running mutation tests (mutmut) ---"
+	@docker compose exec builder mutmut run
+	@docker compose exec builder mutmut results
 
 fmt:
 	@echo "--- Formatting Python code with Black and Isort ---"
@@ -104,8 +115,11 @@ help:
 	@echo ""
 	@echo "Main Tasks:"
 	@echo "  validate      Run fast, offline validation of all schemas."
-	@echo "  release       Build, checksum, and sign all non-dev schemas (requires Vault)."
+	@echo "  pledge        Generate a signed developer commitment (validity + createdBy) to commitment.yaml."
+	@echo "  release       Build, checksum, and sign all non-dev schemas (requires Vault + commitment.yaml)."
+	@echo "  verify-release FILE=<path>  Verify a PrimitiveRelease bundle (content_hash + meta_hash)."
 	@echo "  test          Run pytest for the compiler infrastructure code."
+	@echo "  mutation-test Run mutmut mutation tests against tools/compiler.py."
 	@echo "  fmt           Format Python code with Black and Isort."
 	@echo "  lint          Lint Python code with Ruff and YAML files with yamllint."
 	@echo "  typecheck     Run static type checking with MyPy."
