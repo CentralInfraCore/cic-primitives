@@ -90,28 +90,59 @@ properties:
         type: string
       meta_schema_file:
         type: string
+      primitive_schema_file:
+        type: string
+        description: "Path to the primitive meta-schema (schemas/index.yaml). Enables primitive YAML validation pass."
       vault_key_name:
         type: string
 
+  x-cic:
+    type: object
+    description: "CIC-specific extension fields — repo type declaration and known limitations."
+    properties:
+      repo_type:
+        type: string
+        description: "Semantic repo type (primitive | schema | domain | adapter). Not yet enforced by compiler."
+        enum: [primitive, schema, domain, adapter]
+      known_limitations:
+        type: array
+        description: "Documented known limitations of this repo's current implementation."
+        items:
+          type: object
+          required: [id, description]
+          properties:
+            id:
+              type: string
+            description:
+              type: string
+
   release:
     type: object
-    description: "Contains the cryptographic proof for a given release version. This block is populated by the CI/CD pipeline."
+    description: "Cryptographic provenance block — populated by the release pipeline, not hand-edited."
     properties:
       version:
         type: string
-        description: "The semantic version of this release."
+        description: "Semantic version of this release."
       timestamp:
         type: string
         format: date-time
-        description: "The exact timestamp when this release was built and signed."
+        description: "UTC timestamp of the release build."
       repository_tree_hash:
         type: string
-        description: "The Git tree hash of the entire repository at the moment of release, proving the integrity of the full codebase."
+        description: "Reproducible SHA256 (base64) of the Git tree at release — source provenance."
+      build_hash:
+        type: string
+        description: "Reproducible SHA256 (base64) of the build artifact. Currently equals repository_tree_hash (no separate build step — see x-cic.known_limitations)."
       sign:
         type: string
-        description: "A cryptographic signature from Vault for the 'release' block content."
+        description: "Vault Transit ECDSA signature over the release block content."
+      cert:
+        type: string
+        description: "PEM-encoded X.509 developer certificate used for signing (mTLS identity anchor)."
     required:
       - version
       - timestamp
       - repository_tree_hash
+      - build_hash
       - sign
+      - cert
