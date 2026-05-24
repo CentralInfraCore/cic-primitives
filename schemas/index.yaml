@@ -62,6 +62,18 @@ spec:
   # ── Conditional rules by kind ─────────────────────────────────────────────────
   allOf:
 
+    # AtomicPrimitive must have at least one content property beyond kind
+    - if:
+        properties:
+          spec:
+            properties:
+              kind:
+                const: AtomicPrimitive
+      then:
+        properties:
+          spec:
+            minProperties: 2
+
     # AggregatePrimitive must have slots, each slot must have a mode
     - if:
         properties:

@@ -1,0 +1,8 @@
+tags: [doc, core, meta]
+category: [concept, meta]
+entrypoint: true
+related_nodes: []
+used_in: []
+description: |
+  The philosophical foundation of CIC: declarative state, relay-based execution,
+  schema as contract, AI-cooperative design.

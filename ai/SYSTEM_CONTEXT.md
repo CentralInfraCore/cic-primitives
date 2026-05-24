@@ -145,9 +145,9 @@ spec:
 
 ---
 
-## Jelenlegi állapot (2026-04-30)
+## Jelenlegi állapot (2026-05-01)
 
-A repo bootstrap **kész**, Phase 1–5 végrehajtva.
+Phase 1–7 végrehajtva. A repo első signed release-szel lezárt.
 
 | Elem | Státusz |
 |---|---|
@@ -160,21 +160,33 @@ A repo bootstrap **kész**, Phase 1–5 végrehajtva.
 | aggregate completion (atomic ref-ek) | **defined** |
 | domain példa (`schemas/examples/kubernetes-pod.yaml`) | **defined** |
 | `make validate` zöld | **defined** |
-| primitive YAML validáció (`schemas/index.yaml` + compiler.py) | **concept** — D-008, Phase 6 |
-| domain specializáció semantic check | **concept** — D-008, Phase 6 |
+| primitive YAML validáció (`schemas/index.yaml` + compiler.py) | **defined** — Phase 6.1+6.2 |
+| domain specializáció semantic check | **defined** — Phase 6.3, sealed/required enforcement |
+| AI governance (README, MAINTENANCE_CONTRACT, invalid examples) | **defined** |
+| első signed release (`primitives/@v0.1.0`) | **defined** — Phase 7 |
 | ExecutionSurface aggregate | **concept** — D-009, Relay modell után |
-| első signed release | **concept** — Vault + `make release VERSION=x` |
+| build_hash tényleges build env-vel | **concept** — jelenleg = source_hash |
+| `make release` yq PATH fix | **concept** — release.sh Makefile integrációban |
 
 ---
 
-## Bootstrap sorrend (elvégzett lépések)
+## Release folyamat (Phase 7 tanulságok)
 
 ```bash
-git init
-git remote add base git@github.com:CentralInfraCore/base-repo.git
-git fetch base
-git merge base@0.5.0 --allow-unrelated-histories
-# → dependency.yaml, project.yaml, schemas/ létrehozva
-# → aggregate skeletonök → atomic layer → aggregate completion
-# → make validate zöld
+# Előfeltételek
+git checkout -b primitives/releases/vX.Y.Z
+tools/vault-sign-agent.sh -k <developer.key> -c <developer.crt>
+
+# Release
+export VAULT_ADDR="https://127.0.0.1:18200"
+export VAULT_TOKEN=$(cat $XDG_RUNTIME_DIR/vault/sign-token)
+export VAULT_SKIP_VERIFY=1
+make release
+
+# Ha a make release yq PATH hibán bukik:
+tools/release.sh project.yaml
+git add project.yaml
+git tag -a "primitives/@vX.Y.Z" -m "release: X.Y.Z"
 ```
+
+Dockerfile követelmény: `git`, `curl`, `jq` + `safe.directory /app`.

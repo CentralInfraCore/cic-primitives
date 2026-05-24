@@ -1,0 +1,8 @@
+tags: [doc, core, meta]
+category: [concept, meta]
+entrypoint: true
+related_nodes: []
+used_in: []
+description: |
+  The 5 core operating principles of CIC: actual≠desired state, declarative
+  description, validation-first, no workarounds, full traceability.

@@ -28,6 +28,9 @@ spec:
     - atomic: Event
       ref: schemas/atomic/event.yaml
       used_by: [notification_surface]
+    - atomic: Access
+      ref: schemas/atomic/access.yaml
+      used_by: [policy_surface, minden field értéke implicit]
 
   aggregate_dependencies:
     - aggregate: ConfigSurface
@@ -39,6 +42,9 @@ spec:
     - aggregate: OperationSurface
       ref: schemas/aggregate/operation-surface.yaml
       used_by: [operation_surface]
+    - aggregate: PolicySurface
+      ref: schemas/aggregate/policy-surface.yaml
+      used_by: [policy_surface]
 
   slots:
     identity:
@@ -83,6 +89,17 @@ spec:
         Az aszinkron jelzések felülete — Event atomok listája.
         Lehet üres. Jövőbeli NotificationSurface aggregate fogja köré burkolni
         a subscription és routing logikát.
+
+    policy_surface:
+      mode: defaulted
+      type: PolicySurface
+      aggregate_ref: schemas/aggregate/policy-surface.yaml
+      default: open
+      description: >
+        Objektum-szintű alapértelmezett jogosultsági szabályok.
+        Az Access atom field-szintű wrapper `inherit: true` esetén innen veszi az alapértéket.
+        Ha hiányzik: minden mező elérhető (open default — backward compatible).
+        Kiértékelési sorrend: field Access → surface_rules → default_access/modify → örökölt.
 
     capability_surface:
       mode: defaulted

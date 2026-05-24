@@ -166,21 +166,21 @@ def validate_release_prerequisites():
 
         is_valid_next = False
         # Valid next patch? (e.g., 1.2.5 -> 1.2.6)
-        if new_version == latest_version.next_patch():
+        if new_version == latest_version.bump_patch():
             is_valid_next = True
         # Valid next minor? (e.g., 1.2.5 -> 1.3.0)
-        elif new_version == latest_version.next_minor() and new_version.patch == 0:
+        elif new_version == latest_version.bump_minor() and new_version.patch == 0:
             is_valid_next = True
         # Valid next major? (e.g., 1.2.5 -> 2.0.0)
-        elif new_version == latest_version.next_major() and new_version.minor == 0 and new_version.patch == 0:
+        elif new_version == latest_version.bump_major() and new_version.minor == 0 and new_version.patch == 0:
             is_valid_next = True
 
         if not is_valid_next:
             print(f"\033[91m✗ ERROR: Version '{new_version_str}' is not a valid next increment.\033[0m")
             print(f"  The latest version is '{latest_version}'. Allowed next versions are:")
-            print(f"  - Patch: '{latest_version.next_patch()}'")
-            print(f"  - Minor: '{latest_version.next_minor()}'")
-            print(f"  - Major: '{latest_version.next_major()}'")
+            print(f"  - Patch: '{latest_version.bump_patch()}'")
+            print(f"  - Minor: '{latest_version.bump_minor()}'")
+            print(f"  - Major: '{latest_version.bump_major()}'")
             sys.exit(1)
 
     print(f"  \033[92m✓ New version '{new_version_str}' is a valid increment.\033[0m")
@@ -266,27 +266,9 @@ def run_release():
     source_hash = get_reproducible_repo_hash(tree_id)
     print(f"  - Calculated source hash: {source_hash[:12]}...")
 
-    # 3. Compute build_hash: marker tree final result of source + build environment.
-    #    build_hash = SHA256(source_hash : deps_hash : dockerfile_hash)
-    #    deps_hash     = SHA256(sorted pip freeze) — pinned packages inside Docker
-    #    dockerfile_hash = SHA256(Dockerfile content) — base image + system deps
-    try:
-        pip_out = subprocess.run(
-            ['pip', 'freeze'], capture_output=True, text=True, check=True
-        ).stdout
-        sorted_deps = '\n'.join(sorted(pip_out.strip().split('\n')))
-        deps_hash = get_sha256_b64(sorted_deps.encode('utf-8'))
-    except Exception:
-        deps_hash = 'unavailable'
-    try:
-        with open('Dockerfile', 'rb') as _f:
-            dockerfile_hash = get_sha256_b64(_f.read())
-    except FileNotFoundError:
-        dockerfile_hash = 'unavailable'
-    build_hash = get_sha256_b64(
-        f"{source_hash}:{deps_hash}:{dockerfile_hash}".encode('utf-8')
-    )
-    print(f"  - Calculated build hash: {build_hash[:12]}...")
+    # 3. build_hash = source_hash egyelőre — tényleges build env nincs még
+    build_hash = source_hash
+    print(f"  - Build hash (= source hash until real build env): {build_hash[:12]}...")
 
     # 4. Write release block to project.yaml (release.sh adds sign + cert on top)
     release_block['repository_tree_hash'] = source_hash

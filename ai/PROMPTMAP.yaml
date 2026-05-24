@@ -412,10 +412,62 @@ entries:
       Ez az a pont ahol az első domain repo specializációja törhet — ezt kell lefedni.
     accept: make validate (kubernetes-pod.yaml kompatibilitása ellenőrzött)
 
+  # ── Phase 8: Content-level permission system ────────────────────────────────
+  # Kiváltó: cic-compute ComputeResource tervezésekor derült ki hogy ugyanaz az objektum
+  # más láthatósággal és írhatósággal jelenik meg user vs service vs adapter szemszögéből.
+  # Ez nem schema-szintű különbség — hanem field-szintű jogosultság és láthatóság kérdése.
+  # Minden ManagedEntity minden node-jára: ki olvashatja, ki írhatja, milyen feltétel mellett.
+
+  - task: "policy-access-primitive-design"
+    status: done
+    priority: 25
+    milestone: policy-surface
+    prompt: |
+      Tervezd meg a content-level permission rendszer primitive szintű modelljét.
+      Alapelv: X.509 cert PEM az identity anchor.
+        - mTLS-nél a cert már ott van a kérésben — nincs külön identity lookup
+        - Az identitás kinyerése a cert-ből implementációs részletkérdés
+          (DN Subject, SAN, custom extension — mindegy, a cert PEM az alap)
+        - Az objektumon a permission rule cert-alapú identitásra hivatkozik
+      Öröklési modell:
+        - Sub-objektumok öröklik a szülő permission kontextusát
+        - Módosíthatják (szűkíthetik vagy bővíthetik)
+        - inherit: 0 → teljes reset, szülő rule-ok nem érvényesek
+      Kiindulópont: egy ComputeResource cpu_cores mezőjét
+        - a user direktben írhatja (saját managed compute)
+        - egy service írja, a user csak olvashatja (SaaS-rendelt compute)
+        - az adapter kezeli, a user nem is látja (adapter-internal)
+      Kérdések amelyekre választ kell adni:
+        1. Ez egy új atomic primitive (8. atom: Policy/Access)?
+           Vagy egy új aggregate (PolicySurface / AccessSurface)?
+        2. Granularitás: field szint vagy surface szint (config_surface egészére)?
+        3. DN wildcard matching kell — pattern nyelv meghatározása
+        4. Hogyan viszonyul a meglévő Role atomhoz (config/state/operational)?
+      Lezárási kritérium: döntés dokumentálva DECISIONS-ban, séma terv megvan.
+    blocked_by: "compiler-primitive-validation"
+    accept: DECISIONS.md tartalmaz döntést + schema terv létezik
+
+  - task: "policy-surface-schema"
+    status: done
+    priority: 26
+    milestone: policy-surface
+    blocked_by: "policy-access-primitive-design"
+    prompt: |
+      Implementáld a content-level permission rendszert a primitive modellbe.
+      A policy-access-primitive-design döntései alapján:
+        - Ha új atomic: schemas/atomic/policy.yaml (vagy access.yaml)
+        - Ha új aggregate: schemas/aggregate/policy-surface.yaml
+      Minden ManagedEntity node-ra deklarálható:
+        - visibility: who_can_read (all | owner | operator | service | none)
+        - writability: who_can_write (user | service | adapter | none)
+        - condition: opcionális feltétel (pl. csak ha owner == user)
+      Bekötés a ManagedEntity aggregate-be (opcionális surface).
+    accept: make validate
+
   # ── Phase 7: Első signed release ────────────────────────────────────────────
 
   - task: "signed-release"
-    status: pending
+    status: done
     priority: 24
     milestone: release
     blocked_by: "compiler-primitive-validation"
@@ -425,3 +477,8 @@ entries:
       Előfeltétel: Vault Transit kulcs (`cic-my-sign-key`) elérhető.
       Artifact: release/ könyvtárba, checksum + ECDSA aláírás.
     accept: ls release/ && make validate
+    notes: |
+      Tag: primitives/@v0.1.0
+      Dockerfile-ba kellett: git, curl, jq + safe.directory /app
+      build_hash = source_hash egyelőre (tényleges build env nincs)
+      yq PATH issue: make release-ben tools/release.sh fallback-kel futott

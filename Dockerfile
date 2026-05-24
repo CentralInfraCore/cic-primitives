@@ -9,7 +9,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
+    git \
+    curl \
+    jq \
     && rm -rf /var/lib/apt/lists/*
+
+# Trust the mounted project directory (host uid != container uid)
+RUN git config --system --add safe.directory /app
 
 # Install pip-tools globally in the container for the setup service to use
 RUN pip install --no-cache-dir pip-tools
