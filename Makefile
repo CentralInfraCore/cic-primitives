@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate pledge release verify-release test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -42,8 +42,12 @@ release:
 	@docker compose exec builder python tools/compiler.py release
 
 verify-release:
-	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml"; exit 1; fi
-	@docker compose exec builder python tools/compiler.py verify-release $(FILE)
+	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml [STRICT=1]"; exit 1; fi
+	@docker compose exec builder python tools/compiler.py verify-release $(FILE) $(if $(STRICT),--strict,)
+
+verify-release-strict:
+	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release-strict FILE=release/<name>-vX.Y.Z.yaml"; exit 1; fi
+	@docker compose exec builder python tools/compiler.py verify-release $(FILE) --strict
 
 test:
 	@echo "--- Running pytest for the compiler infrastructure ---"
