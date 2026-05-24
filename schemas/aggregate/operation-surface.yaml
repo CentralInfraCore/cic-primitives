@@ -3,8 +3,8 @@ metadata:
   name: OperationSurface
   version: v0.0.dev
   description: >
-    A végrehajtható műveletek felülete egy ManagedEntity-n.
-    Ide tartoznak az rpc-k, action-ök és lifecycle operation-ök.
+    The executable operations surface of a ManagedEntity.
+    Covers rpcs, actions, and lifecycle operations.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -28,44 +28,44 @@ spec:
       type: "Behavior[]"
       atomic_ref: schemas/atomic/behavior.yaml
       description: >
-        A végrehajtható műveletek listája — Behavior atomok.
-        Leszármazottban kötelezően specializálandó.
-        Behavior típusok: rpc (entitástól független) | action (entitáshoz kötött) | operation (lifecycle).
+        The list of executable operations — Behavior atoms.
+        Must be specialised in derived types.
+        Behavior types: rpc (entity-independent) | action (entity-bound) | operation (lifecycle).
 
     idempotency:
       mode: defaulted
       type: boolean
       default: false
       description: >
-        Az operations slot összes műveletének alapértelmezett idempotencia jelzője.
-        Felülírható műveleti szinten Behavior atomic-ban.
+        Default idempotency flag for all operations in the operations slot.
+        Overridable per operation in the Behavior atom.
 
     timeout:
       mode: defaulted
       type: duration
       default: 30s
       description: >
-        Az operations slot összes műveletének alapértelmezett timeout-ja.
-        Felülírható műveleti szinten Behavior atomic-ban.
+        Default timeout for all operations in the operations slot.
+        Overridable per operation in the Behavior atom.
 
     audit:
       mode: sealed
       type: boolean
       value: true
       description: >
-        Minden művelet végrehajtása loggolásra kerül. Nem kapcsolható ki.
-        A CIC management loop egyik alapkövetelménye — auditálhatóság.
+        Every operation execution is logged. Cannot be disabled.
+        A fundamental requirement of the CIC management loop — auditability.
 
   semantic_mapping:
     yang:
       constructs: [rpc, action]
       note: >
-        rpc = top-level, entitástól független (pl. validate-config).
-        action = entitáshoz kötött, a config/state container testvére (pl. restart).
+        rpc = top-level, entity-independent (e.g. validate-config).
+        action = entity-bound, sibling of config/state container (e.g. restart).
     api:
       methods: [POST]
       path: "/{resource}/operations/{operation-name}"
-      note: minden művelet POST — nincs idempotens HTTP verb mapping műveletekhez
+      note: every operation is a POST endpoint — no idempotent HTTP verb mapping
     runtime:
       role: operation-dispatcher
-      note: a runtime hívja meg az adapter megfelelő handler-ét
+      note: the runtime invokes the adapter's corresponding handler

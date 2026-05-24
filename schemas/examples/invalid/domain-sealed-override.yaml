@@ -1,7 +1,7 @@
 why_invalid: >
-  A DomainComposition felülírja a lifecycle_surface slotot, amely a ManagedEntity
-  aggregate-ben mode: sealed. D-005 szerint sealed slot nem módosítható leszármazottban.
-  A compiler.py run_domain_compatibility_check() elkapja Phase 6.3 óta.
+  The DomainComposition overrides the lifecycle_surface slot, which is mode: sealed
+  in the ManagedEntity aggregate. Per D-005, a sealed slot must not be modified in a derived type.
+  compiler.py run_domain_compatibility_check() catches this since Phase 6.3.
 
 expected_error: >
   compiler.py: sealed slot 'lifecycle_surface' must not be overridden
@@ -10,7 +10,7 @@ expected_error: >
 metadata:
   name: BadDomainComposition
   version: v0.0.dev
-  description: Sealed slot felülírásának demonstrálása
+  description: Demonstration of overriding a sealed slot
   owner: Gabor Zoltan Sinko
   tags:
     - example
@@ -47,7 +47,7 @@ spec:
         scalar_type: string
         role: state
 
-  lifecycle_surface:            # ÉRVÉNYTELEN — lifecycle_surface sealed a ManagedEntity-ben
+  lifecycle_surface:            # INVALID — lifecycle_surface is sealed in ManagedEntity
     states: [on, off]
     initial: off
     transitions:

@@ -1,7 +1,7 @@
 why_invalid: >
-  Az aggregate slot mode értéke 'optional' — ez nem érvényes érték.
-  D-005 szerint a három érvényes mode: sealed | defaulted | required.
-  Az index.yaml meta-schema enum kényszere elkapja.
+  The aggregate slot mode value is 'optional' — this is not a valid value.
+  Per D-005, the three valid modes are: sealed | defaulted | required.
+  The index.yaml meta-schema enum constraint catches this.
 
 expected_error: >
   jsonschema.ValidationError: 'optional' is not one of ['sealed', 'defaulted', 'required']
@@ -10,7 +10,7 @@ expected_error: >
 metadata:
   name: BadAggregate
   version: v0.1.dev
-  description: Érvénytelen slot mode demonstrálása
+  description: Demonstration of an invalid slot mode
   owner: Gabor Zoltan Sinko
   tags:
     - aggregate
@@ -25,5 +25,5 @@ spec:
       mode: required
       type: Identity
     config_surface:
-      mode: optional        # ÉRVÉNYTELEN — csak sealed|defaulted|required megengedett
+      mode: optional        # INVALID — only sealed|defaulted|required are allowed
       type: ConfigSurface

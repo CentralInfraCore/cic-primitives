@@ -3,9 +3,9 @@ metadata:
   name: Shape
   version: v0.0.dev
   description: >
-    Az adat struktúráját leíró atomic primitive — milyen mezők, milyen típusok.
-    A Shape mondja meg hogyan néz ki egy config vagy state node adatszerkezetileg.
-    Minden ConfigSurface.nodes és StateSurface.nodes Shape-ekből épül fel.
+    Atomic primitive describing data structure — what fields exist and what types they have.
+    Shape defines how a config or state node looks from a data-structure perspective.
+    All ConfigSurface.nodes and StateSurface.nodes are composed of Shape atoms.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -20,68 +20,68 @@ spec:
 
   type_system:
     description: >
-      A Shape lehetséges típusai. Minden field rendelkezik pontosan egy type-tal.
+      The possible types for a Shape. Every field has exactly one type.
     values:
       scalar:
-        description: Egyszerű érték — string, integer, boolean, number
+        description: Simple value — string, integer, boolean, number
         subtypes: [string, integer, boolean, number, bytes]
       composite:
-        description: Beágyazott struktúra — named field-ek halmaza (YANG container)
-        note: rekurzív — composite tartalmazhat composite-ot
+        description: Nested structure — a set of named fields (YANG container)
+        note: recursive — composite may contain composite
       collection:
-        description: Elemek listája vagy asszociatív halmaza (YANG list / leaf-list)
+        description: Ordered list or associative set of elements (YANG list / leaf-list)
         variants:
-          list: rendezett vagy kulcsolt elemek (YANG list with key)
-          set: kulcs nélküli elemek (YANG leaf-list)
+          list: ordered or keyed elements (YANG list with key)
+          set: unkeyed elements (YANG leaf-list)
       reference:
-        description: Más node-ra mutató pointer (YANG leafref)
-        note: a cél node-nak léteznie kell a sémában
+        description: Pointer to another node (YANG leafref)
+        note: the target node must exist in the schema
         subtypes:
-          leafref: intra-schema referencia — a cél ugyanabban a sémában él
+          leafref: intra-schema reference — target lives in the same schema
           cic-reference: >
-            cross-domain CIC objektum referencia — más domain logical_id-jére mutat.
-            Formátum: cic:{domain}:{backend}:{provider}:{location}:{id}.
-            A reference_target mező jelzi a célzott Kind-ot.
+            Cross-domain CIC object reference — points to the logical_id of another domain entity.
+            Format: cic:{domain}:{backend}:{provider}:{location}:{id}.
+            The reference_target field identifies the target Kind.
       choice:
-        description: Kizáró alternatívák — pontosan egy aktív (YANG choice/case)
+        description: Mutually exclusive alternatives — exactly one active (YANG choice/case)
 
   fields:
-    description: Egy Shape field leírásának struktúrája
+    description: Structure of a Shape field descriptor
     properties:
       name:
         type: string
-        description: A field neve — CamelCase vagy snake_case, konzekvens a namespace-en belül
+        description: Field name — CamelCase or snake_case, consistent within the namespace
       type:
         type: string
-        description: A field típusa a type_system értékei szerint
+        description: Field type, one of the type_system values
       optional:
         type: boolean
         default: false
-        description: Ha true, a field hiányozhat a példányból
+        description: If true, the field may be absent from an instance
       nullable:
         type: boolean
         default: false
-        description: Ha true, a field értéke lehet null
+        description: If true, the field value may be null
       default:
         type: any
-        description: Alapértelmezett érték ha a field hiányzik és optional true
+        description: Default value when the field is absent and optional is true
       description:
         type: string
-        description: A field szemantikája — mit jelent, mire való
+        description: Field semantics — what it means and what it is for
       semantic_type:
         type: string
         optional: true
         description: >
-          Szemantikus típus annotáció — pontosítja a scalar_type: string értelmét.
-          cic-reference: a mező értéke egy CIC managed entity logical_id-je.
-          Kötelező együtt a reference_target mezővel.
+          Semantic type annotation — refines the meaning of scalar_type: string.
+          cic-reference: the field value is the logical_id of a CIC managed entity.
+          Must be used together with the reference_target field.
       reference_target:
         type: string
         optional: true
         description: >
-          A célzott CIC Kind — csak semantic_type: cic-reference esetén értelmezett.
-          Formátum: "cic:{namespace}:{Kind}" (pl. "cic:compute:ComputeResource").
-          A Relay ezt használja a referencia feloldásához és validálásához.
+          The target CIC Kind — only meaningful when semantic_type: cic-reference.
+          Format: "cic:{namespace}:{Kind}" (e.g. "cic:compute:ComputeResource").
+          The Relay uses this to resolve and validate the reference.
 
   semantic_mapping:
     yang:

@@ -3,10 +3,10 @@ metadata:
   name: Address
   version: v0.0.dev
   description: >
-    Egy entitás elérhetőségét leíró atomic primitive — hogyan és hol érhető el
-    a management plane, az API és a runtime számára.
-    Fontos: az Address nem az entitás tulajdonsága — hanem a BindingSurface-é.
-    Az entitás létezhet cím nélkül; a cím a binding kontextusban értelmes.
+    Atomic primitive describing how and where an entity can be reached
+    by the management plane, the API, and the runtime.
+    Important: Address is not a property of the entity itself — it belongs to the BindingSurface.
+    An entity may exist without an address; the address is meaningful in the binding context.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -22,24 +22,24 @@ spec:
   layers:
     schema_path:
       description: >
-        Belső séma-fa pozíció — hogyan azonosítja az entitást a CIC modell.
-        Hierarchikus, slash-szeparált útvonal a schema tree-ben.
+        Internal schema-tree position — how the CIC model identifies the entity.
+        Hierarchical, slash-separated path in the schema tree.
       format: "/{module}:{container}/{list}={key}/{sub-container}"
       example: "/cic-network:interfaces/interface=eth0/config"
       used_by: [compiler, validator, schema-registry]
 
     api_path:
       description: >
-        HTTP/RESTCONF URL — hogyan éri el az API kliens az entitást.
-        RESTCONF konvenció szerint épül fel a schema_path-ból.
+        HTTP/RESTCONF URL — how an API client reaches the entity.
+        Built from schema_path following RESTCONF conventions.
       format: "/restconf/data/{module}:{container}/{list}={key}"
       example: "/restconf/data/cic-network:interfaces/interface=eth0"
       used_by: [api-gateway, client, openapi-spec]
 
     logical_id:
       description: >
-        Logikai azonosító — emberbarát, rendszer-független neve az entitásnak.
-        Nem feltétlenül egyedi globálisan — csak a namespace-en belül.
+        Logical identifier — human-friendly, system-independent name for the entity.
+        Not necessarily globally unique — unique within its namespace.
       formats:
         uuid: "550e8400-e29b-41d4-a716-446655440000"
         name: "eth0 / default-ns / prod-cluster"
@@ -47,41 +47,41 @@ spec:
       used_by: [runtime, audit-log, notification]
 
   fields:
-    description: Egy Address definíciójának mezői — legalább egy layer kötelező
+    description: Fields of an Address definition — at least one layer is required
     properties:
       schema_path:
         type: string
         optional: true
-        description: Séma-fa útvonal (lásd layers.schema_path)
+        description: Schema-tree path (see layers.schema_path)
       api_path:
         type: string
         optional: true
-        description: HTTP/RESTCONF URL (lásd layers.api_path)
+        description: HTTP/RESTCONF URL (see layers.api_path)
       logical_id:
         type: string
         optional: true
-        description: Logikai azonosító (lásd layers.logical_id)
+        description: Logical identifier (see layers.logical_id)
       namespace:
         type: string
         description: >
-          CIC névtér amiben ez a cím értelmezendő.
-          Pl. cic:network, cic:kubernetes, cic:compute
+          CIC namespace in which this address is interpreted.
+          E.g. cic:network, cic:kubernetes, cic:compute
       note:
         type: string
         optional: true
-        description: Megjegyzés az Address kontextusáról
+        description: Free-text note about the Address context
 
   constraints:
     - type: must
       expression: "schema_path or api_path or logical_id"
-      error_message: "Legalább egy Address layer kötelező"
+      error_message: "At least one Address layer is required"
 
   semantic_mapping:
     yang:
       note: >
-        YANG-ban nincs közvetlen Address fogalom — a schema_path a YANG node XPath-nak
-        felel meg, az api_path a RESTCONF instance-identifier-nek.
+        YANG has no direct Address concept — schema_path maps to YANG node XPath,
+        api_path maps to RESTCONF instance-identifier.
     api:
-      note: api_path → OpenAPI servers + paths kombináció
+      note: api_path → OpenAPI servers + paths combination
     runtime:
-      note: logical_id → runtime lookup key az entity store-ban
+      note: logical_id → runtime lookup key in the entity store

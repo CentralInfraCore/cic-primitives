@@ -3,9 +3,9 @@ metadata:
   name: Role
   version: v0.0.dev
   description: >
-    Egy node menedzsment szemantikáját leíró atomic primitive — mit jelent ez a node
-    a management plane szempontjából. A Role nem az adatot írja le (azt a Shape teszi),
-    hanem azt hogy hogyan kezeli a rendszer: írható-e, csak olvasható-e, kulcs-e, stb.
+    Atomic primitive describing the management semantics of a node — what this node means
+    from the management plane perspective. Role does not describe the data (that is Shape's job),
+    but how the system handles it: writable, read-only, key, etc.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -21,53 +21,53 @@ spec:
   values:
     config:
       description: >
-        Írható, kívánt állapot. A management plane állítja be — ez a desired state.
+        Writable desired state. Set by the management plane — this is the desired state.
       yang_mapping: "leaf/container without 'config false'"
       api_mapping: PUT/PATCH request body
       runtime_mapping: desired state store — reconciler target
 
     state:
       description: >
-        Csak olvasható, aktuális állapot. Az adapter tölti fel a valós rendszerből.
+        Read-only current state. Populated by the adapter from the real system.
       yang_mapping: "config false"
       api_mapping: GET only
       runtime_mapping: observed state store — reconciler source
 
     operational:
       description: >
-        Operacionális adat — futásidőben számolt vagy gyűjtött érték (pl. byte counter,
-        uptime, error count). Nem konfigurálható, nem tárolt desired state-ként.
-      yang_mapping: "config false — tipikusan state container alatt"
+        Operational data — computed or collected at runtime (e.g. byte counter,
+        uptime, error count). Not configurable, not stored as desired state.
+      yang_mapping: "config false — typically under state container"
       api_mapping: GET only
       runtime_mapping: telemetry / metrics feed
 
     key:
       description: >
-        Lista kulcs — egyedi azonosítója a list példánynak. Kötelezően jelen kell lennie,
-        nem módosítható a lista elem létrehozása után.
+        List key — unique identifier of a list instance. Must always be present,
+        not modifiable after the list entry is created.
       yang_mapping: "key statement in list"
-      api_mapping: URL path parameter (pl. /interfaces/interface={name})
+      api_mapping: URL path parameter (e.g. /interfaces/interface={name})
       runtime_mapping: lookup key in state/config store
 
     reference:
       description: >
-        Más node-ra mutató pointer. A hivatkozott node-nak léteznie kell (referential integrity).
+        Pointer to another node. The referenced node must exist (referential integrity).
       yang_mapping: leafref
       api_mapping: string value — external resource identifier
       runtime_mapping: foreign key / join key
 
     derived:
       description: >
-        Más mezőkből számolt érték — nem tárolható önállóan, mindig kiszámítható.
-        Pl. admin_state + oper_state → effective_state.
-      yang_mapping: "config false — computed, nem adapterből jön"
+        Value computed from other fields — cannot be stored independently, always derivable.
+        E.g. admin_state + oper_state → effective_state.
+      yang_mapping: "config false — computed, not sourced from adapter"
       api_mapping: GET only — read-only computed field
       runtime_mapping: computed on read, not stored
 
     volatile:
       description: >
-        Rövid életű, nem tartós állapot. Nem kerül a desired state-be, a cache TTL után eldobható.
-        Pl. last_seen timestamp, connection_count pillanatképe.
+        Short-lived, non-persistent state. Not stored in desired state, discardable after cache TTL.
+        E.g. last_seen timestamp, instantaneous connection_count snapshot.
       yang_mapping: "config false"
       api_mapping: GET only — best-effort freshness
       runtime_mapping: short-lived cache, not persisted

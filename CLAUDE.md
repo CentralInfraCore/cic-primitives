@@ -1,5 +1,19 @@
 # CIC Primitives — Claude kontextus
 
+## Nyelvi szabály — KÖTELEZŐ / Language policy — MANDATORY
+
+| Terület / Scope | Szabály / Rule |
+|---|---|
+| Kommunikáció (AI ↔ fejlesztő) | Magyar / Hungarian |
+| Commit üzenetek / Commit messages | **Angol / English** |
+| Kód kommentek, docstringek / Code comments, docstrings | **Angol / English** |
+| Schema YAML `description` mezők / fields | **Angol / English** |
+| Dokumentáció (README, ai/*.md) / Documentation | **Kétnyelvű HU+EN / Bilingual HU+EN** |
+| docs/hu/ | Magyar forrás / Hungarian source |
+| docs/en/ | Angol fordítás / English translation |
+
+---
+
 ## Branch szabály — KÖTELEZŐ
 
 **Érdemi fejlesztés kizárólag a `devel` ágon történhet.**

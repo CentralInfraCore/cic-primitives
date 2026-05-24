@@ -3,12 +3,12 @@ metadata:
   name: Access
   version: v0.0.dev
   description: >
-    Jogosultsági burok atomic primitive — minden Shape érték Access atomba ágyazott.
-    Két szintaktikailag ekvivalens reprezentáció:
+    Atomic primitive wrapping every Shape value with access control.
+    Two syntactically equivalent representations:
       key: value
       key: {value: value, access: [...], modify: [...], inherit: true, default_injection: null}
-    A compiler a rövid formát normalizálja hosszúvá az örökölt szabályok alapján.
-    A runtime mindig a kibontott formán értékel.
+    The compiler normalizes the short form to the long form by filling in inherited rules.
+    The runtime always evaluates the expanded form.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -23,109 +23,109 @@ spec:
   kind: AtomicPrimitive
 
   fields:
-    description: Az Access atom belső struktúrája
+    description: Internal structure of the Access atom
     properties:
       value:
         type: any
         description: >
-          A tényleges adat — típusát a befoglaló Shape határozza meg.
-          Rövid forma: `key: value` ekvivalens `key: {value: value, ...}` -val.
+          The actual data — its type is determined by the enclosing Shape.
+          Short form: `key: value` is equivalent to `key: {value: value, ...}`.
 
       access:
         type: list<CertPattern>
         default: inherit
         description: >
-          Ki olvashatja ezt az értéket — CertPattern lista, OR szemantika.
-          Ha üres: senki sem olvashatja (csak default_injection látszik).
-          default = szülő objektum PolicySurface szabályaiból örökölt.
+          Who may read this value — CertPattern list, OR semantics.
+          Empty list: nobody may read (only default_injection is visible).
+          default = inherited from the parent object's PolicySurface rules.
 
       modify:
         type: list<CertPattern>
         default: inherit
         description: >
-          Ki írhatja ezt az értéket — CertPattern lista, OR szemantika.
-          Ha üres: senki sem módosíthatja (read-only minden kérező számára).
-          Adapter cert-je jelenik meg itt a state/operational mezőknél.
+          Who may write this value — CertPattern list, OR semantics.
+          Empty list: nobody may modify (read-only for all requestors).
+          Adapter cert appears here for state/operational fields.
 
       inherit:
         type: boolean | 0
         default: true
         description: >
-          Sub-objektumok öröklik-e ezt a szabályt erre a mezőre.
-          true  = örökli (default)
-          false = nem örökli, sub-objektum default szabályait kapja
-          0     = teljes reset — a sub-objektum PolicySurface-től újraszámol
+          Whether sub-objects inherit this rule for this field.
+          true  = inherits (default)
+          false = does not inherit; sub-object gets its own default rules
+          0     = full reset — sub-object recomputes from its PolicySurface
 
       default_injection:
         type: any
         default: null
         description: >
-          Mit kap a kérező ha nincs access joga az értékre.
-          null    = a mező nem jelenik meg a válaszban (information hiding)
-          <érték> = injektált default (pl. 0, "", false) — egységes viselkedés,
-                    nem szivárog ki hogy a mező létezik-e és mi az értéke
+          What the requestor receives when they lack access to the value.
+          null    = field does not appear in the response (information hiding)
+          <value> = injected default (e.g. 0, "", false) — uniform behaviour,
+                    does not leak whether the field exists or what its value is
 
       conformance:
         type: enum
         values: [implemented, not_implemented, deprecated]
         default: implemented
         description: >
-          Eszköz-szintű implementációs státusz — elkülönül a jogosultság-alapú
-          láthatóságtól (D-012).
+          Device-level implementation status — separate from permission-based
+          visibility (D-012).
 
-          implemented     (default) — mező létezik és kezelhető az eszközön
-          not_implemented — mező NEM létezik az eszközön:
-                            olvasás: default_injection értéke (tipikusan null)
-                            írás: HARD REJECT — "field not implemented on device X"
-                            TILOS csendes elfogadás — a Relay visszadobja a write-ot
-          deprecated      — mező létezik de kerülendő:
-                            olvasás: értéke visszaadva
-                            írás: WARNING + elfogadás
+          implemented     (default) — field exists and is manageable on the device
+          not_implemented — field does NOT exist on the device:
+                            read: returns default_injection value (typically null)
+                            write: HARD REJECT — "field not implemented on device X"
+                            Silent acceptance is FORBIDDEN — the Relay rejects the write
+          deprecated      — field exists but should be avoided:
+                            read: value returned
+                            write: WARNING + accepted
 
-          Különbség a jogosultság hiánytól:
-            access: []  → PERMISSION DENIED (te nem férsz hozzá)
-            not_implemented → HARD REJECT (az eszköz nem tudja kezelni)
-          A kérező különböző hibát kap — nem összetéveszthető.
+          Difference from missing permission:
+            access: []      → PERMISSION DENIED (you cannot access it)
+            not_implemented → HARD REJECT (the device cannot handle it)
+          The requestor receives a distinct error — the two cases are not interchangeable.
 
   cert_pattern:
     description: >
-      X.509 cert alapú identity pattern. A kérező mTLS cert-je ellen értékelődik.
-      Identity forrás: Subject DN, SAN, vagy custom X.509 extension —
-      implementációs részletkérdés, a cert PEM az anchor.
+      X.509 certificate-based identity pattern. Evaluated against the requestor's mTLS cert.
+      Identity source: Subject DN, SAN, or custom X.509 extension —
+      implementation detail; the cert PEM is the anchor.
     syntax:
-      format: '"field=value" párok, wildcard (csillag) támogatással'
-      combinator: "lista = OR — bármely illeszkedő pattern hozzáférést ad"
+      format: '"field=value" pairs, wildcard (*) supported'
+      combinator: "list = OR — any matching pattern grants access"
     examples:
       - pattern: "O=acme-corp"
-        meaning: bármely acme-corp cert
+        meaning: any acme-corp certificate
       - pattern: "OU=operators,O=acme-corp"
-        meaning: acme-corp operátor csoport
+        meaning: acme-corp operator group
       - pattern: "CN=*,O=partner-a"
-        meaning: partner-a bármely user-je
+        meaning: any user of partner-a
       - pattern: "OU=adapters,O=cic"
-        meaning: CIC adapter service account-ok (state/operational mezőkhöz)
+        meaning: CIC adapter service accounts (for state/operational fields)
 
   semantic_mapping:
     role_relation: >
-      Az Access atom ortogonális a Role atomhoz.
-      Role = mit jelent a mező (config/state/operational).
-      Access = ki érheti el.
-      Együtt: role: state + modify: [OU=adapters,O=cic] → adapter írja, user olvassa.
+      Access atom is orthogonal to Role atom.
+      Role = what the field means (config/state/operational).
+      Access = who may reach it.
+      Combined: role: state + modify: [OU=adapters,O=cic] → adapter writes, user reads.
     compiler:
       short_form: "key: value → key: {value: value, ...inherited rules}"
-      normalization: a compiler az örökölt PolicySurface szabályokat tölti be
+      normalization: compiler fills in inherited PolicySurface rules
     runtime:
-      evaluation: mTLS cert kiértékelés a CertPattern lista ellen
-      miss_behavior: default_injection visszaadása ha nincs access joga
+      evaluation: mTLS cert evaluated against the CertPattern list
+      miss_behavior: default_injection returned when access is denied
       conformance_enforcement: >
-        not_implemented mezőre érkező write-ot a Relay NEM droppolja —
-        explicit "field not implemented on device X" hibával visszadobja.
-        Különbözik a permission denied hibától: a kérő tudja mi a valódi ok.
+        A write to a not_implemented field is NOT silently dropped by the Relay —
+        it is rejected with an explicit "field not implemented on device X" error.
+        Distinct from permission denied: the requestor knows the real reason.
     yang:
       note: >
-        YANG NACM (RFC 8341) analóg — de field szinten, nem path alapon.
-        YANG levezetéskor az Access metadata NACM rule-okká fordítható.
+        Analogous to YANG NACM (RFC 8341) — but at field level, not path level.
+        During YANG derivation, Access metadata can be translated to NACM rules.
     api:
       note: >
-        RESTCONF válaszból a nem hozzáférhető mezők kiszűrődnek vagy
-        default_injection értékükkel jelennek meg.
+        Fields the requestor cannot access are filtered from the RESTCONF response
+        or returned with their default_injection value.

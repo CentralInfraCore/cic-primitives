@@ -3,10 +3,10 @@ metadata:
   name: KubernetesPod
   version: v0.0.dev
   description: >
-    Kubernetes Pod mint ManagedEntity specializáció.
-    Ez NEM új primitive — a ManagedEntity aggregate konkrét domain-ra való alkalmazása.
-    Reality check: ha ebből levezethető YANG modul, RESTCONF path és runtime contract,
-    a primitive modell működik.
+    Kubernetes Pod as a ManagedEntity specialization.
+    This is NOT a new primitive — it is the application of the ManagedEntity aggregate to a concrete domain.
+    Reality check: if a YANG module, RESTCONF path, and runtime contract can be derived from this,
+    the primitive model works.
   owner: Gabor Zoltan Sinko
   tags:
     - example
@@ -30,7 +30,7 @@ spec:
     version: v0.1.dev
     base: "cic:core:ManagedEntity"
     abstract: false
-    description: Kubernetes Pod — az alapvető futtatási egység K8s-ben
+    description: Kubernetes Pod — the fundamental execution unit in K8s
 
   # ── ConfigSurface ────────────────────────────────────────────────────────────
   config_surface:
@@ -42,11 +42,11 @@ spec:
         scalar_type: string
         role: config
         mandatory: true
-        description: Container image URI (pl. nginx:1.21, registry/app:v2.3)
+        description: Container image URI (e.g. nginx:1.21, registry/app:v2.3)
         contract:
           - type: pattern
             expression: "^[a-z0-9][a-z0-9./_:-]*$"
-            error_message: Érvényes container image URI szükséges
+            error_message: A valid container image URI is required
 
       - name: replicas
         atomic_ref: schemas/atomic/shape.yaml
@@ -55,18 +55,18 @@ spec:
         role: config
         optional: true
         default: 1
-        description: Kívánt Pod példányok száma
+        description: Desired number of Pod replicas
         contract:
           - type: range
             expression: "1..1000"
-            error_message: replicas értéke 1 és 1000 között kell legyen
+            error_message: replicas must be between 1 and 1000
 
       - name: resources
         atomic_ref: schemas/atomic/shape.yaml
         shape_type: composite
         role: config
         optional: true
-        description: CPU és memória igény
+        description: CPU and memory requirements
         fields:
           - name: requests
             shape_type: composite
@@ -74,11 +74,11 @@ spec:
               - name: cpu
                 shape_type: scalar
                 scalar_type: string
-                description: "CPU request (pl. 100m, 0.5)"
+                description: "CPU request (e.g. 100m, 0.5)"
               - name: memory
                 shape_type: scalar
                 scalar_type: string
-                description: "Memory request (pl. 128Mi, 1Gi)"
+                description: "Memory request (e.g. 128Mi, 1Gi)"
           - name: limits
             shape_type: composite
             fields:
@@ -97,7 +97,7 @@ spec:
         collection_variant: list
         role: config
         optional: true
-        description: Környezeti változók listája
+        description: List of environment variables
         item_fields:
           - name: name
             shape_type: scalar
@@ -121,7 +121,7 @@ spec:
         scalar_type: string
         role_ref: schemas/atomic/role.yaml
         role: state
-        description: Pod lifecycle fázis
+        description: Pod lifecycle phase
         contract:
           - type: enum
             expression: [Pending, Running, Succeeded, Failed, Unknown]
@@ -133,7 +133,7 @@ spec:
         role_ref: schemas/atomic/role.yaml
         role: operational
         optional: true
-        description: Pod IP cím — futásidőben kiosztott
+        description: Pod IP address — assigned at runtime
 
       - name: conditions
         atomic_ref: schemas/atomic/shape.yaml
@@ -141,7 +141,7 @@ spec:
         collection_variant: list
         role_ref: schemas/atomic/role.yaml
         role: state
-        description: Pod condition-ök listája (Ready, PodScheduled, stb.)
+        description: List of Pod conditions (Ready, PodScheduled, etc.)
         item_fields:
           - name: type
             shape_type: scalar
@@ -164,7 +164,7 @@ spec:
         collection_variant: list
         role_ref: schemas/atomic/role.yaml
         role: operational
-        description: Konténerenként futásidejű állapot
+        description: Per-container runtime status
         item_fields:
           - name: name
             shape_type: scalar
@@ -186,7 +186,7 @@ spec:
         atomic_ref: schemas/atomic/behavior.yaml
         type: action
         idempotent: false
-        description: Pod újraindítása — az összes konténer leáll és újraindul
+        description: Restart the Pod — all containers stop and restart
         input: null
         output:
           - name: status
@@ -197,7 +197,7 @@ spec:
         atomic_ref: schemas/atomic/behavior.yaml
         type: action
         idempotent: true
-        description: Pod graceful leállítása — új kéréseket nem fogad, meglévőket befejezi
+        description: Graceful Pod shutdown — stops accepting new requests, finishes existing ones
         input:
           - name: grace_period_seconds
             shape_type: scalar
@@ -212,7 +212,7 @@ spec:
         atomic_ref: schemas/atomic/behavior.yaml
         type: operation
         idempotent: true
-        description: Replika szám módosítása — async, job-t ad vissza
+        description: Modify replica count — async, returns a job ID
         input:
           - name: replicas
             shape_type: scalar
@@ -230,7 +230,7 @@ spec:
         atomic_ref: schemas/atomic/event.yaml
         trigger: state_change
         severity: warning
-        description: Pod fázis megváltozott (pl. Running → Failed)
+        description: Pod phase changed (e.g. Running → Failed)
         payload:
           - name: previous_phase
             shape_type: scalar
@@ -243,7 +243,7 @@ spec:
         atomic_ref: schemas/atomic/event.yaml
         trigger: threshold
         severity: warning
-        description: Konténer újraindult (CrashLoopBackOff detektálás)
+        description: Container restarted (CrashLoopBackOff detection)
         payload:
           - name: container_name
             shape_type: scalar
@@ -262,13 +262,13 @@ spec:
         namespace: "cic:kubernetes"
     adapter: kubernetes-adapter
 
-# ── Levezetési lánc (reality check) ───────────────────────────────────────────
+# ── Derivation chain (reality check) ─────────────────────────────────────────
 derivation_chain:
 
   yang:
     module: cic-kubernetes-pod
     namespace: "urn:cic:kubernetes:pod"
-    description: Generált YANG modul vázlat
+    description: Generated YANG module sketch
     content: |
       module cic-kubernetes-pod {
         namespace "urn:cic:kubernetes:pod";
@@ -329,7 +329,7 @@ derivation_chain:
            image changed    → kubernetes-adapter.update_pod_image(...)
            replicas changed → scale operation → kubernetes-adapter.scale(...)
            env changed      → kubernetes-adapter.update_pod_env(...)
-      4. emit:      phase-changed event ha phase eltért
+      4. emit:      phase-changed event if phase diverged
     adapter_contract:
       observe:  "GET k8s API /api/v1/namespaces/{ns}/pods/{name}"
       apply:    "PATCH k8s API /api/v1/namespaces/{ns}/pods/{name}"

@@ -3,10 +3,10 @@ metadata:
   name: Identity
   version: v0.0.dev
   description: >
-    Típusazonosságot leíró atomic primitive — nem példány azonosítás, hanem
-    annak leírása MI ez az entitás a CIC modellben. Az Identity mondja meg az
-    entitás típusát, névterét, verzióját és örökítési láncolatát.
-    Hasonló a YANG identity/identityref-hez, de általánosabb és verziózott.
+    Atomic primitive describing type identity — not instance identification, but
+    describing WHAT this entity is in the CIC model. Identity defines an entity's
+    type, namespace, version, and inheritance chain.
+    Analogous to YANG identity/identityref, but more general and versioned.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -20,37 +20,37 @@ spec:
   kind: AtomicPrimitive
 
   fields:
-    description: Egy Identity definíciójának kötelező és opcionális mezői
+    description: Required and optional fields of an Identity definition
     properties:
       kind:
         type: string
         description: >
-          A típus neve — PascalCase. Ez azonosítja az entitás-típust a névteren belül.
-          Pl. NetworkInterface, KubernetesPod, PostgresDatabase, ManagedSwitch.
+          Type name — PascalCase. Identifies the entity type within its namespace.
+          E.g. NetworkInterface, KubernetesPod, PostgresDatabase, ManagedSwitch.
         mandatory: true
 
       namespace:
         type: string
         description: >
-          CIC névtér — fordított domain vagy cic: prefix konvencióval.
-          Pl. cic:network, cic:kubernetes, cic:compute, cic:storage.
-          A kind-dal együtt globálisan egyedi típusazonosítót ad.
+          CIC namespace — reverse domain or cic: prefix convention.
+          E.g. cic:network, cic:kubernetes, cic:compute, cic:storage.
+          Together with kind, provides a globally unique type identifier.
         mandatory: true
 
       version:
         type: string
         description: >
-          Az Identity verziója — szemantikus verziózás.
-          A séma változásakor inkrementálódik, nem az entitás példány verziója.
+          Identity version — semantic versioning.
+          Incremented when the schema changes, not when entity instances change.
         pattern: "^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(\\.dev)?$"
         mandatory: true
 
       base:
         type: reference
         description: >
-          Örökítési lánc — melyik Identity-ből specializálódik ez a típus.
-          Több szintű örökítés lehetséges: KubernetesPod → ManagedEntity.
-          Ha nincs megadva: ez egy gyökér Identity (pl. maga a ManagedEntity).
+          Inheritance chain — which Identity this type specializes from.
+          Multi-level inheritance is supported: KubernetesPod → ManagedEntity.
+          If absent: this is a root Identity (e.g. ManagedEntity itself).
         optional: true
         example: "cic:ManagedEntity"
 
@@ -58,22 +58,22 @@ spec:
         type: boolean
         default: false
         description: >
-          Ha true, ez az Identity nem példányosítható közvetlenül — csak
-          alapként szolgálhat más Identity-k számára. Pl. ManagedEntity abstract.
+          If true, this Identity cannot be instantiated directly — it may only
+          serve as a base for other Identities. E.g. ManagedEntity is abstract.
 
       description:
         type: string
-        description: Mit képvisel ez a típus a domain-ben
+        description: What this type represents in the domain
         optional: true
 
   inheritance_rules:
     description: >
-      Az Identity örökítés szabályai — hogyan terjed a szemantika a chain mentén.
+      Rules for Identity inheritance — how semantics propagate along the chain.
     rules:
-      - A leszármazott megörökli az alap aggregate surface-eit (ConfigSurface, StateSurface, stb.)
-      - A leszármazott szűkítheti (sealed) vagy bővítheti (required/defaulted) az alap slot-jait
-      - Az örökítési lánc mentén minden szint validálható önállóan
-      - Körkörös örökítés tiltott
+      - A derived type inherits the aggregate surfaces of its base (ConfigSurface, StateSurface, etc.)
+      - A derived type may narrow (sealed) or extend (required/defaulted) the base slots
+      - Every level of the inheritance chain is independently validatable
+      - Circular inheritance is forbidden
 
   examples:
     managed_entity:
@@ -99,8 +99,8 @@ spec:
       identity: "identity <kind> { base <base>; }"
       identityref: "type identityref { base <kind>; }"
       note: >
-        A YANG identity csak névteret és örökítést ír le — a CIC Identity ennél
-        több: verziózott és aggregate surface-öket hordoz.
+        YANG identity only describes namespace and inheritance — CIC Identity
+        adds versioning and carries aggregate surfaces.
     api:
       note: Identity → OpenAPI discriminator / x-cic-kind extension
     runtime:

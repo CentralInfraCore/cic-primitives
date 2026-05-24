@@ -3,8 +3,8 @@ metadata:
   name: StateSurface
   version: v0.0.dev
   description: >
-    A csak olvasható, aktuális állapot felülete egy ManagedEntity-n.
-    Az adapter tölti fel — ez mutatja meg mi van ténylegesen a rendszerben.
+    The read-only observed-state surface of a ManagedEntity.
+    Populated by the adapter — shows what is actually present in the system.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -32,8 +32,8 @@ spec:
       atomic_ref: schemas/atomic/shape.yaml
       shape_type: composite
       description: >
-        A state fa gyökere — Shape(composite) típusú konténer, config false.
-        Nem módosítható — struktúra egységes a teljes CIC-ben.
+        Root of the state tree — Shape(composite) container, config false.
+        Not overridable — structure is uniform across the entire CIC.
 
     nodes:
       mode: required
@@ -42,9 +42,9 @@ spec:
       role_constraint: [state, operational, derived, volatile]
       role_ref: schemas/atomic/role.yaml
       description: >
-        Az observable mezők listája — Shape atomok, Role(state|operational|derived|volatile)
-        megszorítással. Role(config) itt tiltott — state surface nem tartalmaz írható mezőt.
-        Leszármazottban kötelezően specializálandó.
+        The observable fields — Shape atoms with Role(state|operational|derived|volatile) constraint.
+        Role(config) is forbidden here — state surface contains no writable fields.
+        Must be specialised in derived types.
 
     freshness:
       mode: defaulted
@@ -53,28 +53,28 @@ spec:
         ttl: 60s
         strategy: polling
       description: >
-        Mennyi ideig érvényes az observed state és hogyan frissül.
-        Stratégiák: polling | streaming | event-driven | push.
-        Nem atomic primitive — adapter-szintű konfiguráció.
+        How long the observed state is valid and how it is refreshed.
+        Strategies: polling | streaming | event-driven | push.
+        Not an atomic primitive — adapter-level configuration.
 
     source:
       mode: required
       type: TBD
       description: >
-        Ki tölti fel ezt a state surface-t. Adapter referencia — kötelező megadni.
-        Például: kubernetes-adapter, snmp-adapter, mock-adapter.
-        Jövőbeli atomic: AdapterRef (BindingSurface scope-ban definiálandó).
+        Who populates this state surface. Adapter reference — must be specified.
+        Examples: kubernetes-adapter, snmp-adapter, mock-adapter.
+        Future atomic: AdapterRef (to be defined in BindingSurface scope).
 
   semantic_mapping:
     yang:
       construct: container
       name: state
       flag: "config false"
-      note: minden child node config false — nem írható NETCONF/RESTCONF-on keresztül
+      note: every child node is config false — not writable via NETCONF/RESTCONF
     api:
       methods: [GET]
       path: "/{resource}/state"
-      note: csak olvasható — PUT/PATCH/DELETE nem engedélyezett
+      note: read-only — PUT/PATCH/DELETE not permitted
     runtime:
       role: observed-state-store
-      note: az adapter írja, a reconciler olvassa a drift számításhoz
+      note: written by the adapter, read by the reconciler for drift calculation

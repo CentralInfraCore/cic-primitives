@@ -3,8 +3,8 @@ metadata:
   name: ConfigSurface
   version: v0.0.dev
   description: >
-    Az írható, kívánt állapot felülete egy ManagedEntity-n.
-    Minden config változás ezen a felületen keresztül érkezik — ez a desired state konténere.
+    The writable desired-state surface of a ManagedEntity.
+    All configuration changes arrive through this surface — it is the desired state container.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -32,8 +32,8 @@ spec:
       atomic_ref: schemas/atomic/shape.yaml
       shape_type: composite
       description: >
-        A config fa gyökere — Shape(composite) típusú konténer.
-        Nem módosítható leszármazottban, struktúra egységes a teljes CIC-ben.
+        Root of the config tree — Shape(composite) container.
+        Not overridable in derived types; structure is uniform across the entire CIC.
 
     nodes:
       mode: required
@@ -42,8 +42,8 @@ spec:
       role_constraint: config
       role_ref: schemas/atomic/role.yaml
       description: >
-        A konkrét config mezők listája — Shape atomok, Role(config) megszorítással.
-        Minden node írható desired state mező. Leszármazottban kötelezően specializálandó.
+        The concrete config fields — Shape atoms with Role(config) constraint.
+        Every node is a writable desired-state field. Must be specialised in derived types.
 
     validation:
       mode: defaulted
@@ -51,28 +51,28 @@ spec:
       atomic_ref: schemas/atomic/contract.yaml
       default: []
       description: >
-        Kényszerfeltételek listája amelyek a config alkalmazása előtt ellenőrizendők.
-        Contract típusok: range, pattern, must, when, enum, mandatory, unique.
+        Constraints verified before the configuration is applied.
+        Contract types: range, pattern, must, when, enum, mandatory, unique.
 
     access:
       mode: defaulted
       type: TBD
       default: inherit
       description: >
-        Írási policy referencia — ki módosíthatja ezt a config surface-t.
-        Alapértelmezés szerint az entitás szülőjétől örökli.
-        Jövőbeli PolicyRef aggregate — az Access atom (8. atom) alapján.
+        Write policy reference — who may modify this config surface.
+        Defaults to inherited from the entity's parent.
+        Future: PolicyRef aggregate based on the Access atom (atom 8).
 
   semantic_mapping:
     yang:
       construct: container
       name: config
       flag: "config true"
-      note: minden leaf/container child config true-ként jelenik meg
+      note: every leaf/container child appears as config true
     api:
       methods: [PUT, PATCH]
       path: "/{resource}/config"
-      note: teljes csere PUT, részleges módosítás PATCH
+      note: full replacement via PUT, partial modification via PATCH
     runtime:
       role: desired-state-store
-      note: ez az az állapot amelyre a reconciler törekszik
+      note: this is the state the reconciler converges toward

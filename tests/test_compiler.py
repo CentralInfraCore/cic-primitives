@@ -175,7 +175,7 @@ def test_domain_check_sealed_override(mocker, tmp_path):
             "identity": {},
             "config_surface": {},
             "state_surface": {},
-            "lifecycle": {},   # ← sealed — nem szabad felülírni
+            "lifecycle": {},   # ← sealed slot — must not be overridden
         }
     }))
     me_file = tmp_path / "managed-entity.yaml"
@@ -195,7 +195,7 @@ def test_domain_check_required_missing(mocker, tmp_path):
             "kind": "DomainComposition",
             "base": {"ref": str(tmp_path / "managed-entity.yaml")},
             "identity": {},
-            # config_surface hiányzik — required
+            # config_surface missing — required slot
         }
     }))
     me_file = tmp_path / "managed-entity.yaml"
@@ -750,7 +750,7 @@ def test_verify_release_nonexistent_source_path_no_crash(mocker, tmp_path):
 # ── verify-release — schema validation failure ────────────────────────────────
 
 def test_verify_release_schema_validation_failure(mocker, tmp_path):
-    bad_bundle = {"kind": "PrimitiveRelease", "version": "0.0.1"}  # hiányos
+    bad_bundle = {"kind": "PrimitiveRelease", "version": "0.0.1"}  # incomplete — missing specs
     p = tmp_path / "bad.yaml"
     p.write_text(yaml.dump(bad_bundle))
     mocker.patch("os.path.isfile", return_value=True)

@@ -3,9 +3,9 @@ metadata:
   name: Behavior
   version: v0.0.dev
   description: >
-    Egy entitáson végrehajtható műveletet leíró atomic primitive.
-    A Behavior mondja meg milyen interakciók lehetségesek a management plane és az entitás között
-    a config/state read-write-on túl. Az OperationSurface.operations Behavior-okból áll.
+    Atomic primitive describing an executable operation on an entity.
+    Behavior defines what interactions are possible between the management plane and the entity
+    beyond config/state read-write. OperationSurface.operations is composed of Behaviors.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -21,31 +21,31 @@ spec:
   types:
     rpc:
       description: >
-        Kérés/válasz — entitástól független, top-level művelet.
-        Nincs erős kötése egyetlen példányhoz sem. Pl. validate-config, ping, dry-run.
+        Request/response — entity-independent, top-level operation.
+        Not bound to any specific instance. E.g. validate-config, ping, dry-run.
       yang_mapping: top-level rpc statement
-      api_mapping: "POST /operations/{name} (nem resource-specifikus path)"
-      runtime_mapping: global handler, nincs instance context
+      api_mapping: "POST /operations/{name} (not resource-specific path)"
+      runtime_mapping: global handler, no instance context
       properties:
         synchronous: true
         stateful: false
 
     action:
       description: >
-        Entitáshoz kötött, állapotot módosító művelet. Az adott példányon fut.
-        Pl. restart, drain, flush-cache, force-reconcile.
+        Entity-bound, state-modifying operation. Runs on the specific instance.
+        E.g. restart, drain, flush-cache, force-reconcile.
       yang_mapping: action statement inside container/list
       api_mapping: "POST /{resource}/{id}/operations/{name}"
-      runtime_mapping: instance-bound handler, van entity context
+      runtime_mapping: instance-bound handler, has entity context
       properties:
         synchronous: varies
         stateful: true
 
     operation:
       description: >
-        Magasabb szintű lifecycle-hoz kötött művelet — tipikusan több lépésből áll,
-        orchestrált végrehajtással. Pl. migrate, scale, upgrade, backup/restore.
-      yang_mapping: action statement — de orchestration layer kezeli
+        Higher-level lifecycle-bound operation — typically multi-step with
+        orchestrated execution. E.g. migrate, scale, upgrade, backup/restore.
+      yang_mapping: action statement — but handled by orchestration layer
       api_mapping: "POST /{resource}/{id}/operations/{name} → async job"
       runtime_mapping: workflow engine / long-running job
       properties:
@@ -54,42 +54,42 @@ spec:
         returns: job-reference
 
   fields:
-    description: Egy Behavior definíciójának kötelező és opcionális mezői
+    description: Required and optional fields of a Behavior definition
     properties:
       name:
         type: string
-        description: A művelet neve — igés forma ajánlott (restart, drain, validate)
+        description: Operation name — verb form recommended (restart, drain, validate)
       type:
         type: string
         enum: [rpc, action, operation]
-        description: A behavior típusa (lásd types fent)
+        description: Behavior type (see types above)
       input:
         type: reference
         description: >
-          A bemeneti paraméterek sémája — Shape referencia vagy inline Shape.
-          Lehet üres ha a műveletnek nincs paramétere.
+          Input parameter schema — Shape reference or inline Shape.
+          May be empty if the operation takes no parameters.
         optional: true
       output:
         type: reference
         description: >
-          A kimeneti struktúra sémája — Shape referencia vagy inline Shape.
-          Lehet üres ha a művelet nem ad vissza adatot.
+          Output structure schema — Shape reference or inline Shape.
+          May be empty if the operation returns no data.
         optional: true
       idempotent:
         type: boolean
         default: false
         description: >
-          Ha true, a művelet többszöri végrehajtása ugyanazt az eredményt adja.
-          Hatással van a retry logikára és az audit értelmezésére.
+          If true, executing the operation multiple times produces the same result.
+          Affects retry logic and audit interpretation.
       description:
         type: string
-        description: A művelet célja és mellékhatásai
+        description: Purpose and side-effects of the operation
 
   semantic_mapping:
     yang:
       rpc: "rpc <name> { input { ... } output { ... } }"
       action: "action <name> { input { ... } output { ... } }"
     api:
-      note: minden Behavior POST végpontként jelenik meg — nincs idempotens HTTP verb
+      note: every Behavior is exposed as a POST endpoint — no idempotent HTTP verb mapping
     runtime:
-      note: a dispatcher a type alapján választ sync/async handler-t
+      note: the dispatcher selects sync/async handler based on type

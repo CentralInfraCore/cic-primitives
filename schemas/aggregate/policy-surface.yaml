@@ -3,10 +3,10 @@ metadata:
   name: PolicySurface
   version: v0.0.dev
   description: >
-    Objektum-szintű alapértelmezett jogosultsági szabályok aggregate-je.
-    Az Access atom field-szintű wrapper `inherit: true` esetén innen veszi az alapértéket.
-    Ha egy ManagedEntity-n nincs PolicySurface, a runtime minden mezőt elérhetővé tesz
-    (backward compatible default).
+    Aggregate of object-level default access control rules.
+    The Access atom's field-level wrapper uses this as the default when inherit: true.
+    If a ManagedEntity has no PolicySurface, the runtime makes every field accessible
+    (backward compatible open default).
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -32,8 +32,8 @@ spec:
       atomic_ref: schemas/atomic/access.yaml
       default: open
       description: >
-        Ki olvashat bármely mezőt ezen az objektumon — hacsak az Access atom
-        field szinten felül nem írja. `open` = mindenki olvashatja (default).
+        Who may read any field on this object — unless the Access atom overrides
+        at field level. `open` = anyone may read (default).
 
     default_modify:
       mode: defaulted
@@ -41,35 +41,35 @@ spec:
       atomic_ref: schemas/atomic/access.yaml
       default: owner
       description: >
-        Ki írhat bármely config mezőt ezen az objektumon — hacsak az Access atom
-        field szinten felül nem írja. `owner` = az objektum tulajdonosa írhatja.
+        Who may write any config field on this object — unless the Access atom overrides
+        at field level. `owner` = the object's owner may write.
 
     surface_rules:
       mode: defaulted
       type: "SurfaceRule[]"
       default: empty
       description: >
-        Surface-szintű szabályok — finomabb granularitás az egész objektum default-jánál,
-        de durvább a field-szintű Access atomnál.
-        Pl.: config_surface egészére más szabály mint a state_surface-re.
-        Struktúra: {surface: config_surface|state_surface|..., access: [...], modify: [...]}
+        Surface-level rules — finer granularity than the whole-object default,
+        coarser than field-level Access atom.
+        E.g. different rules for config_surface vs state_surface.
+        Structure: {surface: config_surface|state_surface|..., access: [...], modify: [...]}
 
     inherit_policy:
       mode: defaulted
       type: boolean
       default: true
       description: >
-        Ha true: sub-objektumok öröklik ezt a PolicySurface-t.
-        Ha false: sub-objektumok saját PolicySurface-t definiálnak.
-        Ha 0: teljes reset — sub-objektum PolicySurface-e nulláról épül.
+        If true: sub-objects inherit this PolicySurface.
+        If false: sub-objects define their own PolicySurface.
+        If 0: full reset — sub-object's PolicySurface is built from scratch.
 
   semantic_mapping:
     runtime:
       evaluation_order: >
-        1. field-szintű Access atom (legmagasabb prioritás)
-        2. surface_rules (surface-szintű override)
-        3. default_access / default_modify (objektum-szintű default)
-        4. örökölt PolicySurface szülő objektumból (ha inherit_policy: true)
+        1. field-level Access atom (highest priority)
+        2. surface_rules (surface-level override)
+        3. default_access / default_modify (object-level default)
+        4. inherited PolicySurface from parent object (if inherit_policy: true)
       miss_behavior: >
-        Ha nincs PolicySurface az objektumon és a szülőtől sem örökölhető:
-        minden mező elérhető (open default) — backward compatible.
+        If the object has no PolicySurface and none can be inherited from parent:
+        all fields are accessible (open default) — backward compatible.

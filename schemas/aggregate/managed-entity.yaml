@@ -3,9 +3,9 @@ metadata:
   name: ManagedEntity
   version: v0.0.dev
   description: >
-    A CIC alap kompozíciós egysége — minden domain objektum ebből specializálódik.
-    Nem önálló objektum: ez a szemantikai contract amelyre switch interface, kubernetes pod,
-    database, service és bármi más ráül. Az objektum mindig következmény, soha nem kiindulópont.
+    The base compositional unit of CIC — every domain object specializes from this.
+    Not a standalone object: it is the semantic contract on which switch interfaces, kubernetes pods,
+    databases, services, and anything else are built. The object is always a consequence, never a starting point.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -30,7 +30,7 @@ spec:
       used_by: [notification_surface]
     - atomic: Access
       ref: schemas/atomic/access.yaml
-      used_by: [policy_surface, minden field értéke implicit]
+      used_by: [policy_surface, implicit on every field value]
 
   aggregate_dependencies:
     - aggregate: ConfigSurface
@@ -52,24 +52,24 @@ spec:
       type: Identity
       atomic_ref: schemas/atomic/identity.yaml
       description: >
-        Típusazonosság — Identity atom. Meghatározza mi ez az entitás a CIC-ben.
-        Komponensek: kind, namespace, version, base (örökíthető Identity chain).
+        Type identity — Identity atom. Defines what this entity is within CIC.
+        Components: kind, namespace, version, base (inheritable Identity chain).
 
     config_surface:
       mode: required
       type: ConfigSurface
       aggregate_ref: schemas/aggregate/config-surface.yaml
       description: >
-        Az írható, kívánt állapot felülete. Kötelező — minden ManagedEntity-nek
-        van konfigurálható állapota.
+        The writable desired-state surface. Required — every ManagedEntity
+        has a configurable state.
 
     state_surface:
       mode: required
       type: StateSurface
       aggregate_ref: schemas/aggregate/state-surface.yaml
       description: >
-        A csak olvasható, aktuális állapot felülete. Kötelező — minden ManagedEntity-nek
-        van lekérdezhető aktuális állapota.
+        The read-only observed-state surface. Required — every ManagedEntity
+        has a queryable current state.
 
     operation_surface:
       mode: defaulted
@@ -77,19 +77,19 @@ spec:
       aggregate_ref: schemas/aggregate/operation-surface.yaml
       default: empty
       description: >
-        A végrehajtható műveletek felülete. Lehet üres — nem minden entitásnak vannak
-        explicit műveletei (pl. egy egyszerű config node-nak nincs restart-ja).
+        The executable operations surface. May be empty — not every entity has
+        explicit operations (e.g. a simple config node has no restart).
 
     notification_surface:
       mode: defaulted
       type: "Event[]"
       status: placeholder
-      blocked_by: NotificationSurface aggregate (nincs modell — notification routing előfeltétel)
+      blocked_by: NotificationSurface aggregate (no model yet — notification routing prerequisite)
       atomic_ref: schemas/atomic/event.yaml
       default: empty
       description: >
-        Az aszinkron jelzések felülete — Event atomok listája.
-        Lehet üres. Formális NotificationSurface aggregate notification routing modell után.
+        The asynchronous notifications surface — list of Event atoms.
+        May be empty. Formal NotificationSurface aggregate follows the notification routing model.
 
     policy_surface:
       mode: defaulted
@@ -97,26 +97,26 @@ spec:
       aggregate_ref: schemas/aggregate/policy-surface.yaml
       default: open
       description: >
-        Objektum-szintű alapértelmezett jogosultsági szabályok.
-        Az Access atom field-szintű wrapper `inherit: true` esetén innen veszi az alapértéket.
-        Ha hiányzik: minden mező elérhető (open default — backward compatible).
-        Kiértékelési sorrend: field Access → surface_rules → default_access/modify → örökölt.
+        Object-level default access control rules.
+        The Access atom's field-level wrapper uses this as the default when inherit: true.
+        If missing: all fields are accessible (open default — backward compatible).
+        Evaluation order: field Access → surface_rules → default_access/modify → inherited.
 
     capability_surface:
       mode: defaulted
       type: TBD
       status: placeholder
-      blocked_by: CapabilitySurface aggregate (nincs modell — Relay capability deklaráció rendszer előfeltétel)
+      blocked_by: CapabilitySurface aggregate (no model yet — Relay capability declaration system prerequisite)
       default: inherit
       description: >
-        Mit tud ez az entitás — feature flags, supported operations, protocol versions.
-        Formális CapabilitySurface aggregate a Relay capability modell után.
+        What this entity can do — feature flags, supported operations, protocol versions.
+        Formal CapabilitySurface aggregate follows the Relay capability model.
 
     lifecycle_surface:
       mode: sealed
       type: TBD
       status: placeholder
-      blocked_by: LifecycleSurface aggregate (nincs modell — Relay execution modell előfeltétel)
+      blocked_by: LifecycleSurface aggregate (no model yet — Relay execution model prerequisite)
       states: [create, active, degraded, terminating, terminated]
       transitions:
         create: [active]
@@ -124,27 +124,27 @@ spec:
         degraded: [active, terminating]
         terminating: [terminated]
       description: >
-        Lifecycle állapotgép — minden ManagedEntity-nek van életciklusa, nem elhagyható.
-        Formális LifecycleSurface aggregate a Relay execution modell után.
+        Lifecycle state machine — every ManagedEntity has a lifecycle, non-optional.
+        Formal LifecycleSurface aggregate follows the Relay execution model.
 
     binding_surface:
       mode: required
       type: "Address[]"
       atomic_ref: schemas/atomic/address.yaml
       description: >
-        Legalább egy Address atom kötelező — hogyan érhető el ez az entitás.
-        Address rétegek: schema_path, api_path, logical_id.
-        Jövőbeli BindingSurface aggregate köré burkolja az adapter referenciát is.
+        At least one Address atom is required — how this entity is reachable.
+        Address layers: schema_path, api_path, logical_id.
+        A future BindingSurface aggregate will also wrap the adapter reference.
 
   semantic_mapping:
     yang:
       construct: container
       note: >
-        A ManagedEntity egy YANG container-ré fordul. Benne:
+        ManagedEntity maps to a YANG container. Inside:
         config_surface → container config { ... }
         state_surface  → container state { config false; ... }
-        operation_surface → rpc/action definíciók
-        notification_surface → notification definíciók
+        operation_surface → rpc/action definitions
+        notification_surface → notification definitions
     api:
       base_path: "/{resource-type}/{resource-id}"
       endpoints:
@@ -158,5 +158,5 @@ spec:
     runtime:
       role: reconcile-loop-entry
       note: >
-        A reconciler minden ManagedEntity-re: observe state_surface →
-        compare config_surface → ha drift → execute operation vagy direkt apply.
+        For every ManagedEntity, the reconciler: observe state_surface →
+        compare config_surface → if drift → execute operation or direct apply.
