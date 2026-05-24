@@ -58,7 +58,7 @@ Amíg ez a négy pont nincs meg, ne tegyél tényállításokat a primitive mode
 | `project.yaml` | **defined** | `x-cic.repo_type: primitive` |
 | `schemas/` struktúra | **defined** | atomic/ + aggregate/ + index.yaml |
 | aggregate skeletonök | **defined** | ConfigSurface, StateSurface, OperationSurface, ManagedEntity |
-| atomic layer (7 atom) | **defined** | Shape, Role, Behavior, Contract, Address, Identity, Event |
+| atomic layer (8 atom) | **defined** | Shape, Role, Behavior, Contract, Address, Identity, Event, Access |
 | aggregate completion | **defined** | atomic ref-ek bekötve |
 | domain példa | **defined** | `schemas/examples/kubernetes-pod.yaml` |
 | `make validate` zöld | **defined** | Docker-alapú tooling, Vault nélkül is fut |
@@ -70,7 +70,7 @@ Amíg ez a négy pont nincs meg, ne tegyél tényállításokat a primitive mode
 
 ```
 atomic primitive   = irreducibilis szemantikai atom
-                     Shape · Role · Behavior · Contract · Address · Identity · Event
+                     Shape · Role · Behavior · Contract · Address · Identity · Event · Access
                    → ezekből schema fragment generálható
 
 aggregate primitive = szemantikai kompozíció sealed/defaulted/required slot-okkal

@@ -23,7 +23,7 @@ A primitív modell ezt akadályozza meg.
 Primitív = **irreducibilis szemantikai atom** — ami nem bontható tovább
 anélkül, hogy infrastruktúra-menedzsment szemantikát veszítene.
 
-Pontosan 7 atomi primitív van:
+Pontosan 8 atomi primitív van:
 
 | Atom | Mit ragad meg |
 |---|---|
@@ -34,6 +34,7 @@ Pontosan 7 atomi primitív van:
 | **Address** | Hogyan érhető el az entitás |
 | **Identity** | Mi az (típusazonosság, nem példányazonosság) |
 | **Event** | Milyen aszinkron jelzéseket tud kibocsátani |
+| **Access** | Ki olvashatja, ki írhatja — cert-alapú identity (D-011) |
 
 Ezek nem YANG fogalmak, nem RESTCONF fogalmak — ezek az a szemantikai réteg,
 amely *alatt* minden konkrét sémanyelv van.

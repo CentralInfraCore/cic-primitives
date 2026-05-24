@@ -61,7 +61,7 @@ spec:
       description: >
         Írási policy referencia — ki módosíthatja ezt a config surface-t.
         Alapértelmezés szerint az entitás szülőjétől örökli.
-        Jövőbeli atomic: PolicyRef (nem része az első 7 atomnak).
+        Jövőbeli PolicyRef aggregate — az Access atom (8. atom) alapján.
 
   semantic_mapping:
     yang:

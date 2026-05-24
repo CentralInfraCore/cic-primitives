@@ -82,7 +82,7 @@ Ha nem tudod fájl-szinten alátámasztani: ne mondd `defined`-nak.
 |---|---|---|
 | Sealed slot felülírása DomainComposition-ben | compiler.py elkapja, de séma inkonzisztens | D-005 olvasása |
 | `make validate` nélküli commit | rejtett séma törés | hook + fegyelem |
-| Új fogalom bevezetése meglévő helyett | fragmentált modell | D-003: 7 atom végleges |
+| Új fogalom bevezetése meglévő helyett | fragmentált modell | D-003: 8 atom végleges |
 | Domain objektumból kiindulás (Pod, Switch) | aggregate helyett instance-t tervezel | D-002 |
 | `TBD` típus döntés nélküli kitöltése | D-008 merge stratégia nyitott | megkérdezni |
 

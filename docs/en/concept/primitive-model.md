@@ -22,7 +22,7 @@ The primitive model exists to prevent this.
 A primitive is an **irreducible semantic atom** — something that cannot be broken down
 further without losing infrastructure management meaning.
 
-There are exactly 7 atomic primitives:
+There are exactly 8 atomic primitives:
 
 | Atom | What it captures |
 |---|---|
@@ -33,6 +33,7 @@ There are exactly 7 atomic primitives:
 | **Address** | How the entity is reachable |
 | **Identity** | What it is (type identity, not instance identity) |
 | **Event** | What async signals it can emit |
+| **Access** | Who can read, who can write — cert-based identity (D-011) |
 
 These are not YANG concepts, not RESTCONF concepts — they are the semantic layer
 *beneath* any specific schema language.

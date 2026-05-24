@@ -4,6 +4,6 @@ entrypoint: true
 related_nodes: []
 used_in: []
 description: |
-  Why the primitive layer exists: the schema proliferation problem, 7 atomic
+  Why the primitive layer exists: the schema proliferation problem, 8 atomic
   primitives, sealed/defaulted/required slot contract, git-based composition,
   the three closure questions.

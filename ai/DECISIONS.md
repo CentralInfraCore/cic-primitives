@@ -34,9 +34,12 @@ Az aggregate adja a rendszer jelentését. Az atomic csak a backend részlet.
 
 ---
 
-## D-003 — 7 atom mint irreducibilis szint (2026-04-30)
+## D-003 — 8 atom mint irreducibilis szint (2026-04-30, bővítve 2026-05-04)
 
-**Döntés:** Shape, Role, Behavior, Contract, Address, Identity, Event — ez a 7 atom.
+**Döntés:** Shape, Role, Behavior, Contract, Address, Identity, Event, Access — ez a 8 atom.
+
+Az Access (D-011) a 8. irreducibilis atom: value-szintű jogosultsági burok, ortogonális
+a Role atomhoz. Minden Shape értéken implicit jelen van.
 
 **Miért:** Ezek nem YANG fogalmak, nem RESTCONF fogalmak — ezek a menedzsment-szemantika
 irreducibilis atomjai. YANG, RESTCONF, OpenAPI mind ezek egyik kifejezési módja.

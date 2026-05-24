@@ -4,5 +4,5 @@ entrypoint: true
 related_nodes: []
 used_in: []
 description: |
-  Miért létezik a primitív réteg: a sémaproliferáció probléma, 7 atomi primitív,
+  Miért létezik a primitív réteg: a sémaproliferáció probléma, 8 atomi primitív,
   sealed/defaulted/required slot contract, git-alapú kompozíció, a három lezárási kérdés.

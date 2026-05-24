@@ -14,7 +14,7 @@ Nem domain modell. Nem IaC tool. Nem YANG leíró.
 
 | Szint | Mit képvisel | Hol van |
 |---|---|---|
-| **atomic primitive** | 7 irreducibilis atom — Shape, Role, Behavior, Contract, Address, Identity, Event | `schemas/atomic/` |
+| **atomic primitive** | 8 irreducibilis atom — Shape, Role, Behavior, Contract, Address, Identity, Event, Access | `schemas/atomic/` |
 | **aggregate primitive** | Kompozíció sealed/defaulted/required slot-okkal | `schemas/aggregate/` |
 
 A domain objektum mindig következmény, soha nem kiindulópont.

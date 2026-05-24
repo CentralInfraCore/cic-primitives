@@ -3,7 +3,7 @@
 ## 1 perc alatt
 
 - **Mi ez:** CIC Primitives — a meta-séma réteg. Nem domain modell, nem IaC tool.
-- **Két szint:** atomic (7 atom) + aggregate (szemantikai kompozíció)
+- **Két szint:** atomic (8 atom) + aggregate (szemantikai kompozíció)
 - **Kompozíció:** git remote merge — nem YAML override rules
 - **Státusz:** minden concept/draft, git bootstrap előtt
 - **Mérce:** `make validate` — ha nem zöld, semmi sem kész
@@ -14,7 +14,7 @@
 2. Olvasd: `ai/SYSTEM_CONTEXT.md`
 3. Nézd: `ai/PROMPTMAP.yaml` — mi a következő konkrét lépés
 
-## A 7 atom (nem bontható tovább)
+## A 8 atom (nem bontható tovább)
 
 | Atom | Kérdés amire válaszol |
 |---|---|
@@ -25,6 +25,7 @@
 | Address | Hogyan érhető el? |
 | Identity | Mi az (típus szinten)? |
 | Event | Milyen async jelzést bocsát ki? |
+| Access | Ki olvashatja, ki írhatja — cert-alapú identity? |
 
 ## Aggregate = kompozíció, nem örökség
 

@@ -156,7 +156,7 @@ Phase 1–7 végrehajtva. A repo első signed release-szel lezárt.
 | `project.yaml` | **defined** |
 | `schemas/` struktúra | **defined** |
 | aggregate skeletonök (4 db) | **defined** |
-| atomic layer (7 atom) | **defined** |
+| atomic layer (8 atom) | **defined** |
 | aggregate completion (atomic ref-ek) | **defined** |
 | domain példa (`schemas/examples/kubernetes-pod.yaml`) | **defined** |
 | `make validate` zöld | **defined** |
