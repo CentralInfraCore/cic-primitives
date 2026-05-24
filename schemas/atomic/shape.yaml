@@ -38,9 +38,10 @@ spec:
         note: a cél node-nak léteznie kell a sémában
         subtypes:
           leafref: intra-schema referencia — a cél ugyanabban a sémában él
-          cic-reference: cross-domain CIC objektum referencia — más domain logical_id-jére mutat
-                         formátum: "cic:{domain}:{backend}:{provider}:{location}:{id}"
-                         a reference_target mező jelzi a célzott Kind-ot
+          cic-reference: >
+            cross-domain CIC objektum referencia — más domain logical_id-jére mutat.
+            Formátum: cic:{domain}:{backend}:{provider}:{location}:{id}.
+            A reference_target mező jelzi a célzott Kind-ot.
       choice:
         description: Kizáró alternatívák — pontosan egy aktív (YANG choice/case)
 
