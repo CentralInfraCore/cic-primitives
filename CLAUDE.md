@@ -1,5 +1,16 @@
 # CIC Primitives — Claude kontextus
 
+## Branch szabály — KÖTELEZŐ
+
+**Érdemi fejlesztés kizárólag a `devel` ágon történhet.**
+
+- `main` — csak merge fogad (devel → main), közvetlen commit tilos
+- `primitives/releases/v*` — kizárólag release tag célra
+- `devel` — ez az aktív fejlesztési ág
+
+Ha nem `devel`-en vagyunk: figyelmeztetés, és átváltás `devel`-re mielőtt bármilyen
+schema, kód vagy dokumentáció változtatás történik.
+
 ## Mi ez a rendszer
 
 A `cic-primitives` a CentralInfraCore **meta-séma rétege** — az a szint, amelyből
