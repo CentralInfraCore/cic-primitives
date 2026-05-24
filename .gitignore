@@ -35,3 +35,5 @@ dist/
 
 # AI thread exports
 primitive.txt
+.mutmut-cache
+mutants/
