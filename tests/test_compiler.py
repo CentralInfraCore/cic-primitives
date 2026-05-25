@@ -374,18 +374,28 @@ def _sign_hash(private_key, content_hash_b64):
     return "vault:v1:" + base64.b64encode(sig_bytes).decode()
 
 
-def _make_valid_bundle(specs=None, private_key=None, cert_pem=None):
+def _make_valid_bundle(specs=None, private_key=None, cert_pem=None,
+                       release_private_key=None, release_cert_pem=None):
     """Builds a PrimitiveRelease bundle with a real ECDSA signature."""
     if private_key is None or cert_pem is None:
         private_key, cert_pem = _make_test_key_and_cert()
+    if release_private_key is None or release_cert_pem is None:
+        release_private_key, release_cert_pem = _make_test_key_and_cert()
     if specs is None:
         specs = [{"id": "shape", "source_path": "schemas/atomic/shape.yaml",
                   "meta_hash": "abc", "spec": {"kind": "AtomicPrimitive"}}]
     validity = {"from": "2026-01-01", "until": "2099-01-01"}
     created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": cert_pem}
-    hash_payload = {"createdBy": created_by, "specs": specs, "validity": validity}
-    content_hash = compiler.get_sha256_b64(compiler.to_canonical_json(hash_payload))
-    signature = _sign_hash(private_key, content_hash)
+    release_created_by = {"name": "Test Releaser", "email": "releaser@example.com",
+                          "certificate": release_cert_pem}
+    hash_payload = {
+        "createdBy": created_by,
+        "releasedBy": release_created_by,
+        "specs": specs,
+        "validity": validity,
+    }
+    build_hash = compiler.get_sha256_b64(compiler.to_canonical_json(hash_payload))
+    signature = _sign_hash(release_private_key, build_hash)
     return {
         "kind": "PrimitiveRelease",
         "version": "0.1.5",
@@ -393,7 +403,11 @@ def _make_valid_bundle(specs=None, private_key=None, cert_pem=None):
         "validity": validity,
         "createdBy": created_by,
         "specs": specs,
-        "release": {"content_hash": content_hash, "sign": signature},
+        "release": {
+            "createdBy": release_created_by,
+            "build_hash": build_hash,
+            "sign": signature,
+        },
     }
 
 
@@ -418,7 +432,21 @@ def test_verify_release_missing_cert(mocker, tmp_path):
 
 def test_verify_release_hash_mismatch(mocker, tmp_path):
     bundle = _make_valid_bundle()
-    bundle["release"]["content_hash"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    bundle["release"]["build_hash"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_verify_release_bad_signature(mocker, tmp_path):
+    """A tampered signature (wrong key) must fail verification."""
+    bundle = _make_valid_bundle()
+    # Replace signature with one from a different key
+    other_key, _ = _make_test_key_and_cert()
+    bundle["release"]["sign"] = _sign_hash(other_key, bundle["release"]["build_hash"])
     artifact = tmp_path / "release.yaml"
     artifact.write_text(yaml.dump(bundle))
     mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
