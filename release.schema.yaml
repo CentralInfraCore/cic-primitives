@@ -45,7 +45,7 @@ properties:
 
   createdBy:
     type: object
-    description: "Developer identity block. The certificate is bound inside the content_hash before signing."
+    description: "Developer identity block. The certificate is bound inside the build_hash before signing."
     required:
       - name
       - email
@@ -60,7 +60,7 @@ properties:
         description: "Contact email of the developer."
       certificate:
         type: string
-        description: "PEM-encoded X.509 developer certificate (identity anchor, cryptographically bound to content_hash)."
+        description: "PEM-encoded X.509 developer certificate (identity anchor, cryptographically bound to build_hash)."
 
   specs:
     type: array
@@ -89,14 +89,33 @@ properties:
 
   release:
     type: object
-    description: "Cryptographic provenance block. content_hash is computed over canonical JSON of {createdBy, specs, validity} — the developer certificate is cryptographically bound inside the hash."
+    description: "Cryptographic provenance block. build_hash is computed over canonical JSON of {createdBy (developer), releasedBy (issuer), specs, validity} — both certificates are cryptographically bound before signing. Future: build_hash will become a Merkle tree root over CI artifact layers."
     required:
-      - content_hash
+      - createdBy
+      - build_hash
       - sign
     properties:
-      content_hash:
+      createdBy:
+        type: object
+        description: "Release issuer identity. Certificate is bound inside build_hash before Vault signs."
+        required:
+          - name
+          - email
+          - certificate
+        properties:
+          name:
+            type: string
+            description: "Full name of the release issuer."
+          email:
+            type: string
+            format: email
+            description: "Contact email of the release issuer."
+          certificate:
+            type: string
+            description: "PEM-encoded X.509 release issuer certificate (cryptographically bound to build_hash)."
+      build_hash:
         type: string
-        description: "SHA256 (base64) of canonical JSON (sorted keys, no whitespace) of {createdBy, specs, validity}. Tamper-proof seal including developer identity."
+        description: "SHA256 (base64) of canonical JSON of {createdBy (developer), releasedBy (issuer), specs, validity}. Tamper-proof seal over both identities and all schema content. Future: Merkle tree root."
       sign:
         type: string
-        description: "Vault Transit ECDSA signature over content_hash (prehashed=true)."
+        description: "Vault Transit ECDSA signature over build_hash (prehashed=true), verifiable with release.createdBy.certificate."

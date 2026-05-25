@@ -440,12 +440,34 @@ def run_release():
     validity = commitment['validity']
     created_by = commitment['createdBy']
 
-    # 2. Validate everything before building the artifact
+    # 2. Fetch release issuer certificate from Vault
+    full_config = load_project_config(full_config=True)
+    settings = full_config.get('compiler_settings', {})
+    project = full_config.get('project', {})
+    vault_key = settings.get('vault_key_name', 'cic-my-sign-key')
+    vault_cert_path = settings.get('vault_cert_path') or os.getenv('VAULT_CERT_PATH')
+    if not vault_cert_path:
+        print("[FATAL] vault_cert_path must be set in project.yaml or VAULT_CERT_PATH env.")
+        sys.exit(1)
+    print(f"--- Fetching release issuer certificate ({vault_cert_path}) ---")
+    release_cert_pem = _vault_get_cert(vault_addr, vault_token, vault_cert_path, verify_tls)
+    print("  \033[92m✓ Release certificate obtained.\033[0m")
+    release_owner_name = project.get('owner', '')
+    release_owner_email = settings.get('owner_email') or next(
+        (c['value'] for c in project.get('contacts', []) if c.get('type') == 'email'), ''
+    )
+    release_created_by = {
+        'name': release_owner_name,
+        'email': release_owner_email,
+        'certificate': release_cert_pem,
+    }
+
+    # 3. Validate everything before building the artifact
     run_validation()
     run_primitive_validation()
     run_domain_compatibility_check()
 
-    # 3. Collect schema files: atomic + aggregate, no examples, no index
+    # 4. Collect schema files: atomic + aggregate, no examples, no index
     source_dir = CONFIG.get('source_dir', 'schemas')
     all_files = glob.glob(os.path.join(source_dir, '**', '*.yaml'), recursive=True)
     schema_files = sorted([
@@ -458,7 +480,7 @@ def run_release():
 
     print(f"--- Building release bundle ({len(schema_files)} schemas) ---")
 
-    # 4. Build specs[] — per-schema hash over raw file bytes, inline content
+    # 5. Build specs[] — per-schema hash over raw file bytes, inline content
     specs = []
     for schema_file in schema_files:
         with open(schema_file, 'rb') as fh:
@@ -472,21 +494,25 @@ def run_release():
         })
         print(f"  - {schema_file}: {meta_hash[:16]}...")
 
-    # 5. Bundle content hash over canonical JSON of {specs, validity, createdBy}
-    #    The developer certificate is inside createdBy, so it is cryptographically
-    #    bound to the hash before Vault signs it.
-    hash_payload = {'createdBy': created_by, 'specs': specs, 'validity': validity}
-    content_hash = get_sha256_b64(to_canonical_json(hash_payload))
-    print(f"  - Bundle content hash: {content_hash[:16]}...")
+    # 6. Build hash: {createdBy (developer), release.createdBy (issuer), specs, validity}
+    #    Both certificates are cryptographically bound before Vault signs.
+    #    Future: this will become a Merkle tree root over CI artifact layers.
+    hash_payload = {
+        'createdBy': created_by,
+        'releasedBy': release_created_by,
+        'specs': specs,
+        'validity': validity,
+    }
+    build_hash = get_sha256_b64(to_canonical_json(hash_payload))
+    print(f"  - Build hash: {build_hash[:16]}...")
 
-    # 6. Sign via Vault Transit (one call for the entire bundle)
-    vault_key = CONFIG.get('vault_key_name', 'cic-my-sign-key')
+    # 7. Sign via Vault Transit (one call for the entire bundle)
     print(f"  - Signing with Vault key '{vault_key}'...")
-    signature = _vault_sign(content_hash, vault_addr, vault_token, vault_key, verify_tls)
+    signature = _vault_sign(build_hash, vault_addr, vault_token, vault_key, verify_tls)
     print("  \033[92m✓ Vault signature obtained.\033[0m")
 
-    # 7. Assemble and write the bundle artifact
-    project_name = load_project_config(full_config=True).get('project', {}).get('name', 'XXprimitivesXX')
+    # 8. Assemble and write the bundle artifact
+    project_name = full_config.get('project', {}).get('name', 'XXprimitivesXX')
     bundle = {
         'kind': 'PrimitiveRelease',
         'version': release_version,
@@ -495,7 +521,8 @@ def run_release():
         'createdBy': created_by,
         'specs': specs,
         'release': {
-            'content_hash': content_hash,
+            'createdBy': release_created_by,
+            'build_hash': build_hash,
             'sign': signature,
         },
     }
@@ -628,7 +655,7 @@ def run_domain_compatibility_check():
 
 
 def run_verify_release(artifact_path, strict=False):
-    """Verifies a PrimitiveRelease bundle: schema validation, content_hash, and meta_hash checks.
+    """Verifies a PrimitiveRelease bundle: schema validation, build_hash, and meta_hash checks.
 
     strict=True: meta_hash mismatches against local source files are a hard failure.
     strict=False (default): meta_hash mismatches are reported as warnings only.
@@ -668,12 +695,20 @@ def run_verify_release(artifact_path, strict=False):
 
     validity = bundle.get('validity')
     created_by = bundle.get('createdBy')
+    release_block = bundle.get('release', {})
+    release_created_by = release_block.get('createdBy', {})
 
     # Verify developer commitment fields
     if not created_by or not created_by.get('certificate'):
         print(f"  \033[91m✗ createdBy.certificate missing — bundle lacks developer commitment\033[0m")
         sys.exit(1)
-    print(f"  createdBy: {created_by.get('name')} <{created_by.get('email')}>")
+    print(f"  createdBy:  {created_by.get('name')} <{created_by.get('email')}>")
+
+    # Verify release issuer fields
+    if not release_created_by or not release_created_by.get('certificate'):
+        print(f"  \033[91m✗ release.createdBy.certificate missing — release issuer not bound\033[0m")
+        sys.exit(1)
+    print(f"  releasedBy: {release_created_by.get('name')} <{release_created_by.get('email')}>")
 
     if validity:
         today = datetime.datetime.now(datetime.timezone.utc).date()
@@ -686,20 +721,21 @@ def run_verify_release(artifact_path, strict=False):
     else:
         print(f"  \033[93m⚠ No validity block found in bundle\033[0m")
 
-    recorded_hash = bundle.get('release', {}).get('content_hash', '')
+    recorded_hash = release_block.get('build_hash', '')
 
-    # content_hash is computed over {specs, validity, createdBy} — cert is inside createdBy
-    if validity and created_by:
-        hash_payload = {'createdBy': created_by, 'specs': specs, 'validity': validity}
-        recomputed_hash = get_sha256_b64(to_canonical_json(hash_payload))
-    else:
-        # Legacy bundles without validity/createdBy
-        recomputed_hash = get_sha256_b64(to_canonical_json(specs))
+    # build_hash covers {createdBy (developer), releasedBy (issuer), specs, validity}
+    hash_payload = {
+        'createdBy': created_by,
+        'releasedBy': release_created_by,
+        'specs': specs,
+        'validity': validity,
+    }
+    recomputed_hash = get_sha256_b64(to_canonical_json(hash_payload))
 
     if recomputed_hash == recorded_hash:
-        print(f"\n  \033[92m✓ content_hash verified: {recomputed_hash[:24]}...\033[0m")
+        print(f"\n  \033[92m✓ build_hash verified: {recomputed_hash[:24]}...\033[0m")
     else:
-        print(f"\n  \033[91m✗ content_hash MISMATCH\033[0m")
+        print(f"\n  \033[91m✗ build_hash MISMATCH\033[0m")
         print(f"    recorded:   {recorded_hash}")
         print(f"    recomputed: {recomputed_hash}")
         sys.exit(1)
@@ -730,20 +766,27 @@ def run_verify_release(artifact_path, strict=False):
         if local_checked:
             print(f"  \033[92m✓ meta_hash verified for {local_checked} local source files\033[0m")
 
-    # Signature verification against certificate public key
+    # Signature verification against release issuer certificate — mandatory
     print(f"\n--- Signature Verification ---")
-    cert_pem = created_by.get('certificate', '') if created_by else ''
-    release_sign = bundle.get('release', {}).get('sign', '')
+    cert_pem = release_created_by.get('certificate', '')
+    release_sign = release_block.get('sign', '')
 
-    if cert_pem and release_sign and recorded_hash:
-        ok, reason = _verify_cert_signature(cert_pem, release_sign, recorded_hash)
-        if ok:
-            print(f"  \033[92m✓ Release signature verified (ECDSA, certificate public key)\033[0m")
-        else:
-            print(f"  \033[91m✗ Release signature FAILED: {reason}\033[0m")
-            sys.exit(1)
+    if not cert_pem:
+        print(f"  \033[91m✗ release.createdBy.certificate missing — cannot verify signature\033[0m")
+        sys.exit(1)
+    if not release_sign:
+        print(f"  \033[91m✗ release.sign missing — bundle is unsigned\033[0m")
+        sys.exit(1)
+    if not recorded_hash:
+        print(f"  \033[91m✗ release.build_hash missing — cannot verify signature\033[0m")
+        sys.exit(1)
+
+    ok, reason = _verify_cert_signature(cert_pem, release_sign, recorded_hash)
+    if ok:
+        print(f"  \033[92m✓ Release signature verified (ECDSA, certificate public key)\033[0m")
     else:
-        print(f"  \033[93m⚠ Skipping release signature check (cert or sign missing)\033[0m")
+        print(f"  \033[91m✗ Release signature FAILED: {reason}\033[0m")
+        sys.exit(1)
 
     # Optional pledge signature verification if commitment.yaml is present
     if os.path.isfile('commitment.yaml'):
