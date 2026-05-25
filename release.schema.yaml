@@ -119,3 +119,35 @@ properties:
       sign:
         type: string
         description: "Vault Transit ECDSA signature over build_hash (prehashed=true), verifiable with release.createdBy.certificate."
+
+  cic_countersign:
+    type: object
+    description: "External CIC counter-signature over release.build_hash. Applied by CICSourceCA after the release artifact is built and signed by the issuer."
+    required:
+      - authority
+      - signed_payload
+      - sign
+    properties:
+      authority:
+        type: object
+        required:
+          - name
+          - certificate
+          - root_certificate
+        properties:
+          name:
+            type: string
+            description: "Human-readable name of the signing authority (e.g. 'CIC Source CA')."
+          certificate:
+            type: string
+            description: "PEM-encoded X.509 certificate of the signing authority (intermediate CA)."
+          root_certificate:
+            type: string
+            description: "PEM-encoded X.509 root CA certificate (trust anchor)."
+      signed_payload:
+        type: string
+        const: build_hash
+        description: "Identifies what was signed — always 'build_hash', the cryptographic root of the release bundle."
+      sign:
+        type: string
+        description: "ECDSA signature over release.build_hash (prehashed, DER base64, vault:v1: prefix), verifiable with authority.certificate."
