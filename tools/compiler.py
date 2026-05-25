@@ -58,6 +58,17 @@ def get_sha256_b64(data_bytes):
     return base64.b64encode(hashlib.sha256(data_bytes).digest()).decode('utf-8')
 
 
+def _inject_version(obj, version_str):
+    """Recursively replaces the dev placeholder 'v0.0.dev' with the release version."""
+    if isinstance(obj, dict):
+        return {k: _inject_version(v, version_str) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_inject_version(item, version_str) for item in obj]
+    if obj == 'v0.0.dev':
+        return version_str
+    return obj
+
+
 def get_reproducible_repo_hash(tree_id):
     """
     Calculates a reproducible SHA256 hash of a given git tree object.
@@ -480,17 +491,19 @@ def run_release():
 
     print(f"--- Building release bundle ({len(schema_files)} schemas) ---")
 
-    # 5. Build specs[] — per-schema hash over raw file bytes, inline content
+    # 5. Build specs[] — meta_hash over raw file bytes, version placeholder injected in spec content
     specs = []
+    release_version_str = f"v{release_version}"
     for schema_file in schema_files:
         with open(schema_file, 'rb') as fh:
             raw = fh.read()
         meta_hash = get_sha256_b64(raw)
+        spec_data = _inject_version(yaml.safe_load(raw), release_version_str)
         specs.append({
             'id': os.path.splitext(os.path.basename(schema_file))[0],
             'source_path': schema_file.replace(os.sep, '/'),
             'meta_hash': meta_hash,
-            'spec': yaml.safe_load(raw),
+            'spec': spec_data,
         })
         print(f"  - {schema_file}: {meta_hash[:16]}...")
 
