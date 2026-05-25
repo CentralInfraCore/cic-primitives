@@ -35,3 +35,7 @@ dist/
 
 # AI thread exports
 primitive.txt
+
+# mutation testing
+.mutmut-cache
+mutants/
