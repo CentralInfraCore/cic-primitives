@@ -151,15 +151,15 @@ make release     # signed artifact (Vault required)
 
 ## Release artifact — GHCR
 
-The schema release is available as an OCI artifact in GitHub Container Registry.
+A séma release OCI artifactként érhető el a GitHub Container Registry-ben.
 
-**With ORAS:**
+**ORAS-szal:**
 
 ```bash
 oras pull ghcr.io/centralinfracore/schema/cic-primitives:v0.1.5-src2026
 ```
 
-**With curl (no ORAS required):**
+**curl-lel (ORAS nélkül):**
 
 ```bash
 REPO="centralinfracore/schema/cic-primitives"; TAG="v0.1.5-src2026"; \
