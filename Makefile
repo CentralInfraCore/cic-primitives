@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -29,9 +29,20 @@ build:
 # Main Development Tasks
 # =============================================================================
 
-validate:
+validate: grammar
 	@echo "--- Validating all schemas against the meta-schema ---"
 	@docker compose exec builder python tools/compiler.py validate
+
+# The atom grammar closes what index.yaml cannot: the instance form of Shape
+# and Role, and the constraints that cross primitive boundaries. The self-test
+# runs first on purpose — a gate nobody has shown capable of failing is not a
+# gate. See proposals/atom-grammar/README.md.
+grammar:
+	@echo "--- Atom grammar: self-test ---"
+	@docker compose exec builder python proposals/atom-grammar/check_grammar.py --self-test
+	@echo "--- Atom grammar: live compositions ---"
+	@docker compose exec builder sh -c \
+	  'python proposals/atom-grammar/check_grammar.py schemas/examples/kubernetes-pod.yaml'
 
 pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"

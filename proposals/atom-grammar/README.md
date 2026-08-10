@@ -1,6 +1,12 @@
 # Atom-grammatika — P0.1 / P0.2 / P0.5 lezárása
 
-**Státusz:** javaslat (`concept`). Nincs bekötve egyetlen repo pipeline-jába sem.
+**Státusz:** `implemented` — a `make grammar` a `make validate` **előfeltétele**,
+tehát valódi kapu, nem dokumentum. Mérve: egy injektált defekt (`replicas`
+default 1 → 0 a saját `range: "1..1000"` contractja ellen) `make validate`-et
+`Error 1`-gyel elhasította, és a compiler el sem indult.
+A `proposals/` alatti hely szándékos: a `compiler.py` egyik globja sem szedi
+fel, tehát a grammatika **kapuz, de nem kerül a release-bundle-be** és nem lesz
+aláírt séma-artifact. Ha ez megváltozik, az külön döntés.
 **Készült:** 2026-08-10, orchestrátori munka.
 **Hatókör:** a külső review P0-listájából az a három tétel, amihez a lezárt
 `cic-object-model` nem ért hozzá:
@@ -378,16 +384,25 @@ proposals/atom-grammar/
   check_grammar.py               ← séma + a §3/§4 keresztszabályok (amit JSON Schema nem tud)
 ```
 
-Futtatás a két élő kompozíción:
+**Kapuként** (ez fut a `make validate` előtt):
 
 ```bash
-python3 proposals/atom-grammar/check_grammar.py \
-  ~/sync/git.partners/CentralInfraCore/primitives-group/primitives/schemas/examples/kubernetes-pod.yaml
+make grammar          # self-test, majd a repo kompozíciói
+make validate         # a grammar az előfeltétele
 ```
 
-A `check_grammar.py` **stdlib + PyYAML**, konténer nélkül fut, mert egy
+**Közvetlenül**, konténer nélkül — ez a fontosabb futtatási mód:
+
+```bash
+python3 proposals/atom-grammar/check_grammar.py --self-test
+python3 proposals/atom-grammar/check_grammar.py schemas/examples/kubernetes-pod.yaml
+```
+
+A `check_grammar.py` **PyYAML + jsonschema**, konténer nélkül fut, mert egy
 grammatika, amit csak a saját pipeline-ja tud futtatni, nem ellenőrizhető
-harmadik fél által.
+harmadik fél által. Többdokumentumos (`---`) bemenetre is felkészült, és
+szintaktikailag hibás YAML-on leletet ad, nem tracebacket — a repo saját
+negatív fixture-jei ilyenek.
 
 **A kapu vakfoltja ellen:** a `check_grammar.py --self-test` szándékosan hibás
 példányokat futtat át, és elhasal, ha bármelyiket átengedi. Egy validátor,

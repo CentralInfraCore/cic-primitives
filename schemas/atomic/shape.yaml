@@ -80,7 +80,14 @@ spec:
         optional: true
         description: >
           The target CIC Kind — only meaningful when semantic_type: cic-reference.
-          Format: "cic:{namespace}:{Kind}" (e.g. "cic:compute:ComputeResource").
+          Format: "{namespace}:{Kind}" (e.g. "cic:compute:ComputeResource").
+          The namespace already carries the cic: prefix (see identity.yaml
+          namespace: "cic:network"), so it is NOT repeated here — the earlier
+          "cic:{namespace}:{Kind}" wording expanded to cic:cic:compute:Kind,
+          which no composition has ever written.
+          Distinct from the reference VALUE: reference_target names the target
+          type, while the field's runtime value is the target instance's
+          logical_id (see type_system.reference.subtypes.cic-reference).
           The Relay uses this to resolve and validate the reference.
 
   semantic_mapping:

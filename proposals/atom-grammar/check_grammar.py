@@ -521,10 +521,26 @@ def main() -> int:
 
     status = 0
     for path in args.files:
-        with path.open() as fh:
-            doc = yaml.safe_load(fh)
-        findings = check_document(doc, validator)
-        node_count = sum(1 for _ in walk_nodes(doc))
+        # Multi-document safe: the repository's own negative fixtures are
+        # `---` separated, and a gate that tracebacks on its input is not a gate.
+        try:
+            with path.open() as fh:
+                docs = [d for d in yaml.safe_load_all(fh) if d is not None]
+        except yaml.YAMLError as exc:
+            status = 1
+            first = str(exc).splitlines()[0] or exc.__class__.__name__
+            print(f"\033[91m✗\033[0m {path}  (unparseable: {first})")
+            continue
+
+        findings: list[Finding] = []
+        node_count = 0
+        for i, doc in enumerate(docs):
+            prefix = "" if len(docs) == 1 else f"[doc {i}]"
+            node_count += sum(1 for _ in walk_nodes(doc))
+            for f in check_document(doc, validator):
+                f.path = prefix + f.path
+                findings.append(f)
+
         if findings:
             status = 1
             print(f"\n\033[91m✗\033[0m {path}  ({node_count} node, "
