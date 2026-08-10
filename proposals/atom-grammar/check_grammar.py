@@ -63,7 +63,15 @@ SHORT_ROLE_EXPANSION = {
     "config": {"authority": "config", "structural": [], "lifecycle": None},
     "state": {"authority": "state", "structural": [], "lifecycle": None},
     "operational": {"authority": "operational", "structural": [], "lifecycle": None},
+    # A key is supplied by the requester at creation, so its authority is config.
     "key": {"authority": "config", "structural": ["key"], "lifecycle": None},
+    # `derived` and `volatile` are lifecycle values, and both exclude authority
+    # `config` — so the bare default cannot apply to them. They expand to
+    # `state`: role.yaml maps both to `config false`, GET only, and every corpus
+    # occurrence sits on a state_surface. Anyone wanting `operational` with
+    # either must write the long form.
+    "derived": {"authority": "state", "structural": [], "lifecycle": "derived"},
+    "volatile": {"authority": "state", "structural": [], "lifecycle": "volatile"},
 }
 
 
@@ -469,6 +477,9 @@ MUST_ACCEPT = {
             {"name": "name", "shape_type": "scalar", "scalar_type": "string",
              "role": "key", "mandatory": True},
             {"name": "value", "shape_type": "scalar", "scalar_type": "string"}]},
+    "the short lifecycle forms the corpus writes": {
+        "name": "effective_state", "shape_type": "scalar", "scalar_type": "string",
+        "role": "derived"},
     "the combination the flat model could not express": {
         "name": "last_seen_peer", "shape_type": "scalar", "scalar_type": "string",
         "semantic_type": "cic-reference",

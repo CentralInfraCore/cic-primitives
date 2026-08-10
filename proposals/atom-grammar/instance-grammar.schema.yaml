@@ -123,7 +123,7 @@ properties:
   # ── attached primitives ─────────────────────────────────────────────────────
   role:
     oneOf:
-      - enum: [config, state, operational, key]   # short form, section 3.1
+      - enum: [config, state, operational, key, derived, volatile]  # short form, 3.1
       - type: object
         required: [authority]
         additionalProperties: false
