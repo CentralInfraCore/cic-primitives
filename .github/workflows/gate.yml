@@ -1,0 +1,54 @@
+---
+# The schema gate. Runs the same checks `make validate` runs locally, but
+# without Docker: CI calls `make validate.local`, so the gate has one
+# definition (the Makefile) instead of one there and a copy here.
+#
+# What it proves:
+#   * the atom grammar's self-test still rejects all 19 deliberately broken
+#     fixtures — a gate nobody has shown capable of failing is not a gate
+#   * every live composition satisfies the grammar
+#   * every schema still validates against the meta-schema, and every
+#     DomainComposition against its base aggregate
+#
+# Deliberately NOT here: pledge, release and verify-release. Those need Vault
+# credentials and are a release action, not a gate.
+
+name: gate
+
+on:
+  push:
+    branches: [main, devel]
+  pull_request:
+    branches: [main, devel]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned dependencies
+        # requirements.txt is the lock file; using it as a constraints file
+        # keeps the pins without installing the linting and mutation-testing
+        # stack a validation run does not need.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c requirements.txt pyyaml jsonschema semver
+
+      - name: Gate
+        run: make validate.local
