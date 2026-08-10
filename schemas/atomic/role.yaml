@@ -1,11 +1,13 @@
 ---
 metadata:
   name: Role
-  version: v0.0.dev
+  version: v0.1.dev
   description: >
     Atomic primitive describing the management semantics of a node — what this node means
     from the management plane perspective. Role does not describe the data (that is Shape's job),
     but how the system handles it: writable, read-only, key, etc.
+    The seven values are NOT one dimension. They fall on three orthogonal axes, and a node
+    carries one value from each axis it uses — see spec.axes.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -13,61 +15,122 @@ metadata:
     - role
   validatedBy:
     name: cic-primitives
-    version: v0.0.dev
+    version: v0.1.dev
 
 spec:
   kind: AtomicPrimitive
 
-  values:
-    config:
-      description: >
-        Writable desired state. Set by the management plane — this is the desired state.
-      yang_mapping: "leaf/container without 'config false'"
-      api_mapping: PUT/PATCH request body
-      runtime_mapping: desired state store — reconciler target
+  # ── Where the normative form lives ──────────────────────────────────────────
+  normative_form:
+    ref: proposals/atom-grammar/README.md
+    section: "3"
+    note: >
+      This file is normative for what each value MEANS. The instance form — how a
+      role is written on a node, which combinations are legal, what the short form
+      expands to — is normative in the atom grammar and enforced by
+      proposals/atom-grammar/check_grammar.py, which runs in `make validate`.
+      Where the two disagree, the grammar wins for form and this file wins for
+      meaning. This file must not restate form.
 
-    state:
-      description: >
-        Read-only current state. Populated by the adapter from the real system.
-      yang_mapping: "config false"
-      api_mapping: GET only
-      runtime_mapping: observed state store — reconciler source
+  # ── The three axes ──────────────────────────────────────────────────────────
+  axes:
 
-    operational:
+    authority:
       description: >
-        Operational data — computed or collected at runtime (e.g. byte counter,
-        uptime, error count). Not configurable, not stored as desired state.
-      yang_mapping: "config false — typically under state container"
-      api_mapping: GET only
-      runtime_mapping: telemetry / metrics feed
+        Who owns the value, and in which direction the reconciler moves it.
+        The three values are mutually exclusive: a field is either desired state,
+        or observed state, or computed at runtime.
+      cardinality: exactly one
+      default: config
+      values:
 
-    key:
-      description: >
-        List key — unique identifier of a list instance. Must always be present,
-        not modifiable after the list entry is created.
-      yang_mapping: "key statement in list"
-      api_mapping: URL path parameter (e.g. /interfaces/interface={name})
-      runtime_mapping: lookup key in state/config store
+        config:
+          description: >
+            Writable desired state. Set by the management plane — this is the desired state.
+          yang_mapping: "leaf/container without 'config false'"
+          api_mapping: PUT/PATCH request body
+          runtime_mapping: desired state store — reconciler target
 
-    reference:
-      description: >
-        Pointer to another node. The referenced node must exist (referential integrity).
-      yang_mapping: leafref
-      api_mapping: string value — external resource identifier
-      runtime_mapping: foreign key / join key
+        state:
+          description: >
+            Read-only current state. Populated by the adapter from the real system.
+          yang_mapping: "config false"
+          api_mapping: GET only
+          runtime_mapping: observed state store — reconciler source
 
-    derived:
-      description: >
-        Value computed from other fields — cannot be stored independently, always derivable.
-        E.g. admin_state + oper_state → effective_state.
-      yang_mapping: "config false — computed, not sourced from adapter"
-      api_mapping: GET only — read-only computed field
-      runtime_mapping: computed on read, not stored
+        operational:
+          description: >
+            Operational data — computed or collected at runtime (e.g. byte counter,
+            uptime, error count). Not configurable, not stored as desired state.
+          yang_mapping: "config false — typically under state container"
+          api_mapping: GET only
+          runtime_mapping: telemetry / metrics feed
 
-    volatile:
+    structural:
       description: >
-        Short-lived, non-persistent state. Not stored in desired state, discardable after cache TTL.
-        E.g. last_seen timestamp, instantaneous connection_count snapshot.
-      yang_mapping: "config false"
-      api_mapping: GET only — best-effort freshness
-      runtime_mapping: short-lived cache, not persisted
+        What the value means for addressing and for referential integrity.
+        Independent of authority: a key is a key whether or not it is also a reference.
+      cardinality: zero or more
+      values:
+
+        key:
+          description: >
+            List key — unique identifier of a list instance. Must always be present,
+            not modifiable after the list entry is created.
+          yang_mapping: "key statement in list"
+          api_mapping: URL path parameter (e.g. /interfaces/interface={name})
+          runtime_mapping: lookup key in state/config store
+
+        reference:
+          description: >
+            Pointer to another node. The referenced node must exist (referential integrity).
+            Requires semantic_type: cic-reference on the Shape side.
+          yang_mapping: leafref
+          api_mapping: string value — external resource identifier
+          runtime_mapping: foreign key / join key
+
+    lifecycle:
+      description: >
+        How the value comes into existence and whether it survives. Independent of
+        both other axes.
+      cardinality: zero or one
+      values:
+
+        derived:
+          description: >
+            Value computed from other fields — cannot be stored independently, always derivable.
+            E.g. admin_state + oper_state → effective_state.
+          yang_mapping: "config false — computed, not sourced from adapter"
+          api_mapping: GET only — read-only computed field
+          runtime_mapping: computed on read, not stored
+
+        volatile:
+          description: >
+            Short-lived, non-persistent state. Not stored in desired state, discardable after cache TTL.
+            E.g. last_seen timestamp, instantaneous connection_count snapshot.
+          yang_mapping: "config false"
+          api_mapping: GET only — best-effort freshness
+          runtime_mapping: short-lived cache, not persisted
+
+  # ── Why three axes and not one list ─────────────────────────────────────────
+  rationale: >
+    The flat seven-value list this file carried until v0.1.dev could not express a
+    node that is observed, points at another entity, and is not persisted — a
+    perfectly ordinary "last seen peer" field. Written flat it had to be called
+    `state`, and the other two properties were lost. The axes are what the values
+    always were; the list simply did not say so.
+
+  # ── What the axes forbid ────────────────────────────────────────────────────
+  # Enforced by check_grammar.py; stated here so the reason survives next to the
+  # values it constrains.
+  exclusions:
+    - rule: derived excludes authority config
+      reason: a computed value cannot be set as desired state
+    - rule: volatile excludes authority config
+      reason: a non-persistent value has no desired state
+    - rule: key requires authority config
+      reason: the key is supplied by the requester at creation
+    - rule: key excludes derived and volatile
+      reason: a key is fixed at creation and must not move
+    - rule: reference requires semantic_type cic-reference
+      reason: without it there is nothing to point at
