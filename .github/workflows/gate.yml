@@ -46,9 +46,16 @@ jobs:
         # requirements.txt is the lock file; using it as a constraints file
         # keeps the pins without installing the linting and mutation-testing
         # stack a validation run does not need.
+        #
+        # The extras are stripped because pip rejects them in a constraints
+        # file ("Constraints cannot have extras" — coverage[toml] is the one
+        # such line). Stripping keeps every pin; it only drops the optional
+        # dependency groups, which are irrelevant here since these packages
+        # are constraints, not installs.
         run: |
           python -m pip install --upgrade pip
-          pip install -c requirements.txt pyyaml jsonschema semver
+          sed -E 's/\[[^]]*\]//' requirements.txt > /tmp/gate-constraints.txt
+          pip install -c /tmp/gate-constraints.txt pyyaml jsonschema semver
 
       - name: Gate
         run: make validate.local
