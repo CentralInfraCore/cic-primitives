@@ -51,8 +51,12 @@ spec:
           Inheritance chain — which Identity this type specializes from.
           Multi-level inheritance is supported: KubernetesPod → ManagedEntity.
           If absent: this is a root Identity (e.g. ManagedEntity itself).
+          Format: "{namespace}:{Kind}" — the same three-segment form the
+          examples below and every live composition use. The earlier
+          two-segment "cic:ManagedEntity" omitted the namespace and is not
+          valid.
         optional: true
-        example: "cic:ManagedEntity"
+        example: "cic:core:ManagedEntity"
 
       abstract:
         type: boolean

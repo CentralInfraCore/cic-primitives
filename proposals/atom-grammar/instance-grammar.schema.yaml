@@ -1,0 +1,253 @@
+---
+# JSON Schema for a single CIC node instance (a member of a surface's `nodes`,
+# or of a composite's `fields`, or of a collection's `item_fields`).
+#
+# Scope: README.md section 2 only — the structural type algebra. Rules that
+# cross node boundaries or primitive boundaries (sections 3 and 4) are NOT
+# expressible here and live in check_grammar.py.
+#
+# Draft 2020-12.
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://cic.dev/schemas/instance-grammar/node.schema.yaml"
+title: CIC node instance
+
+type: object
+required: [name, shape_type]
+additionalProperties: false
+
+properties:
+  # ── identity of the node within its parent ──────────────────────────────────
+  name:
+    type: string
+    minLength: 1
+    pattern: "^[a-z][a-z0-9_]*$"
+
+  description:
+    type: string
+
+  atomic_ref:
+    type: string
+
+  role_ref:
+    type: string
+
+  # ── section 2.1 — the closed type set ───────────────────────────────────────
+  shape_type:
+    enum: [scalar, composite, collection, choice, opaque]
+
+  # ── section 2.2 — scalar ────────────────────────────────────────────────────
+  scalar_type:
+    enum: [string, integer, boolean, number, bytes]
+
+  # ── section 2.3 — collection ────────────────────────────────────────────────
+  collection_variant:
+    enum: [list, set]
+
+  item_fields:
+    type: array
+    minItems: 1
+    items: {$ref: "#"}
+
+  item_scalar_type:
+    enum: [string, integer, boolean, number, bytes]
+
+  # Named `item_key`, not `key_fields`: the corpus already uses `key_fields`
+  # in binding_surface.addresses for the Address key components, which are a
+  # different thing with a different shape.
+  item_key:
+    type: array
+    minItems: 1
+    items:
+      type: string
+      minLength: 1
+
+  # Adapter-conditional existence. Used 19x in cic-compute's live
+  # compute-resource.yaml, modelled by no atom (see README section 4).
+  capability:
+    type: string
+    minLength: 1
+
+  capability_values:
+    type: object
+
+  ordered:
+    type: boolean
+
+  min_items:
+    type: integer
+    minimum: 0
+
+  max_items:
+    type: integer
+    minimum: 0
+
+  # ── composite ───────────────────────────────────────────────────────────────
+  fields:
+    type: array
+    minItems: 1
+    items: {$ref: "#"}
+
+  # ── choice ──────────────────────────────────────────────────────────────────
+  cases:
+    type: array
+    minItems: 2
+    items:
+      type: object
+      required: [name, fields]
+      properties:
+        name: {type: string, minLength: 1}
+        fields:
+          type: array
+          minItems: 1
+          items: {$ref: "#"}
+
+  # ── section 2.4 — reference as annotation ───────────────────────────────────
+  semantic_type:
+    enum: [cic-reference]
+
+  reference_target:
+    type: string
+    # {namespace}:{Kind} where namespace itself starts with "cic:"
+    pattern: "^cic:[a-z][a-z0-9-]*:[A-Z][A-Za-z0-9]*$"
+
+  # ── section 2.5 — presence ──────────────────────────────────────────────────
+  mandatory:
+    const: true          # `mandatory: false` is forbidden; omit it instead
+  optional:
+    const: true          # `optional: false` is forbidden; omit it instead
+  nullable:
+    type: boolean
+  default: {}
+
+  # ── attached primitives ─────────────────────────────────────────────────────
+  role:
+    oneOf:
+      - enum: [config, state, operational, key]   # short form, section 3.1
+      - type: object
+        required: [authority]
+        additionalProperties: false
+        properties:
+          authority:
+            enum: [config, state, operational]
+          structural:
+            type: array
+            uniqueItems: true
+            items:
+              enum: [key, reference]
+          lifecycle:
+            enum: [derived, volatile]
+
+  contract:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required: [type, expression]
+      properties:
+        type:
+          enum: [range, pattern, must, when, enum, mandatory, unique]
+        expression: {}
+        error_message: {type: string}
+        description: {type: string}
+
+  access:
+    type: object
+
+allOf:
+  # ── section 2.1 — required and forbidden companions, per type ───────────────
+  - if:
+      properties: {shape_type: {const: scalar}}
+      required: [shape_type]
+    then:
+      required: [scalar_type]
+      not:
+        anyOf:
+          - required: [fields]
+          - required: [item_fields]
+          - required: [cases]
+          - required: [collection_variant]
+
+  - if:
+      properties: {shape_type: {const: composite}}
+      required: [shape_type]
+    then:
+      required: [fields]
+      not:
+        anyOf:
+          - required: [scalar_type]
+          - required: [item_fields]
+          - required: [cases]
+          - required: [collection_variant]
+
+  - if:
+      properties: {shape_type: {const: collection}}
+      required: [shape_type]
+    then:
+      required: [collection_variant]
+      not:
+        anyOf:
+          - required: [fields]
+          - required: [cases]
+
+  - if:
+      properties: {shape_type: {const: choice}}
+      required: [shape_type]
+    then:
+      required: [cases]
+      not:
+        anyOf:
+          - required: [scalar_type]
+          - required: [fields]
+          - required: [item_fields]
+
+  - if:
+      properties: {shape_type: {const: opaque}}
+      required: [shape_type]
+    then:
+      not:
+        anyOf:
+          - required: [scalar_type]
+          - required: [fields]
+          - required: [item_fields]
+          - required: [cases]
+          - required: [collection_variant]
+
+  # ── section 2.3 — list needs item_fields; the key rule is conditional and
+  #    lives in check_grammar.py (JSON Schema cannot count key-roled children) ─
+  - if:
+      properties: {collection_variant: {const: list}}
+      required: [collection_variant]
+    then:
+      required: [item_fields]
+
+  - if:
+      properties: {collection_variant: {const: set}}
+      required: [collection_variant]
+    then:
+      required: [item_scalar_type]
+      not:
+        anyOf:
+          - required: [item_key]
+          - required: [item_fields]
+
+  # ── section 2.5 — presence is one axis ─────────────────────────────────────
+  - not:
+      required: [mandatory, optional]
+
+  - if:
+      required: [mandatory]
+    then:
+      not:
+        required: [default]
+
+  # ── section 2.4 — the two reference members are inseparable ────────────────
+  - if:
+      required: [semantic_type]
+    then:
+      required: [reference_target]
+
+  - if:
+      required: [reference_target]
+    then:
+      required: [semantic_type]

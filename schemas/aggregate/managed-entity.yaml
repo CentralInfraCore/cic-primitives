@@ -111,6 +111,19 @@ spec:
       description: >
         What this entity can do — feature flags, supported operations, protocol versions.
         Formal CapabilitySurface aggregate follows the Relay capability model.
+      in_use_ahead_of_model: >
+        WARNING — the mechanism is already live at field level while this slot
+        is still a placeholder. Measured 2026-08-10 in cic-compute
+        main:schemas/domain/compute-resource.yaml: `capability:` appears 19
+        times and `capability_values:` once, on individual nodes, meaning
+        "this field (or this value) only exists when the adapter supports X".
+        No atomic primitive declares either member, and nothing validates them.
+        This is the same concept as the Access atom's `conformance` field
+        (D-012, "not implemented on this device") under a second name. Which of
+        the two survives, and where it lives, is an open decision — see
+        proposals/atom-grammar/README.md section 4. Until it is decided, the
+        grammar accepts both as known but unvalidated members rather than
+        inventing a home for them.
 
     lifecycle_surface:
       mode: sealed
