@@ -1,7 +1,7 @@
 ---
 metadata:
   name: Shape
-  version: v0.0.dev
+  version: v0.1.dev
   description: >
     Atomic primitive describing data structure — what fields exist and what types they have.
     Shape defines how a config or state node looks from a data-structure perspective.
@@ -13,14 +13,27 @@ metadata:
     - shape
   validatedBy:
     name: cic-primitives
-    version: v0.0.dev
+    version: v0.1.dev
 
 spec:
   kind: AtomicPrimitive
 
+  # ── Where the normative form lives ──────────────────────────────────────────
+  normative_form:
+    ref: proposals/atom-grammar/README.md
+    section: "2"
+    note: >
+      This file is normative for what each type MEANS. The instance form — which
+      companion members each type requires and forbids, and what a valid field
+      descriptor looks like — is normative in the atom grammar and enforced by
+      proposals/atom-grammar/check_grammar.py, which runs in `make validate`.
+      Where the two disagree, the grammar wins for form and this file wins for
+      meaning. This file must not restate form.
+
   type_system:
     description: >
       The possible types for a Shape. Every field has exactly one type.
+      The set is closed: a new type is a version increment.
     values:
       scalar:
         description: Simple value — string, integer, boolean, number
@@ -31,19 +44,41 @@ spec:
       collection:
         description: Ordered list or associative set of elements (YANG list / leaf-list)
         variants:
-          list: ordered or keyed elements (YANG list with key)
-          set: unkeyed elements (YANG leaf-list)
-      reference:
-        description: Pointer to another node (YANG leafref)
-        note: the target node must exist in the schema
-        subtypes:
-          leafref: intra-schema reference — target lives in the same schema
-          cic-reference: >
-            Cross-domain CIC object reference — points to the logical_id of another domain entity.
-            Format: cic:{domain}:{backend}:{provider}:{location}:{id}.
-            The reference_target field identifies the target Kind.
+          list: keyed elements (YANG list with key) — every list has a key
+          set: unkeyed scalar elements (YANG leaf-list)
       choice:
         description: Mutually exclusive alternatives — exactly one active (YANG choice/case)
+      opaque:
+        description: >
+          A terminal blob the schema deliberately does not look inside.
+          Without it, a structure the schema does not model has to be misdeclared
+          as composite (claiming knowledge of its interior) or as string (losing
+          that it has structure at all).
+        note: >
+          Terminal — no schema-known children below it, and the validator does not
+          descend. Contracts still apply to the serialized value (e.g. a pattern),
+          never to its interior.
+
+  # `reference` is NOT a type. It was listed as one until v0.1.dev, but no
+  # composition has ever written `shape_type: reference`: the corpus writes a
+  # scalar carrying `semantic_type: cic-reference` plus `reference_target`. A
+  # reference is a string on the wire; being a reference is a semantic
+  # annotation, not a structural arity. The grammar rejects the retired form.
+  reference_annotation:
+    replaces: type_system.reference (retired v0.1.dev)
+    written_as:
+      shape_type: scalar
+      scalar_type: string
+      semantic_type: cic-reference
+      reference_target: "{namespace}:{Kind}"
+    subtypes:
+      leafref: intra-schema reference — target lives in the same schema
+      cic-reference: >
+        Cross-domain CIC object reference. The field's runtime VALUE is the
+        logical_id of another domain entity, formatted
+        cic:{domain}:{backend}:{provider}:{location}:{id}.
+        The reference_target member names the target Kind — a different thing
+        with a different shape, see the reference_target field below.
 
   fields:
     description: Structure of a Shape field descriptor
@@ -51,20 +86,40 @@ spec:
       name:
         type: string
         description: Field name — CamelCase or snake_case, consistent within the namespace
-      type:
+      shape_type:
         type: string
-        description: Field type, one of the type_system values
-      optional:
-        type: boolean
-        default: false
-        description: If true, the field may be absent from an instance
+        description: >
+          Field type, one of the type_system values. Named `shape_type` on the
+          node, not `type` — every composition writes it that way, and `type` is
+          already taken by Contract entries. Was documented as `type` until
+          v0.1.dev, which no instance ever matched.
+      presence:
+        description: >
+          Whether the field may be absent. ONE axis, written as one of two short
+          members. `mandatory: false` and `optional: false` are both invalid —
+          omit the member instead of negating it, or the other one becomes
+          ambiguous.
+        members:
+          mandatory:
+            type: "true"
+            description: The field must be present. This is the default when neither is written.
+          optional:
+            type: "true"
+            description: The field may be absent from an instance.
       nullable:
         type: boolean
         default: false
-        description: If true, the field value may be null
+        description: >
+          If true, the field value may be null. Under `optional` this is a second,
+          distinct state: "absent" and "present but null" are not the same, and
+          whoever relies on the difference must say what each means.
       default:
         type: any
-        description: Default value when the field is absent and optional is true
+        description: >
+          Value used when an optional field is absent. Invalid together with
+          `mandatory` — a field that must be present needs no default. Must
+          satisfy the field's own contracts and its scalar_type; `default: null`
+          is invalid under `nullable`, since it would erase the distinction above.
       description:
         type: string
         description: Field semantics — what it means and what it is for
@@ -87,7 +142,7 @@ spec:
           which no composition has ever written.
           Distinct from the reference VALUE: reference_target names the target
           type, while the field's runtime value is the target instance's
-          logical_id (see type_system.reference.subtypes.cic-reference).
+          logical_id (see reference_annotation.subtypes.cic-reference).
           The Relay uses this to resolve and validate the reference.
 
   semantic_mapping:
@@ -96,8 +151,11 @@ spec:
       composite: container
       collection.list: list (with key)
       collection.set: leaf-list
-      reference: leafref
       choice: choice + case
+      opaque: >
+        no direct YANG construct — anydata is the closest, and it carries the
+        same "structure present, schema absent" meaning
+      reference_annotation: leafref (the annotation, not a type — see above)
     api:
       note: Shape → OpenAPI schema properties / JSON Schema
     runtime:
