@@ -55,7 +55,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           sed -E 's/\[[^]]*\]//' requirements.txt > /tmp/gate-constraints.txt
-          pip install -c /tmp/gate-constraints.txt pyyaml jsonschema semver
+          pip install -c /tmp/gate-constraints.txt pyyaml jsonschema semver requests
+        # `requests` is not used by the validate path, but compiler.py imports
+        # it at module level (line 7) alongside semver, so the module will not
+        # load without it. Listed here rather than made lazy, because changing
+        # the import structure of the release tooling is not this change's job.
 
       - name: Gate
         run: make validate.local
