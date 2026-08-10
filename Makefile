@@ -42,7 +42,8 @@ grammar:
 	@docker compose exec builder python proposals/atom-grammar/check_grammar.py --self-test
 	@echo "--- Atom grammar: live compositions ---"
 	@docker compose exec builder sh -c \
-	  'python proposals/atom-grammar/check_grammar.py schemas/examples/*.yaml'
+	  'python proposals/atom-grammar/check_grammar.py schemas/examples/*.yaml \
+	     $$(ls schemas/domain/*.yaml 2>/dev/null)'
 
 # =============================================================================
 # Container-free gate — what CI runs
@@ -51,9 +52,11 @@ grammar:
 # validate.local, so the gate has ONE definition rather than one here and a
 # second one copied into the workflow YAML.
 
-# Every composition this repository ships. Wildcard, not a fixed list, so a
-# new example is gated the moment it lands.
-GRAMMAR_COMPOSITIONS := $(wildcard schemas/examples/*.yaml)
+# Every composition this repository ships. Wildcards, not a fixed list, so a
+# new composition is gated the moment it lands. Both directories matter:
+# examples/ holds the demonstrations, domain/ holds the real domain objects —
+# and domain/ is where the richest ones live (cic-compute's compute-resource).
+GRAMMAR_COMPOSITIONS := $(wildcard schemas/examples/*.yaml) $(wildcard schemas/domain/*.yaml)
 
 grammar.local:
 	@echo "--- Atom grammar: self-test ---"
