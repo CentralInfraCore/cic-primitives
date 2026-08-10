@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -43,6 +43,25 @@ grammar:
 	@echo "--- Atom grammar: live compositions ---"
 	@docker compose exec builder sh -c \
 	  'python proposals/atom-grammar/check_grammar.py schemas/examples/kubernetes-pod.yaml'
+
+# =============================================================================
+# Container-free gate — what CI runs
+# =============================================================================
+# The docker targets above and these must stay equivalent. CI calls
+# validate.local, so the gate has ONE definition rather than one here and a
+# second one copied into the workflow YAML.
+
+GRAMMAR_COMPOSITIONS := schemas/examples/kubernetes-pod.yaml
+
+grammar.local:
+	@echo "--- Atom grammar: self-test ---"
+	@python3 proposals/atom-grammar/check_grammar.py --self-test
+	@echo "--- Atom grammar: live compositions ---"
+	@python3 proposals/atom-grammar/check_grammar.py $(GRAMMAR_COMPOSITIONS)
+
+validate.local: grammar.local
+	@echo "--- Validating all schemas against the meta-schema ---"
+	@python3 tools/compiler.py validate
 
 pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
