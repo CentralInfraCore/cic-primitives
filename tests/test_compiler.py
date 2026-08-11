@@ -564,3 +564,151 @@ def test_inject_version_replaces_any_dev_placeholder():
     assert out["keep"]["version"] == "v0.1.5"
     # Only whole-string placeholders are replaced, never a substring.
     assert out["keep"]["note"] == "v0.1.dev is fine inside prose"
+
+
+# ---------------------------------------------------------------------------
+# Release envelope (what build_hash actually covers)
+# ---------------------------------------------------------------------------
+
+def _make_v2_bundle():
+    """A bundle signed under envelope v2: the hash covers the whole artifact."""
+    bundle = _make_valid_bundle()
+    release_key, release_cert = make_test_key_and_cert("Test Releaser")
+    bundle["release"]["createdBy"]["certificate"] = release_cert
+    bundle["release"]["envelope"] = 2
+    bundle["provenance"] = {"envelope": 2, "source_commit": "0" * 40}
+    payload = compiler._release_hash_payload(bundle, 2)
+    build_hash = compiler.get_sha256_b64(compiler.to_canonical_json(payload))
+    bundle["release"]["build_hash"] = build_hash
+    bundle["release"]["sign"] = sign_hash(release_key, build_hash)
+    return bundle
+
+
+def test_envelope_v1_still_verifies(mocker, tmp_path):
+    """release/cic-primitives-v0.1.5.yaml was signed under v1 and must keep working."""
+    bundle = _make_valid_bundle()
+    assert "envelope" not in bundle["release"]  # absent means v1
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+
+
+def test_envelope_v2_verifies(mocker, tmp_path):
+    bundle = _make_v2_bundle()
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+
+
+def test_envelope_v1_leaves_version_and_timestamp_unsigned(mocker, tmp_path):
+    """The exact forgery an audit demonstrated: relabel the release, still verify.
+
+    Kept as a test rather than fixed in place, because v0.1.5 is already signed
+    this way. It documents precisely what a v1 artifact does NOT prove.
+    """
+    bundle = _make_valid_bundle()
+    bundle["version"] = "9.9.9"
+    bundle["timestamp"] = "2099-01-01T00:00:00+00:00"
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))  # no exception: v1 cannot see this
+
+
+def test_envelope_v2_catches_relabelled_version(mocker, tmp_path):
+    """The same forgery under v2 must break build_hash."""
+    bundle = _make_v2_bundle()
+    bundle["version"] = "9.9.9"
+    bundle["timestamp"] = "2099-01-01T00:00:00+00:00"
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_envelope_v2_catches_tampered_provenance(mocker, tmp_path):
+    bundle = _make_v2_bundle()
+    bundle["provenance"]["source_commit"] = "f" * 40
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_unknown_envelope_version_is_rejected(mocker, tmp_path):
+    bundle = _make_valid_bundle()
+    bundle["release"]["envelope"] = 99
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# CIC counter-signature (the schema described it; the verifier ignored it)
+# ---------------------------------------------------------------------------
+
+def _add_countersign(bundle, authority_key=None, authority_cert=None, root_pem=None):
+    if authority_key is None:
+        authority_key, authority_cert = make_test_key_and_cert("CIC Source CA")
+    bundle["cic_countersign"] = {
+        "authority": {
+            "name": "CIC Source CA",
+            "certificate": authority_cert,
+            "root_certificate": root_pem if root_pem is not None else authority_cert,
+        },
+        "signed_payload": "build_hash",
+        "sign": sign_hash(authority_key, bundle["release"]["build_hash"]),
+    }
+    return bundle
+
+
+def test_countersign_verifies(mocker, tmp_path):
+    bundle = _add_countersign(_make_valid_bundle())
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+
+
+def test_forged_countersign_is_rejected(mocker, tmp_path):
+    """The exact forgery an audit demonstrated: replace sign and root, still 'OK'."""
+    bundle = _add_countersign(_make_valid_bundle())
+    bundle["cic_countersign"]["sign"] = "vault:v1:" + "A" * 88
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_countersign_not_chaining_to_its_root_is_rejected(mocker, tmp_path):
+    """An authority certificate that its own declared root did not issue."""
+    _, unrelated_root = make_test_key_and_cert("Unrelated Root")
+    bundle = _add_countersign(_make_valid_bundle(), root_pem=unrelated_root)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_countersign_wrong_signed_payload_is_rejected(mocker, tmp_path):
+    bundle = _add_countersign(_make_valid_bundle())
+    bundle["cic_countersign"]["signed_payload"] = "something_else"
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1

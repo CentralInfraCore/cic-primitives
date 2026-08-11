@@ -79,6 +79,64 @@ def _inject_version(obj, version_str):
     return obj
 
 
+RELEASE_ENVELOPE_VERSION = 2
+
+
+def _release_hash_payload(bundle, envelope_version):
+    """What build_hash covers, per envelope version.
+
+    v1 — {createdBy, releasedBy, specs, validity}. Everything else in the
+         bundle was unsigned: kind, version and timestamp could be rewritten
+         at will and verification still succeeded. Demonstrated: a bundle
+         relabelled 0.1.5 -> 9.9.9 with a 2099 timestamp verified clean.
+
+    v2 — the WHOLE bundle except the two members that cannot be inside their
+         own signature: release.sign, and the counter-signature block that is
+         applied afterwards by a different authority. Enumerating fields is
+         how v1 went wrong; excluding two and covering the rest cannot leave
+         a new field accidentally unsigned.
+
+    v1 stays supported because release/cic-primitives-v0.1.5.yaml was signed
+    under it and must keep verifying. New releases are written as v2.
+    """
+    if envelope_version == 1:
+        return {
+            'createdBy': bundle.get('createdBy'),
+            'releasedBy': bundle.get('release', {}).get('createdBy'),
+            'specs': bundle.get('specs'),
+            'validity': bundle.get('validity'),
+        }
+    if envelope_version == 2:
+        payload = json.loads(json.dumps(bundle, sort_keys=True, default=str))
+        payload.pop('cic_countersign', None)
+        release_block = payload.get('release')
+        if isinstance(release_block, dict):
+            release_block.pop('sign', None)
+            release_block.pop('build_hash', None)
+        return payload
+    return None
+
+
+def _collect_provenance():
+    """Facts about WHERE this build came from, so the signature can cover them."""
+    provenance = {'envelope': RELEASE_ENVELOPE_VERSION}
+    try:
+        provenance['source_commit'] = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True,
+            check=True).stdout.strip()
+    except Exception:
+        provenance['source_commit'] = None
+    for label, path in (('dependency_lock', 'dependency.yaml'),
+                        ('grammar', 'proposals/atom-grammar/check_grammar.py'),
+                        ('grammar_schema', 'proposals/atom-grammar/instance-grammar.schema.yaml')):
+        try:
+            with open(path, 'rb') as fh:
+                provenance[f'{label}_sha256'] = get_sha256_b64(fh.read())
+        except OSError:
+            provenance[f'{label}_sha256'] = None
+    return provenance
+
+
 def get_reproducible_repo_hash(tree_id):
     """
     Calculates a reproducible SHA256 hash of a given git tree object.
@@ -334,6 +392,68 @@ def _verify_cert_signature(cert_pem, vault_signature, content_hash_b64):
         return False, f"Verification error: {e}"
 
 
+def _verify_cert_chain(cert_pem, issuer_pem):
+    """Verifies that `cert_pem` was issued by `issuer_pem`, and that both are in date.
+
+    Returns (ok: bool, reason: str). This proves ISSUANCE, not trust: the issuer
+    is whatever PEM it was handed. Pinning the issuer against an out-of-band
+    trust anchor is the caller's job — see run_verify_release's --trust-root.
+    """
+    try:
+        from cryptography.x509 import load_pem_x509_certificate
+        from cryptography.hazmat.primitives.asymmetric.ec import ECDSA, EllipticCurvePublicKey
+        from cryptography.exceptions import InvalidSignature
+    except ImportError:
+        return False, "cryptography library not available"
+
+    try:
+        cert = load_pem_x509_certificate(cert_pem.encode('utf-8'))
+        issuer = load_pem_x509_certificate(issuer_pem.encode('utf-8'))
+    except Exception as e:
+        return False, f"Certificate parse error: {e}"
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for label, c in (("certificate", cert), ("root certificate", issuer)):
+        not_before = getattr(c, 'not_valid_before_utc', None) or c.not_valid_before.replace(
+            tzinfo=datetime.timezone.utc)
+        not_after = getattr(c, 'not_valid_after_utc', None) or c.not_valid_after.replace(
+            tzinfo=datetime.timezone.utc)
+        if now < not_before:
+            return False, f"{label} is not valid yet ({not_before.date()})"
+        if now > not_after:
+            return False, f"{label} expired on {not_after.date()}"
+
+    if cert.issuer != issuer.subject:
+        return False, (f"issuer mismatch: certificate says '{cert.issuer.rfc4514_string()}', "
+                       f"root subject is '{issuer.subject.rfc4514_string()}'")
+
+    try:
+        pub = issuer.public_key()
+        if isinstance(pub, EllipticCurvePublicKey):
+            pub.verify(cert.signature, cert.tbs_certificate_bytes,
+                       ECDSA(cert.signature_hash_algorithm))
+        else:
+            from cryptography.hazmat.primitives.asymmetric import padding
+            pub.verify(cert.signature, cert.tbs_certificate_bytes,
+                       padding.PKCS1v15(), cert.signature_hash_algorithm)
+        return True, "OK"
+    except InvalidSignature:
+        return False, "certificate was not issued by this root"
+    except Exception as e:
+        return False, f"chain verification error: {e}"
+
+
+def _cert_fingerprint(cert_pem):
+    """SHA256 fingerprint of a PEM certificate, for pinning comparisons."""
+    try:
+        from cryptography.x509 import load_pem_x509_certificate
+        from cryptography.hazmat.primitives import hashes as _h
+        cert = load_pem_x509_certificate(cert_pem.encode('utf-8'))
+        return base64.b64encode(cert.fingerprint(_h.SHA256())).decode()
+    except Exception:
+        return None
+
+
 def _load_valid_commitment():
     """Loads commitment.yaml and verifies it is present and within its validity window."""
     if not os.path.isfile('commitment.yaml'):
@@ -520,21 +640,9 @@ def run_release():
     # 6. Build hash: {createdBy (developer), release.createdBy (issuer), specs, validity}
     #    Both certificates are cryptographically bound before Vault signs.
     #    Future: this will become a Merkle tree root over CI artifact layers.
-    hash_payload = {
-        'createdBy': created_by,
-        'releasedBy': release_created_by,
-        'specs': specs,
-        'validity': validity,
-    }
-    build_hash = get_sha256_b64(to_canonical_json(hash_payload))
-    print(f"  - Build hash: {build_hash[:16]}...")
-
-    # 7. Sign via Vault Transit (one call for the entire bundle)
-    print(f"  - Signing with Vault key '{vault_key}'...")
-    signature = _vault_sign(build_hash, vault_addr, vault_token, vault_key, verify_tls)
-    print("  \033[92m✓ Vault signature obtained.\033[0m")
-
-    # 8. Assemble and write the bundle artifact
+    # 6b. Assemble the bundle FIRST, then hash it: under envelope v2 the
+    #     signature covers the whole artifact, so the artifact has to exist
+    #     before the hash can be taken.
     project_name = full_config.get('project', {}).get('name', 'XXprimitivesXX')
     bundle = {
         'kind': 'PrimitiveRelease',
@@ -543,12 +651,24 @@ def run_release():
         'validity': validity,
         'createdBy': created_by,
         'specs': specs,
+        'provenance': _collect_provenance(),
         'release': {
+            'envelope': RELEASE_ENVELOPE_VERSION,
             'createdBy': release_created_by,
-            'build_hash': build_hash,
-            'sign': signature,
         },
     }
+    hash_payload = _release_hash_payload(bundle, RELEASE_ENVELOPE_VERSION)
+    build_hash = get_sha256_b64(to_canonical_json(hash_payload))
+    print(f"  - Build hash (envelope v{RELEASE_ENVELOPE_VERSION}): {build_hash[:16]}...")
+
+    # 7. Sign via Vault Transit (one call for the entire bundle)
+    print(f"  - Signing with Vault key '{vault_key}'...")
+    signature = _vault_sign(build_hash, vault_addr, vault_token, vault_key, verify_tls)
+    print("  \033[92m✓ Vault signature obtained.\033[0m")
+
+    # 8. Write the bundle artifact
+    bundle['release']['build_hash'] = build_hash
+    bundle['release']['sign'] = signature
 
     os.makedirs('release', exist_ok=True)
     artifact_path = os.path.join('release', f"{project_name}-v{release_version}.yaml")
@@ -677,7 +797,7 @@ def run_domain_compatibility_check():
         print(f"\nAll {len(domain_files)} DomainComposition files are compatible.")
 
 
-def run_verify_release(artifact_path, strict=False):
+def run_verify_release(artifact_path, strict=False, trust_root=None):
     """Verifies a PrimitiveRelease bundle: schema validation, build_hash, and meta_hash checks.
 
     strict=True: meta_hash mismatches against local source files are a hard failure.
@@ -746,14 +866,14 @@ def run_verify_release(artifact_path, strict=False):
 
     recorded_hash = release_block.get('build_hash', '')
 
-    # build_hash covers {createdBy (developer), releasedBy (issuer), specs, validity}
-    hash_payload = {
-        'createdBy': created_by,
-        'releasedBy': release_created_by,
-        'specs': specs,
-        'validity': validity,
-    }
+    envelope_version = release_block.get('envelope', 1)
+    if envelope_version not in (1, 2):
+        print(f"  \033[91m✗ unknown release envelope version: {envelope_version}\033[0m")
+        sys.exit(1)
+    hash_payload = _release_hash_payload(bundle, envelope_version)
     recomputed_hash = get_sha256_b64(to_canonical_json(hash_payload))
+    print(f"  release envelope: v{envelope_version}"
+          f"{'  (legacy — signs four members only)' if envelope_version == 1 else ''}")
 
     if recomputed_hash == recorded_hash:
         print(f"\n  \033[92m✓ build_hash verified: {recomputed_hash[:24]}...\033[0m")
@@ -831,8 +951,137 @@ def run_verify_release(artifact_path, strict=False):
     else:
         print(f"  \033[93m⚠ commitment.yaml not found — pledge signature not verified\033[0m")
 
-    print(f"  \033[93m⚠ CA chain verification not configured (no trust root bundle)\033[0m")
-    print(f"\n  \033[92m✓ Artifact integrity OK\033[0m")
+    # ── CIC counter-signature ───────────────────────────────────────────────
+    #
+    # The schema has described this block since v0.1.5 and the released bundle
+    # carries a fully populated one — authority certificate, root certificate
+    # and signature — while the verifier never looked at any of it. A bundle
+    # whose countersign was replaced with garbage still reported success.
+    print(f"\n--- CIC Counter-signature ---")
+    countersign = bundle.get('cic_countersign')
+    countersigned = False
+    chain_ok = False
+    root_fingerprint = None
+
+    if not countersign:
+        print(f"  \033[93m⚠ absent — this artifact carries no CIC counter-signature\033[0m")
+    else:
+        authority = countersign.get('authority', {}) or {}
+        auth_name = authority.get('name', '(unnamed)')
+        auth_cert = authority.get('certificate', '')
+        auth_root = authority.get('root_certificate', '')
+        payload_name = countersign.get('signed_payload', '')
+        cs_sign = countersign.get('sign', '')
+
+        if payload_name != 'build_hash':
+            print(f"  \033[91m✗ signed_payload is '{payload_name}', not 'build_hash' — "
+                  f"cannot tell what was signed\033[0m")
+            sys.exit(1)
+        if not auth_cert or not cs_sign:
+            print(f"  \033[91m✗ authority certificate or signature missing\033[0m")
+            sys.exit(1)
+
+        ok, reason = _verify_cert_signature(auth_cert, cs_sign, recorded_hash)
+        if not ok:
+            print(f"  \033[91m✗ counter-signature FAILED: {reason}\033[0m")
+            sys.exit(1)
+        print(f"  \033[92m✓ counter-signature verified over build_hash ({auth_name})\033[0m")
+        countersigned = True
+
+        if not auth_root:
+            print(f"  \033[93m⚠ no root_certificate — the authority certificate is unanchored\033[0m")
+        else:
+            ok, reason = _verify_cert_chain(auth_cert, auth_root)
+            if not ok:
+                print(f"  \033[91m✗ authority certificate does not chain to the root it "
+                      f"carries: {reason}\033[0m")
+                sys.exit(1)
+            chain_ok = True
+            root_fingerprint = _cert_fingerprint(auth_root)
+            print(f"  \033[92m✓ authority certificate chains to the root in this bundle\033[0m")
+
+    # ── Trust anchor ────────────────────────────────────────────────────────
+    #
+    # A root carried INSIDE the artifact is not a trust anchor: whoever can
+    # rewrite the countersign can rewrite the root beside it. It only means
+    # something when compared with a root obtained out of band.
+    pinned = False
+    if trust_root:
+        if not os.path.isfile(trust_root):
+            print(f"\n  \033[91m✗ trust root not found: {trust_root}\033[0m")
+            sys.exit(1)
+        with open(trust_root, 'r') as fh:
+            pinned_pem = fh.read()
+        pinned_fp = _cert_fingerprint(pinned_pem)
+        if not pinned_fp:
+            print(f"\n  \033[91m✗ trust root is not a readable PEM certificate\033[0m")
+            sys.exit(1)
+        if root_fingerprint is None:
+            print(f"\n  \033[91m✗ --trust-root given, but this artifact carries no "
+                  f"authority root to compare it against\033[0m")
+            sys.exit(1)
+        if pinned_fp != root_fingerprint:
+            print(f"\n  \033[91m✗ TRUST ANCHOR MISMATCH — the artifact's root is not the "
+                  f"pinned one\033[0m")
+            print(f"      pinned:   {pinned_fp[:24]}...")
+            print(f"      artifact: {root_fingerprint[:24]}...")
+            sys.exit(1)
+        pinned = True
+
+    # ── What this run actually proved ───────────────────────────────────────
+    #
+    # The previous ending printed "CA chain verification not configured" and
+    # then "Artifact integrity OK" on the next line. The second sentence was
+    # stronger than the evidence: it is cryptographic self-consistency, not
+    # provenance. Say exactly which claims hold.
+    proven = [
+        "the bundle matches release.schema.yaml",
+        "build_hash equals a recomputation over {createdBy, releasedBy, specs, validity}",
+        "release.sign verifies against the issuer certificate carried in the bundle",
+    ]
+    if countersigned:
+        proven.append("cic_countersign verifies over build_hash with the authority certificate")
+    if chain_ok:
+        proven.append("the authority certificate was issued by the root carried in the bundle")
+    if pinned:
+        proven.append("that root is byte-identical to the out-of-band root you pinned")
+
+    unproven = []
+    if not countersigned:
+        unproven.append("no CIC counter-signature is present")
+    if countersigned and not chain_ok:
+        unproven.append("the authority certificate is not anchored to any root")
+    if not pinned:
+        unproven.append("no external trust anchor was supplied (--trust-root), so every "
+                        "certificate here is self-asserted")
+    if envelope_version == 1:
+        unproven.append("this is a v1 envelope: the signature covers four members only, "
+                        "so kind, version, timestamp and provenance are unsigned and "
+                        "can be rewritten without breaking build_hash")
+    else:
+        proven.append("the signature covers the whole bundle — kind, version, timestamp, "
+                      "manifest and provenance included")
+        if not (bundle.get('provenance') or {}).get('source_commit'):
+            unproven.append("no source_commit recorded, so the artifact cannot be tied "
+                            "back to a tree")
+
+    print(f"\n--- What this proves ---")
+    for claim in proven:
+        print(f"  \033[92m✓\033[0m {claim}")
+    for claim in unproven:
+        print(f"  \033[93m·\033[0m NOT proven: {claim}")
+
+    if unproven and strict:
+        print(f"\n  \033[91m✗ --strict: an unproven claim remains\033[0m")
+        sys.exit(1)
+
+    if pinned:
+        print(f"\n  \033[92m✓ Verified against the pinned CIC trust anchor\033[0m")
+    else:
+        print(f"\n  \033[92m✓ Internally consistent\033[0m — signed by the certificate this "
+              f"artifact carries.")
+        print(f"    That is not the same as trusted. Pass --trust-root <root.pem> to check "
+              f"provenance.")
 
 
 def main():
@@ -867,7 +1116,15 @@ def main():
             print("Usage: python tools/compiler.py verify-release <path/to/artifact.yaml> [--strict]")
             sys.exit(1)
         strict = '--strict' in sys.argv[3:]
-        run_verify_release(sys.argv[2], strict=strict)
+        trust_root = None
+        rest = sys.argv[3:]
+        if '--trust-root' in rest:
+            i = rest.index('--trust-root')
+            if i + 1 >= len(rest):
+                print("--trust-root needs a path to a PEM certificate")
+                sys.exit(2)
+            trust_root = rest[i + 1]
+        run_verify_release(sys.argv[2], strict=strict, trust_root=trust_root)
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)
