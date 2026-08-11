@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar grammar.local validate.local provenance provenance.report pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local provenance pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -69,13 +69,14 @@ grammar.local:
 # base-repo's imported_paths lists files every repo must customise, so
 # enforcing all of them would be wrong. --require names the ones where a
 # faithful copy is the actual contract.
+# This repository is the SOURCE of the primitive set, not a consumer of it, so
+# it has no pinned copy to enforce — report only. A consuming repository
+# overrides this with: PROVENANCE_ARGS := --require cic-primitives
+PROVENANCE_ARGS ?= --report-only
+
 provenance:
 	@echo "--- Provenance: imported paths vs their declared tags ---"
-	@python3 tools/check_provenance.py --require cic-primitives
-
-provenance.report:
-	@echo "--- Provenance: full report, nothing enforced ---"
-	@python3 tools/check_provenance.py --require __none__ || true
+	@python3 tools/check_provenance.py $(PROVENANCE_ARGS)
 
 validate.local: grammar.local
 	@echo "--- Validating all schemas against the meta-schema ---"

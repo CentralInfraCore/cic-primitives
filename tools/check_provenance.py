@@ -151,12 +151,33 @@ def check(dep_file: Path, offline: bool,
         return 2, []
 
     deps = [d for d in (doc.get("dependencies") or []) if isinstance(d, dict)]
+    declared = {d.get("name") for d in deps}
     checkable = [d for d in deps if d.get("imported_paths")]
-    if not checkable:
-        print("no dependency declares imported_paths — nothing to verify")
-        return 0, []
 
     results: list[Result] = []
+
+    # A required dependency that is not declared at all must FAIL, not pass.
+    # The first version only enforced what it happened to find, so a repository
+    # that never declared cic-primitives — while carrying a copy of its atoms —
+    # came out green. That is fail-open, and four repositories were sitting in
+    # exactly that state.
+    for name in sorted(required or ()):
+        if name not in declared:
+            missing = Result(name)
+            missing.error = ("required, but this dependency.yaml does not declare "
+                             "it at all — the files it would cover have no stated "
+                             "origin")
+            results.append(missing)
+        elif not any(d.get("name") == name and d.get("imported_paths") for d in deps):
+            partial = Result(name)
+            partial.error = ("required, and declared, but it lists no "
+                             "imported_paths — nothing is claimed, so nothing "
+                             "can be verified")
+            results.append(partial)
+
+    if not checkable and not results:
+        print("no dependency declares imported_paths — nothing to verify")
+        return 0, []
     for dep in checkable:
         res = Result(dep.get("name", "?"))
         source, tag = dep.get("source"), dep.get("tag")
@@ -185,6 +206,8 @@ def check(dep_file: Path, offline: bool,
     status = 0
     for r in results:
         r.enforced = required is None or r.dep in required
+        if r.error and r.error.startswith("required"):
+            r.enforced = True
         if not r.enforced:
             continue
         if r.error:
@@ -220,11 +243,21 @@ def main() -> int:
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--require", action="append", metavar="NAME",
                     help="only these dependencies decide the exit code; "
-                         "repeatable. Omit to require all of them.")
+                         "repeatable. A named dependency that is not declared "
+                         "is a failure, not a pass. Omit to require all "
+                         "declared ones.")
+    ap.add_argument("--report-only", action="store_true",
+                    help="enforce nothing; report and exit 0. For a source "
+                         "repository that consumes no pinned copy.")
     args = ap.parse_args()
 
+    if args.report_only and args.require:
+        ap.error("--report-only and --require are mutually exclusive")
     status, results = check(args.dependency_file, args.offline,
                             set(args.require) if args.require else None)
+    if args.report_only:
+        report(results)
+        return 0
     report(results)
     if status == 1:
         print("\nA file under an imported path was changed locally while the "
