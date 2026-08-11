@@ -58,13 +58,23 @@ def get_sha256_b64(data_bytes):
     return base64.b64encode(hashlib.sha256(data_bytes).digest()).decode('utf-8')
 
 
+DEV_VERSION_RE = re.compile(r'^v\d+\.\d+(\.\d+)?\.dev$')
+
+
 def _inject_version(obj, version_str):
-    """Recursively replaces the dev placeholder 'v0.0.dev' with the release version."""
+    """Recursively replaces any dev placeholder version with the release version.
+
+    Matched by pattern, not against the literal 'v0.0.dev'. The literal check
+    became silently wrong the moment an atom moved off v0.0: shape.yaml and
+    role.yaml are v0.1.dev, and a literal comparison would have carried '.dev'
+    into a signed release bundle while every other file carried the real
+    version. Any vX.Y[.Z].dev is a placeholder.
+    """
     if isinstance(obj, dict):
         return {k: _inject_version(v, version_str) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_inject_version(item, version_str) for item in obj]
-    if obj == 'v0.0.dev':
+    if isinstance(obj, str) and DEV_VERSION_RE.match(obj):
         return version_str
     return obj
 

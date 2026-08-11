@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar grammar.local validate.local provenance pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local test.local gate.local provenance pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -78,9 +78,16 @@ provenance:
 	@echo "--- Provenance: imported paths vs their declared tags ---"
 	@python3 tools/check_provenance.py $(PROVENANCE_ARGS)
 
+test.local:
+	@echo "--- pytest (compiler infrastructure) ---"
+	@python3 -m pytest tests/ -q
+
 validate.local: grammar.local
 	@echo "--- Validating all schemas against the meta-schema ---"
 	@python3 tools/compiler.py validate
+
+# What CI runs. Everything a gate can decide without Vault credentials.
+gate.local: validate.local test.local provenance
 
 pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
