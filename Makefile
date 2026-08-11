@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar grammar.local validate.local pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local provenance provenance.report pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -63,6 +63,19 @@ grammar.local:
 	@python3 proposals/atom-grammar/check_grammar.py --self-test
 	@echo "--- Atom grammar: live compositions ---"
 	@python3 proposals/atom-grammar/check_grammar.py $(GRAMMAR_COMPOSITIONS)
+
+# Does this tree still match the upstream tags its dependency.yaml claims?
+# NOT a prerequisite of validate — see the note in tools/check_provenance.py:
+# base-repo's imported_paths lists files every repo must customise, so
+# enforcing all of them would be wrong. --require names the ones where a
+# faithful copy is the actual contract.
+provenance:
+	@echo "--- Provenance: imported paths vs their declared tags ---"
+	@python3 tools/check_provenance.py --require cic-primitives
+
+provenance.report:
+	@echo "--- Provenance: full report, nothing enforced ---"
+	@python3 tools/check_provenance.py --require __none__ || true
 
 validate.local: grammar.local
 	@echo "--- Validating all schemas against the meta-schema ---"
