@@ -319,9 +319,111 @@ release:
 
 ---
 
-## D-014 — Cross-domain referenciák típuskezelése (2026-05-08)
+## D-014 — Cross-domain referenciák típuskezelése (2026-05-08, lezárva 2026-08-12)
 
-**Státusz:** nyitott — döntés szükséges (BACKLOG B-008)
+**Státusz:** lezárva — **opció 1 implementálva**, részlegesen
+
+**Mi történt:** az implementáció az ajánlott opció 1 irányába ment, de a döntés
+nyitva maradt, és senki nem rögzítette. A lezárás visszamenőleges: azt írja le,
+ami már fut, nem újat dönt.
+
+**Ami elkészült (2026-08-11):**
+
+A referencia **nem** `shape_type` érték lett, hanem annotáció — ez az opció 1
+pontosítása, nem eltérés tőle. A korpusz sosem írt `shape_type: reference`-t; a
+huzalon a referencia string, és hogy referencia, az szemantikai annotáció, nem
+szerkezeti arity. A `type_system.reference` visszavonva (`shape.yaml` v0.1.dev).
+
+```yaml
+shape_type: scalar
+scalar_type: string
+semantic_type: cic-reference
+reference_target: "cic:network:NetworkInterface"    # {namespace}:{Kind}
+```
+
+Kikényszerítve (`proposals/atom-grammar/check_grammar.py`, `make validate`):
+
+- **C9** — `semantic_type` és `reference_target` együtt kötelezők, egyik sem
+  állhat a másik nélkül;
+- **C10** — a `reference_target` alakja `{namespace}:{Kind}`, a namespace maga
+  `cic:`-vel kezdődik, a Kind PascalCase.
+
+**Egy formátumhibát is javított:** a `shape.yaml` `cic:{namespace}:{Kind}`
+alakban dokumentálta a célt, miközben a namespace már hordozza a `cic:` prefixet
+— behelyettesítve `cic:cic:network:X`-re bomlott. A korpusz mindig helyesen
+`{namespace}:{Kind}`-ot írt; a dokumentált formátum volt hibás.
+
+**Ami NEM készült el:** a referencia **feloldása**. Az opció 1 két felet ígért —
+a compiler a formátumot, a runtime a célpont létezését ellenőrzi. A második fél
+hiányzik: nincs típusregiszter, ami megmondaná, hogy a `cic:network:NetworkInterface`
+létező Kind-e. A `§8.2` feloldó fázis a lezárt objektummodellben is no-op volt.
+Ez nyitott marad, de **nem ennek a döntésnek a hatóköre** — külön tétel.
+
+---
+
+## D-015 — build_hash: mit fed az aláírás (2026-08-12)
+
+**Státusz:** lezárva — **a D-013-at módosítja**
+
+**Miért kell:** a D-013 lezárt döntésként azt mondja, hogy „a `PrimitiveRelease`
+bundle **nem tartalmaz** `build_hash`-t", és hogy a `release.content_hash` a
+`specs[]` canonical JSON hash-e. Az implementáció ehhez képest **két lépésben**
+elmozdult, és egyiket sem rögzítette senki:
+
+| | Mit mond |
+|---|---|
+| D-013 (lezárt) | nincs `build_hash`; `content_hash` a `specs[]` fölött |
+| `release.schema.yaml` | `release.build_hash` **kötelező** |
+| implementáció 2026-08-11-ig | `build_hash` **négy tag** fölött |
+| implementáció 2026-08-12-től | `build_hash` az **egész bundle** fölött |
+
+Egy repóban, aminek a terméke auditálható döntéslánc, ez governance-hiba: a
+napló és a végrehajtás között nem volt kapu. Ez a bejegyzés a valóságot rögzíti,
+és megnevezi, mi fedi mit.
+
+**Döntés:**
+
+A bundle **tartalmaz** `build_hash`-t. A D-013 azon mondata, hogy nem, hatályát
+veszti. A D-013 ezt előre látta: „ha a jövőben tényleges build artifact
+keletkezik, a bundle kiterjeszthető `build_hash` mezővel" — a kiterjesztés
+megtörtént, csak nem lett kimondva.
+
+Amit a `build_hash` fed, **envelope-verzió** szerint, `release.envelope`-ban
+deklarálva (hiánya = 1):
+
+**v1** — `{createdBy, releasedBy, specs, validity}`.
+A `kind`, a `version` és a `timestamp` **aláíratlan**. Mérve: egy 0.1.5 → 9.9.9
+átcímkézés 2099-es időbélyeggel tisztán verifikált. A
+`release/cic-primitives-v0.1.5.yaml` ez alatt lett aláírva, ezért v1
+**támogatott marad** — a múltat nem lehet visszamenőleg aláírni.
+
+**v2** — az **egész bundle**, kivéve három tagot:
+`release.sign`, `release.build_hash` és `cic_countersign`.
+
+A v2 szándékosan **nem mezőket sorol fel** — az volt a v1 hibája. Kizárás
+alapú, ezért egy később hozzáadott mező nem maradhat véletlenül aláíratlanul.
+
+A három kizárás oka:
+- `release.sign` és `release.build_hash` nem lehet a saját aláírásán belül;
+- a `cic_countersign` az aláírás **után** kerül rá, más hatóságtól. **Az irány
+  fordított:** a countersign fedi a `build_hash`-t, tehát v2 alatt tranzitívan
+  az egész bundle-t. Ha a `build_hash` fedné a countersignt, körkörös lenne.
+
+**A `content_hash` név nem tűnik el**, de már nem a release bundle-é:
+- a `pledge` payload hash-e (`commitment.yaml`), és
+- a Vault-aláírás paraméterneve (`_vault_sign`, `_verify_cert_signature`) —
+  ott „az a digest, amit alá kell írni" jelentésben általános.
+
+**Provenance:** a bundle kap egy `provenance` blokkot (`source_commit`,
+`dependency.yaml` és a grammatika digestje), ami v2 alatt automatikusan aláírás
+alá kerül.
+
+**Következmény a verifierre:** CA/countersign ellenőrzés nélkül nem írható ki
+„integrity OK". A kimenet tételesen felsorolja, mi bizonyított és mi nem, és v1
+esetén kimondja, hogy az aláírás négy tagot fed. Külső horgony:
+`--trust-root <pem>`.
+
+---
 
 **Helyzet:**
 CIC objektumok közötti hivatkozások (pl. StorageResource → ComputeResource, KubernetesNode → KubernetesCluster)
@@ -661,9 +763,116 @@ release:
 
 ---
 
-## D-014 — Cross-domain reference type handling (2026-05-08)
+## D-014 — Cross-domain reference type handling (2026-05-08, closed 2026-08-12)
 
-**Status:** open — decision required (BACKLOG B-008)
+**Status:** closed — **option 1 implemented**, partially
+
+**What happened:** the implementation went the way of the recommended option 1,
+but the decision stayed open and nobody recorded it. This closure is
+retrospective: it describes what already runs, it does not decide anything new.
+
+**What was built (2026-08-11):**
+
+The reference did **not** become a `shape_type` value but an annotation — a
+refinement of option 1, not a departure from it. No composition has ever written
+`shape_type: reference`: on the wire a reference is a string, and being a
+reference is a semantic annotation, not a structural arity.
+`type_system.reference` is retired (`shape.yaml` v0.1.dev).
+
+```yaml
+shape_type: scalar
+scalar_type: string
+semantic_type: cic-reference
+reference_target: "cic:network:NetworkInterface"    # {namespace}:{Kind}
+```
+
+Enforced by `proposals/atom-grammar/check_grammar.py`, which runs in
+`make validate`:
+
+- **C9** — `semantic_type` and `reference_target` are inseparable; neither may
+  appear without the other;
+- **C10** — `reference_target` is `{namespace}:{Kind}`, the namespace itself
+  carries the `cic:` prefix, and the Kind is PascalCase.
+
+**It also fixed a format defect:** `shape.yaml` documented the target as
+`cic:{namespace}:{Kind}` while the namespace already carries the `cic:` prefix —
+substituted, that expands to `cic:cic:network:X`. Every composition has always
+written `{namespace}:{Kind}` correctly; the documented format was the wrong one.
+
+**What was NOT built:** reference **resolution**. Option 1 promised two halves —
+the compiler checks the format, the runtime checks that the target exists. The
+second half is missing: there is no type registry that could say whether
+`cic:network:NetworkInterface` is a Kind that exists. (The §8.2 resolution stage
+in the archived object model was a no-op for the same reason.) This stays open,
+but it is **not in this decision's scope** — it is a separate item.
+
+---
+
+## D-015 — build_hash: what the signature covers (2026-08-12)
+
+**Status:** closed — **amends D-013**
+
+**Why it is needed:** D-013, a closed decision, states that the
+`PrimitiveRelease` bundle **does not contain** a `build_hash`, and that
+`release.content_hash` is the canonical JSON hash of `specs[]`. The
+implementation moved away from that in **two steps**, and neither was recorded:
+
+| | What it says |
+|---|---|
+| D-013 (closed) | no `build_hash`; `content_hash` over `specs[]` |
+| `release.schema.yaml` | `release.build_hash` is **required** |
+| implementation until 2026-08-11 | `build_hash` over **four members** |
+| implementation from 2026-08-12 | `build_hash` over the **whole bundle** |
+
+In a repository whose product is an auditable decision chain, that is a
+governance defect: there was no gate between the log and the implementation.
+This entry records reality and names what covers what.
+
+**Decision:**
+
+The bundle **does** contain a `build_hash`. D-013's sentence saying it does not
+is superseded. D-013 anticipated this — "if a real build artifact appears in the
+future, the bundle can be extended with a `build_hash` field" — the extension
+happened, it was simply never stated.
+
+What `build_hash` covers, by **envelope version**, declared in
+`release.envelope` (absent means 1):
+
+**v1** — `{createdBy, releasedBy, specs, validity}`.
+`kind`, `version` and `timestamp` are **unsigned**. Measured: relabelling
+0.1.5 → 9.9.9 with a 2099 timestamp verified clean.
+`release/cic-primitives-v0.1.5.yaml` was signed under this, so v1 **stays
+supported** — the past cannot be re-signed.
+
+**v2** — the **whole bundle**, minus three members:
+`release.sign`, `release.build_hash` and `cic_countersign`.
+
+v2 deliberately does **not** enumerate fields — that is how v1 went wrong. It is
+exclusion-based, so a field added later cannot end up accidentally unsigned.
+
+Why those three are excluded:
+- `release.sign` and `release.build_hash` cannot be inside their own signature;
+- `cic_countersign` is applied **after** signing, by a different authority. **The
+  direction is the other way round:** the countersign covers `build_hash`, and
+  therefore, under v2, transitively the whole bundle. Having `build_hash` cover
+  the countersign would be circular.
+
+**The name `content_hash` does not disappear**, but it is no longer the release
+bundle's:
+- it is the pledge payload hash (`commitment.yaml`), and
+- it is the parameter name of the Vault signing helpers (`_vault_sign`,
+  `_verify_cert_signature`), where it generically means "the digest to sign".
+
+**Provenance:** the bundle gains a `provenance` block (`source_commit`, the
+digest of `dependency.yaml` and of the grammar), which under v2 is signed
+automatically.
+
+**Consequence for the verifier:** without CA/countersign verification it may not
+print "integrity OK". The output lists item by item what is proven and what is
+not, and under v1 states plainly that the signature covers four members. External
+anchor: `--trust-root <pem>`.
+
+---
 
 **Situation:**
 References between CIC objects (e.g. StorageResource → ComputeResource, KubernetesNode → KubernetesCluster)

@@ -51,8 +51,8 @@ make release     # signed artifact (Vault szükséges)
 | Primitive meta-schema validáció | **defined** | `schemas/index.yaml` + `compiler.py` — `make validate` zöld |
 | sealed/required slot enforcement | **defined** | domain specializáció kompatibilitás ellenőrzött |
 | KubernetesPod domain példa | **defined** | `schemas/examples/kubernetes-pod.yaml` |
-| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], content_hash, Vault sign |
-| verify-release | **defined** | `make verify-release FILE=...` — schema + content_hash + meta_hash ellenőrzés |
+| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], build_hash (envelope v2: a teljes bundle), provenance, Vault sign, cic_countersign — D-015 |
+| verify-release | **defined** | `make verify-release FILE=... [--trust-root <pem>]` — schema + build_hash + meta_hash + countersign és lánc ellenőrzés; horgony nélkül nem ír „integrity OK"-t |
 | Vault signature verification | **concept** | ECDSA ellenőrzés Vault pubkey-jel — következő fázis |
 | defaulted slot merge szemantika | **draft** | replace/deep_merge/append/union — D-008, első domain override-nál dől el |
 | LifecycleSurface / CapabilitySurface / NotificationSurface | **concept** | Relay execution modell előfeltétel |
@@ -127,8 +127,8 @@ make release     # signed artifact (Vault required)
 | Primitive meta-schema validation | **defined** | `schemas/index.yaml` + `compiler.py` — `make validate` green |
 | sealed/required slot enforcement | **defined** | domain specialization compatibility verified |
 | KubernetesPod domain example | **defined** | `schemas/examples/kubernetes-pod.yaml` |
-| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], content_hash, Vault sign |
-| verify-release | **defined** | `make verify-release FILE=...` — schema + content_hash + meta_hash check |
+| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], build_hash (envelope v2: a teljes bundle), provenance, Vault sign, cic_countersign — D-015 |
+| verify-release | **defined** | `make verify-release FILE=... [--trust-root <pem>]` — schema + build_hash + meta_hash + countersign and chain verification; without an anchor it does not claim "integrity OK" |
 | Vault signature verification | **concept** | ECDSA verification with Vault pubkey — next phase |
 | defaulted slot merge semantics | **draft** | replace/deep_merge/append/union — D-008, decided at first domain override |
 | LifecycleSurface / CapabilitySurface / NotificationSurface | **concept** | Relay execution model prerequisite |
