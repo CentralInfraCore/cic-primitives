@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar grammar.local validate.local pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local test.local gate.local provenance pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -42,7 +42,8 @@ grammar:
 	@docker compose exec builder python proposals/atom-grammar/check_grammar.py --self-test
 	@echo "--- Atom grammar: live compositions ---"
 	@docker compose exec builder sh -c \
-	  'python proposals/atom-grammar/check_grammar.py schemas/examples/kubernetes-pod.yaml'
+	  'python proposals/atom-grammar/check_grammar.py schemas/examples/*.yaml \
+	     $$(ls schemas/domain/*.yaml 2>/dev/null)'
 
 # =============================================================================
 # Container-free gate — what CI runs
@@ -51,7 +52,11 @@ grammar:
 # validate.local, so the gate has ONE definition rather than one here and a
 # second one copied into the workflow YAML.
 
-GRAMMAR_COMPOSITIONS := schemas/examples/kubernetes-pod.yaml
+# Every composition this repository ships. Wildcards, not a fixed list, so a
+# new composition is gated the moment it lands. Both directories matter:
+# examples/ holds the demonstrations, domain/ holds the real domain objects —
+# and domain/ is where the richest ones live (cic-compute's compute-resource).
+GRAMMAR_COMPOSITIONS := $(wildcard schemas/examples/*.yaml) $(wildcard schemas/domain/*.yaml)
 
 grammar.local:
 	@echo "--- Atom grammar: self-test ---"
@@ -59,9 +64,30 @@ grammar.local:
 	@echo "--- Atom grammar: live compositions ---"
 	@python3 proposals/atom-grammar/check_grammar.py $(GRAMMAR_COMPOSITIONS)
 
+# Does this tree still match the upstream tags its dependency.yaml claims?
+# NOT a prerequisite of validate — see the note in tools/check_provenance.py:
+# base-repo's imported_paths lists files every repo must customise, so
+# enforcing all of them would be wrong. --require names the ones where a
+# faithful copy is the actual contract.
+# This repository is the SOURCE of the primitive set, not a consumer of it, so
+# it has no pinned copy to enforce — report only. A consuming repository
+# overrides this with: PROVENANCE_ARGS := --require cic-primitives
+PROVENANCE_ARGS ?= --report-only
+
+provenance:
+	@echo "--- Provenance: imported paths vs their declared tags ---"
+	@python3 tools/check_provenance.py $(PROVENANCE_ARGS)
+
+test.local:
+	@echo "--- pytest (compiler infrastructure) ---"
+	@python3 -m pytest tests/ -q
+
 validate.local: grammar.local
 	@echo "--- Validating all schemas against the meta-schema ---"
 	@python3 tools/compiler.py validate
+
+# What CI runs. Everything a gate can decide without Vault credentials.
+gate.local: validate.local test.local provenance
 
 pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"

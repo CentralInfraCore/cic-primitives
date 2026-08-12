@@ -63,7 +63,15 @@ SHORT_ROLE_EXPANSION = {
     "config": {"authority": "config", "structural": [], "lifecycle": None},
     "state": {"authority": "state", "structural": [], "lifecycle": None},
     "operational": {"authority": "operational", "structural": [], "lifecycle": None},
+    # A key is supplied by the requester at creation, so its authority is config.
     "key": {"authority": "config", "structural": ["key"], "lifecycle": None},
+    # `derived` and `volatile` are lifecycle values, and both exclude authority
+    # `config` — so the bare default cannot apply to them. They expand to
+    # `state`: role.yaml maps both to `config false`, GET only, and every corpus
+    # occurrence sits on a state_surface. Anyone wanting `operational` with
+    # either must write the long form.
+    "derived": {"authority": "state", "structural": [], "lifecycle": "derived"},
+    "volatile": {"authority": "state", "structural": [], "lifecycle": "volatile"},
 }
 
 
@@ -99,29 +107,72 @@ def expand_role(raw, path: str, out: list[Finding]) -> dict | None:
 # Node walking
 # ──────────────────────────────────────────────────────────────────────────────
 
+# A node lives at a closed set of structural positions, and nowhere else.
+#
+# The first version discovered nodes by looking for a `shape_type` member. That
+# is fail-open, and provably so: a field that omits `shape_type` was not
+# reported as invalid, it was not seen at all — 0 nodes examined, 0 findings.
+# Every "0 findings" this checker ever printed therefore proved less than it
+# claimed. Discovery must not depend on the member whose absence is itself the
+# defect.
+# `input`, `output` and `payload` are node lists too: a Behavior's parameters
+# and an Event's payload are inline Shapes with exactly the field-descriptor
+# form. Leaving them out was a second fail-open, found by diffing this walker
+# against the one it replaced — the old one saw them, and only by accident,
+# because they happen to carry `shape_type`. When these members hold a STRING
+# instead of a list they are a reference, and C6/C7 resolve them; the isinstance
+# guard below keeps the two cases apart.
+NODE_CONTAINERS = ("nodes", "fields", "item_fields", "input", "output", "payload")
+
+
+def _node_children(node: dict, here: str):
+    """(child, path, key_names) for a node's own structural children."""
+    # An explicit item_key wins; with none, a single `role: key` item field is
+    # the key by derivation (section 2.3).
+    keys = frozenset(node.get("item_key") or [
+        f.get("name") for f in (node.get("item_fields") or [])
+        if isinstance(f, dict) and is_key_role(f.get("role"))])
+    for child in node.get("fields") or []:
+        if isinstance(child, dict):
+            yield child, here, frozenset()
+    for child in node.get("item_fields") or []:
+        if isinstance(child, dict):
+            yield child, here + "[]", keys
+    for case in node.get("cases") or []:
+        if isinstance(case, dict):
+            for child in case.get("fields") or []:
+                if isinstance(child, dict):
+                    yield child, f"{here}<{case.get('name', '?')}>", frozenset()
+
+
+def _walk_node(node: dict, path: str, in_item_key: frozenset[str]):
+    name = node.get("name", "?")
+    here = f"{path}.{name}"
+    yield node, here, name in in_item_key
+    for child, cpath, ckeys in _node_children(node, here):
+        yield from _walk_node(child, cpath, ckeys)
+
+
 def walk_nodes(obj, path: str = "$", in_item_key: frozenset[str] = frozenset()):
-    """Yield (node, path, is_key_position) for every dict carrying `shape_type`."""
+    """Yield (node, path, is_key_position) for every node position in a document.
+
+    A node is an element of a `nodes`, `fields` or `item_fields` LIST — whatever
+    it contains. A mapping that merely happens to carry `shape_type` somewhere
+    else is not a node, and a list element that lacks `shape_type` still is one.
+    """
     if isinstance(obj, dict):
-        if "shape_type" in obj:
-            name = obj.get("name", "?")
-            here = f"{path}.{name}"
-            yield obj, here, name in in_item_key
-            # An explicit item_key wins; with none, a single `role: key` item
-            # field is the key by derivation (section 2.3).
-            keys = frozenset(obj.get("item_key") or [
-                f.get("name") for f in (obj.get("item_fields") or [])
-                if isinstance(f, dict) and is_key_role(f.get("role"))])
-            for child in obj.get("fields") or []:
-                yield from walk_nodes(child, here, frozenset())
-            for child in obj.get("item_fields") or []:
-                yield from walk_nodes(child, here + "[]", keys)
-            for case in obj.get("cases") or []:
-                if isinstance(case, dict):
-                    for child in case.get("fields") or []:
-                        yield from walk_nodes(child, f"{here}<{case.get('name','?')}>",
-                                              frozenset())
-            return
+        for key in NODE_CONTAINERS:
+            entries = obj.get(key)
+            if not isinstance(entries, list):
+                continue
+            for item in entries:
+                if isinstance(item, dict):
+                    yield from _walk_node(item, f"{path}.{key}", in_item_key)
         for k, v in obj.items():
+            # The containers above are fully handled by _walk_node, and `cases`
+            # is reached through it; descending again would double-report.
+            if k in NODE_CONTAINERS or k == "cases":
+                continue
             yield from walk_nodes(v, f"{path}.{k}", in_item_key)
     elif isinstance(obj, list):
         for item in obj:
@@ -441,6 +492,29 @@ MUST_REJECT = {
         "role": "reference"},
 }
 
+# Fixtures that must be rejected but are documents, not bare nodes: the defect
+# is the absence of a member, so they only exist at a real node position.
+MUST_REJECT_DOCS = {
+    "a field with no shape_type at all": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "ghost", "scalar_type": "string", "role": "config"}]}}},
+    "a field carrying only an unknown member": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "alien", "totally_unknown": True}]}}},
+    "a composite child with no shape_type": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "outer", "shape_type": "composite", "role": "config",
+             "fields": [{"name": "inner", "scalar_type": "string"}]}]}}},
+    "a collection item with no shape_type": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "list_node", "shape_type": "collection",
+             "collection_variant": "list", "role": "state",
+             "item_fields": [{"name": "k", "shape_type": "scalar",
+                              "scalar_type": "string", "role": "key",
+                              "mandatory": True},
+                             {"name": "broken"}]}]}}},
+}
+
 MUST_ACCEPT = {
     "a plain mandatory scalar": {
         "name": "cpu_cores", "shape_type": "scalar", "scalar_type": "integer",
@@ -469,6 +543,9 @@ MUST_ACCEPT = {
             {"name": "name", "shape_type": "scalar", "scalar_type": "string",
              "role": "key", "mandatory": True},
             {"name": "value", "shape_type": "scalar", "scalar_type": "string"}]},
+    "the short lifecycle forms the corpus writes": {
+        "name": "effective_state", "shape_type": "scalar", "scalar_type": "string",
+        "role": "derived"},
     "the combination the flat model could not express": {
         "name": "last_seen_peer", "shape_type": "scalar", "scalar_type": "string",
         "semantic_type": "cic-reference",
@@ -478,10 +555,21 @@ MUST_ACCEPT = {
 }
 
 
+def as_document(node: dict) -> dict:
+    """Put a bare node fixture at a real node position.
+
+    Discovery is structural now, so a fixture floating outside any `nodes` list
+    would simply not be looked at — which is exactly the bug these fixtures
+    exist to catch.
+    """
+    return {"spec": {"config_surface": {"nodes": [node]}}}
+
+
 def self_test(validator) -> int:
     failures = 0
     print("--- must be rejected ---")
-    for label, node in MUST_REJECT.items():
+    for label, node in {**{k: as_document(v) for k, v in MUST_REJECT.items()},
+                        **MUST_REJECT_DOCS}.items():
         findings = check_document(node, validator)
         if findings:
             print(f"  \033[92mrejected\033[0m  {label}  [{findings[0].rule}]")
@@ -491,7 +579,7 @@ def self_test(validator) -> int:
 
     print("\n--- must be accepted ---")
     for label, node in MUST_ACCEPT.items():
-        findings = check_document(node, validator)
+        findings = check_document(as_document(node), validator)
         if not findings:
             print(f"  \033[92maccepted\033[0m  {label}")
         else:
@@ -500,7 +588,7 @@ def self_test(validator) -> int:
                 print(f)
             failures += 1
 
-    total = len(MUST_REJECT) + len(MUST_ACCEPT)
+    total = len(MUST_REJECT) + len(MUST_REJECT_DOCS) + len(MUST_ACCEPT)
     print(f"\nself-test: {total - failures}/{total}")
     return 1 if failures else 0
 

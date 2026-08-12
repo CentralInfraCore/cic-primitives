@@ -240,8 +240,11 @@ megmarad:
 
 ```yaml
 role: config          # ⇔ role: { authority: config }
-role: key             # ⇔ role: { authority: config, structural: [key] }
 role: state           # ⇔ role: { authority: state }
+role: operational     # ⇔ role: { authority: operational }
+role: key             # ⇔ role: { authority: config, structural: [key] }
+role: derived         # ⇔ role: { authority: state, lifecycle: derived }
+role: volatile        # ⇔ role: { authority: state, lifecycle: volatile }
 ```
 
 Hosszú alak akkor kell, ha egynél több tengelyt akarsz megnevezni:
@@ -253,10 +256,24 @@ role:
   lifecycle: volatile
 ```
 
-**A rövid alak feloldása kötött, nem ízlés kérdése:** a `key` `authority`-ja
-`config`, mert a lista kulcsát a management plane adja meg létrehozáskor. A
-`reference` `authority`-ja **nem** vezethető le — ezért a `role: reference`
-rövid alak **tilos**, hosszú alakot kell írni. (A korpuszban nem is fordul elő.)
+**A rövid alak feloldása kötött, nem ízlés kérdése:**
+
+- a `key` `authority`-ja `config`, mert a lista kulcsát a management plane adja
+  meg létrehozáskor;
+- a `derived` és a `volatile` `authority`-ja `state`, mert mindkettő kizárja a
+  `config`-ot (tehát az alapértelmezés nem alkalmazható rájuk), a `role.yaml`
+  mindkettőt `config false` / GET-only alakra képezi, és a korpuszban mindkettő
+  `state_surface`-en áll. Aki `operational`-t akar velük, hosszú alakot ír;
+- a `reference` `authority`-ja **nem** vezethető le — ezért a `role: reference`
+  rövid alak **tilos**, hosszú alakot kell írni.
+
+> **Korrekció (a fanout mérése).** Korábban azt írtam ide, hogy a `derived`,
+> `volatile` és `reference` **nulla** korpusz-példánnyal rendelkezik. Ez két
+> kompozíció mérésén alapult, és a `derived`/`volatile` esetében **téves**: a
+> `cic-network` `schemas/examples/network-interface.yaml`-ja mindkettőt rövid
+> alakban írja, pontosan a `role.yaml` saját példáival (`effective_state`,
+> `last_seen`). A grammatika első változata ezért elutasította volna egy létező,
+> helyes kompozíciót. A `reference`-re az állítás továbbra is áll: 0 előfordulás.
 
 ### 3.2 Az érvényes kombinációk
 

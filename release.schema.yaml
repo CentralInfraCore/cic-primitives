@@ -1,153 +1,186 @@
 ---
 type: object
-title: "PrimitiveRelease Bundle Schema"
-description: "Defines the structure of a signed release artifact produced by 'python tools/compiler.py release'. One file per release version under release/."
+title: PrimitiveRelease Bundle Schema
+description: Defines the structure of a signed release artifact produced by 'python tools/compiler.py
+  release'. One file per release version under release/.
 required:
-  - kind
-  - version
-  - timestamp
-  - validity
-  - createdBy
-  - specs
-  - release
-
+- kind
+- version
+- timestamp
+- validity
+- createdBy
+- specs
+- release
 properties:
   kind:
     type: string
     const: PrimitiveRelease
-    description: "Fixed discriminator — identifies this as a primitive release bundle."
-
+    description: "Fixed discriminator \u2014 identifies this as a primitive release bundle."
   version:
     type: string
-    description: "Semantic version of this release (e.g. '0.1.5')."
-    pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
-
+    description: Semantic version of this release (e.g. '0.1.5').
+    pattern: ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$
   timestamp:
     type: string
     format: date-time
-    description: "UTC timestamp of the release build (ISO 8601)."
-
+    description: UTC timestamp of the release build (ISO 8601).
   validity:
     type: object
-    description: "Developer maintenance commitment window. Taken from commitment.yaml at release time."
+    description: Developer maintenance commitment window. Taken from commitment.yaml at release time.
     required:
-      - from
-      - until
+    - from
+    - until
     properties:
       from:
         type: string
         format: date
-        description: "Start date of the maintenance commitment (ISO 8601 date)."
+        description: Start date of the maintenance commitment (ISO 8601 date).
       until:
         type: string
         format: date
-        description: "End date of the maintenance commitment (ISO 8601 date)."
-
+        description: End date of the maintenance commitment (ISO 8601 date).
   createdBy:
     type: object
-    description: "Developer identity block. The certificate is bound inside the build_hash before signing."
+    description: Developer identity block. The certificate is bound inside the build_hash before signing.
     required:
-      - name
-      - email
-      - certificate
+    - name
+    - email
+    - certificate
     properties:
       name:
         type: string
-        description: "Full name of the developer."
+        description: Full name of the developer.
       email:
         type: string
         format: email
-        description: "Contact email of the developer."
+        description: Contact email of the developer.
       certificate:
         type: string
-        description: "PEM-encoded X.509 developer certificate (identity anchor, cryptographically bound to build_hash)."
-
+        description: PEM-encoded X.509 developer certificate (identity anchor, cryptographically bound
+          to build_hash).
   specs:
     type: array
-    description: "Inline schema definitions. Each entry is one source schema file, inlined at release time."
+    description: Inline schema definitions. Each entry is one source schema file, inlined at release time.
     minItems: 1
     items:
       type: object
       required:
-        - id
-        - source_path
-        - meta_hash
-        - spec
+      - id
+      - source_path
+      - meta_hash
+      - spec
       properties:
         id:
           type: string
-          description: "Schema identifier — basename of the source file without extension."
+          description: "Schema identifier \u2014 basename of the source file without extension."
         source_path:
           type: string
-          description: "Relative path to the original source file in the repo (traceability)."
+          description: Relative path to the original source file in the repo (traceability).
         meta_hash:
           type: string
-          description: "SHA256 (base64) of the raw source file bytes at release time."
+          description: SHA256 (base64) of the raw source file bytes at release time.
         spec:
           type: object
-          description: "Full inline content of the schema file."
-
+          description: Full inline content of the schema file.
   release:
     type: object
-    description: "Cryptographic provenance block. build_hash is computed over canonical JSON of {createdBy (developer), releasedBy (issuer), specs, validity} — both certificates are cryptographically bound before signing. Future: build_hash will become a Merkle tree root over CI artifact layers."
+    description: "Cryptographic provenance block. build_hash is computed over canonical JSON of {createdBy\
+      \ (developer), releasedBy (issuer), specs, validity} \u2014 both certificates are cryptographically\
+      \ bound before signing. Future: build_hash will become a Merkle tree root over CI artifact layers."
     required:
-      - createdBy
-      - build_hash
-      - sign
+    - createdBy
+    - build_hash
+    - sign
     properties:
       createdBy:
         type: object
-        description: "Release issuer identity. Certificate is bound inside build_hash before Vault signs."
+        description: Release issuer identity. Certificate is bound inside build_hash before Vault signs.
         required:
-          - name
-          - email
-          - certificate
+        - name
+        - email
+        - certificate
         properties:
           name:
             type: string
-            description: "Full name of the release issuer."
+            description: Full name of the release issuer.
           email:
             type: string
             format: email
-            description: "Contact email of the release issuer."
+            description: Contact email of the release issuer.
           certificate:
             type: string
-            description: "PEM-encoded X.509 release issuer certificate (cryptographically bound to build_hash)."
+            description: PEM-encoded X.509 release issuer certificate (cryptographically bound to build_hash).
       build_hash:
         type: string
-        description: "SHA256 (base64) of canonical JSON of {createdBy (developer), releasedBy (issuer), specs, validity}. Tamper-proof seal over both identities and all schema content. Future: Merkle tree root."
+        description: 'SHA256 (base64) of canonical JSON of {createdBy (developer), releasedBy (issuer),
+          specs, validity}. Tamper-proof seal over both identities and all schema content. Future: Merkle
+          tree root.'
       sign:
         type: string
-        description: "Vault Transit ECDSA signature over build_hash (prehashed=true), verifiable with release.createdBy.certificate."
-
+        description: Vault Transit ECDSA signature over build_hash (prehashed=true), verifiable with release.createdBy.certificate.
+      envelope:
+        type: integer
+        enum:
+        - 1
+        - 2
+        description: "Which payload build_hash covers. 1 = the four members {createdBy, releasedBy, specs,\
+          \ validity} \u2014 legacy, leaves kind/version/timestamp unsigned. 2 = the whole bundle except\
+          \ release.sign, release.build_hash and cic_countersign. Absent means 1."
   cic_countersign:
     type: object
-    description: "External CIC counter-signature over release.build_hash. Applied by CICSourceCA after the release artifact is built and signed by the issuer."
+    description: External CIC counter-signature over release.build_hash. Applied by CICSourceCA after
+      the release artifact is built and signed by the issuer.
     required:
-      - authority
-      - signed_payload
-      - sign
+    - authority
+    - signed_payload
+    - sign
     properties:
       authority:
         type: object
         required:
-          - name
-          - certificate
-          - root_certificate
+        - name
+        - certificate
+        - root_certificate
         properties:
           name:
             type: string
-            description: "Human-readable name of the signing authority (e.g. 'CIC Source CA')."
+            description: Human-readable name of the signing authority (e.g. 'CIC Source CA').
           certificate:
             type: string
-            description: "PEM-encoded X.509 certificate of the signing authority (intermediate CA)."
+            description: PEM-encoded X.509 certificate of the signing authority (intermediate CA).
           root_certificate:
             type: string
-            description: "PEM-encoded X.509 root CA certificate (trust anchor)."
+            description: PEM-encoded X.509 root CA certificate (trust anchor).
       signed_payload:
         type: string
         const: build_hash
-        description: "Identifies what was signed — always 'build_hash', the cryptographic root of the release bundle."
+        description: "Identifies what was signed \u2014 always 'build_hash', the cryptographic root of\
+          \ the release bundle."
       sign:
         type: string
-        description: "ECDSA signature over release.build_hash (prehashed, DER base64, vault:v1: prefix), verifiable with authority.certificate."
+        description: 'ECDSA signature over release.build_hash (prehashed, DER base64, vault:v1: prefix),
+          verifiable with authority.certificate.'
+  provenance:
+    type: object
+    description: Where this build came from. Covered by build_hash under envelope v2, so none of it can
+      be rewritten after signing.
+    properties:
+      envelope:
+        type: integer
+      source_commit:
+        type:
+        - string
+        - 'null'
+        description: git rev-parse HEAD at release time.
+      dependency_lock_sha256:
+        type:
+        - string
+        - 'null'
+      grammar_sha256:
+        type:
+        - string
+        - 'null'
+      grammar_schema_sha256:
+        type:
+        - string
+        - 'null'
