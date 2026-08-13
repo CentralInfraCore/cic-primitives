@@ -615,10 +615,72 @@ def run_pledge():
     print(f"\n  \033[93mNext step: commit commitment.yaml, then run 'make release'.\033[0m")
 
 
+def run_grammar_gate():
+    """Refuses to release a composition the atom grammar rejects.
+
+    This lives in the tool, not in the Makefile. `make release` could be given
+    the grammar step and it would still be bypassable by calling
+    `python tools/compiler.py release` directly — and a gate that a direct call
+    walks around is a convention, not a gate.
+
+    Imported by path rather than installed: the grammar is a sibling artifact in
+    this repository, not a package, and vendoring a copy here is the drift this
+    repository spends its effort preventing.
+    """
+    import importlib.util
+
+    grammar_path = os.path.join('proposals', 'atom-grammar', 'check_grammar.py')
+    if not os.path.isfile(grammar_path):
+        print(f"\033[91m✗ ERROR: {grammar_path} not found — cannot check the "
+              f"compositions this release would ship.\033[0m")
+        sys.exit(1)
+
+    spec = importlib.util.spec_from_file_location("_cic_atom_grammar", grammar_path)
+    grammar = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(grammar)
+        validator = grammar.load_schema()
+    except Exception as e:
+        print(f"\033[91m✗ ERROR: cannot load the atom grammar: {e}\033[0m")
+        sys.exit(1)
+
+    compositions = sorted(
+        glob.glob(os.path.join('schemas', 'examples', '*.yaml'))
+        + glob.glob(os.path.join('schemas', 'domain', '*.yaml')))
+
+    print("--- Atom grammar (compositions this release would ship) ---")
+    total_findings = 0
+    for path in compositions:
+        try:
+            with open(path, 'r') as fh:
+                docs = [d for d in yaml.safe_load_all(fh) if d is not None]
+        except yaml.YAMLError as e:
+            print(f"  \033[91m✗ {path}: unparseable: {e}\033[0m")
+            total_findings += 1
+            continue
+        findings = []
+        for doc in docs:
+            findings.extend(grammar.check_document(doc, validator))
+        if findings:
+            total_findings += len(findings)
+            print(f"  \033[91m✗ {path} ({len(findings)} finding)\033[0m")
+            for f in findings:
+                print(f"      [{f.rule}] {f.path}: {f.message}")
+        else:
+            print(f"  \033[92m✓ {path}\033[0m")
+
+    if total_findings:
+        print(f"\n\033[91m✗ ERROR: {total_findings} grammar finding(s). A release "
+              f"must not ship a composition the grammar rejects.\033[0m")
+        sys.exit(1)
+    print(f"  \033[92m✓ {len(compositions)} composition(s) satisfy the grammar.\033[0m")
+
+
 def run_release():
     """Builds a signed PrimitiveRelease bundle artifact into release/."""
     print("--- Running Schema Release ---")
     release_version, component_name = validate_release_prerequisites()
+    run_grammar_gate()
 
     vault_addr = os.getenv('VAULT_ADDR')
     vault_token = os.getenv('VAULT_TOKEN')

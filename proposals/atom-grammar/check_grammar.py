@@ -490,7 +490,15 @@ def check_collection(node, path, out: list[Finding]) -> None:
                 "explicitly"))
         return
 
+    seen = set()
     for key in declared:
+        if key in seen:
+            out.append(Finding(
+                "C8", path,
+                f"`{key}` is listed twice in item_key; a composite key's order is "
+                f"a sequence of distinct fields, and a repeat makes the key "
+                f"ambiguous rather than more specific"))
+        seen.add(key)
         if key not in item_names:
             out.append(Finding(
                 "C8", path, f"item_key names `{key}`, which is not an item field"))
@@ -673,6 +681,15 @@ MUST_REJECT_DOCS = {
              "role": "config"},
             {"name": "dup", "shape_type": "scalar", "scalar_type": "integer",
              "role": "config"}]}}},
+    "the same field listed twice in item_key": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "l", "shape_type": "collection", "collection_variant": "list",
+             "role": "config", "item_key": ["a", "a"],
+             "item_fields": [
+                 {"name": "a", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "mandatory": True},
+                 {"name": "b", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "mandatory": True}]}]}}},
     "a boolean default on a number": {
         "spec": {"config_surface": {"nodes": [
             {"name": "x", "shape_type": "scalar", "scalar_type": "number",

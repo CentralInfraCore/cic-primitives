@@ -93,6 +93,8 @@ pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
 	@docker compose exec builder python tools/compiler.py pledge
 
+# The grammar gate runs INSIDE compiler.py release, not here: a step only the
+# Makefile performs is bypassed by calling the tool directly.
 release:
 	@echo "--- Building and signing release schemas ---"
 	@docker compose exec builder python tools/compiler.py release
