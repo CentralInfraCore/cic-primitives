@@ -81,7 +81,7 @@ provenance:
 # The threshold is a ratchet, set at what the suite actually reaches today. It
 # exists so coverage cannot quietly fall while the suite still reports success;
 # raise it when the number rises, never lower it to make a change fit.
-COVERAGE_MIN ?= 74
+COVERAGE_MIN ?= 85
 
 test.local:
 	@echo "--- pytest (compiler infrastructure), coverage floor $(COVERAGE_MIN)% ---"
@@ -118,6 +118,9 @@ test:
 	@echo "--- Running pytest for the compiler infrastructure ---"
 	@docker compose exec builder python -m pytest --cov=tools.compiler --cov-report=term-missing tests/
 
+# NOT in the CI gate: 168 mutants over check_provenance.py alone take minutes,
+# and a gate slow enough to be skipped is worse than none. Run it deliberately;
+# the survivors it reports are the tests worth writing next.
 mutation-test:
 	@echo "--- Running mutation tests (mutmut) ---"
 	@docker compose exec builder mutmut run

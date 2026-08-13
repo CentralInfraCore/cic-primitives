@@ -193,3 +193,39 @@ def test_files_under_handles_a_single_file_and_a_missing_path(tmp_path):
     (tmp_path / "a.yaml").write_text("x: 1\n")
     assert prov.files_under(tmp_path, "a.yaml") == {"a.yaml"}
     assert prov.files_under(tmp_path, "nope/") == set()
+
+
+def test_main_report_only_never_marks_a_failure(tmp_path, monkeypatch, capsys):
+    """--report-only enforces nothing, so it must print nothing as a failure."""
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    monkeypatch.setattr(
+        "sys.argv",
+        ["check_provenance.py", "--dependency-file", str(path), "--offline",
+         "--report-only"])
+    assert prov.main() == 0
+    assert "✗" not in capsys.readouterr().out
+
+
+def test_main_require_and_report_only_are_mutually_exclusive(tmp_path, monkeypatch):
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": []})
+    monkeypatch.setattr(
+        "sys.argv",
+        ["check_provenance.py", "--dependency-file", str(path),
+         "--report-only", "--require", "cic-primitives"])
+    with pytest.raises(SystemExit):
+        prov.main()
+
+
+def test_main_exits_nonzero_for_a_missing_required_dependency(tmp_path, monkeypatch):
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "base-repo", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["tools/"]},
+    ]})
+    monkeypatch.setattr(
+        "sys.argv",
+        ["check_provenance.py", "--dependency-file", str(path), "--offline",
+         "--require", "cic-primitives"])
+    assert prov.main() != 0
