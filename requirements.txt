@@ -106,5 +106,7 @@ typing-extensions==4.15.0
     #   referencing
 urllib3==2.5.0
     # via requests
+whatthepatch==1.0.7
+    # via -r requirements.in
 yamllint==1.37.1
     # via -r requirements.in

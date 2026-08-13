@@ -8,6 +8,10 @@ pytest
 pytest-mock
 pytest-cov
 mutmut<2.0
+# mutmut's --use-patch-file (mutate only the lines a diff touches) needs this.
+# Taken as a direct requirement rather than the mutmut[patch] extra: a
+# constraints file cannot carry extras, and the CI install already strips them.
+whatthepatch
 
 # Linting and Formatting
 ruff

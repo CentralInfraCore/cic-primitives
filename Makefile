@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar grammar.local validate.local test.local gate.local provenance pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local test.local gate.local provenance pledge release verify-release verify-release-strict test mutation-test mutation-test.changed repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -118,9 +118,27 @@ test:
 	@echo "--- Running pytest for the compiler infrastructure ---"
 	@docker compose exec builder python -m pytest --cov=tools.compiler --cov-report=term-missing tests/
 
-# NOT in the CI gate: 168 mutants over check_provenance.py alone take minutes,
-# and a gate slow enough to be skipped is worse than none. Run it deliberately;
-# the survivors it reports are the tests worth writing next.
+# The full run is NOT in the CI gate: 990 mutants over compiler.py take ~25
+# minutes, and a gate slow enough to be skipped is worse than none.
+#
+# mutation-test.changed is the one that can live in CI. mutmut's
+# --use-patch-file mutates only lines a patch adds or changes, so the cost
+# scales with the diff instead of the repository. A ten-line change is seconds.
+#
+#   make mutation-test.changed                  # vs origin/main
+#   make mutation-test.changed BASE=HEAD~1      # vs the previous commit
+BASE ?= origin/main
+
+mutation-test.changed:
+	@echo "--- Mutation testing the diff against $(BASE) ---"
+	@git diff --unified=0 $(BASE)...HEAD -- 'tools/*.py' > /tmp/mutmut-changed.patch
+	@if [ ! -s /tmp/mutmut-changed.patch ]; then \
+	  echo "  no Python changes under tools/ — nothing to mutate"; exit 0; fi
+	@echo "  changed hunks: $$(grep -c '^@@' /tmp/mutmut-changed.patch)"
+	@docker compose exec -T builder mutmut run \
+	  --use-patch-file=/tmp/mutmut-changed.patch || true
+	@docker compose exec -T builder mutmut results
+
 mutation-test:
 	@echo "--- Running mutation tests (mutmut) ---"
 	@docker compose exec builder mutmut run

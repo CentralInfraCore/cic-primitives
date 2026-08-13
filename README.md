@@ -52,6 +52,7 @@ make release     # signed artifact (Vault szükséges)
 | sealed/required slot enforcement | **defined** | domain specializáció kompatibilitás ellenőrzött |
 | KubernetesPod domain példa | **defined** | `schemas/examples/kubernetes-pod.yaml` |
 | PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], build_hash (envelope v2: a teljes bundle), provenance, Vault sign, cic_countersign — D-015 |
+| mutation-test.changed | **defined** | `make mutation-test.changed [BASE=...]` — mutálja csak a diff által érintett sorokat |
 | verify-release | **defined** | `make verify-release FILE=... [--trust-root <pem>]` — schema + build_hash + meta_hash + countersign és lánc ellenőrzés; horgony nélkül nem ír „integrity OK"-t |
 | Vault signature verification | **concept** | ECDSA ellenőrzés Vault pubkey-jel — következő fázis |
 | defaulted slot merge szemantika | **draft** | replace/deep_merge/append/union — D-008, első domain override-nál dől el |
