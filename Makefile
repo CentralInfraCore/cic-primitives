@@ -81,7 +81,7 @@ provenance:
 # The threshold is a ratchet, set at what the suite actually reaches today. It
 # exists so coverage cannot quietly fall while the suite still reports success;
 # raise it when the number rises, never lower it to make a change fit.
-COVERAGE_MIN ?= 85
+COVERAGE_MIN ?= 88
 
 test.local:
 	@echo "--- pytest (compiler infrastructure), coverage floor $(COVERAGE_MIN)% ---"

@@ -1299,3 +1299,177 @@ def test_release_version_must_be_the_next_increment(
     else:
         with pytest.raises(SystemExit):
             compiler.validate_release_prerequisites()
+
+
+# ---------------------------------------------------------------------------
+# Killers for the trust-critical mutants that survived the compiler.py run
+# ---------------------------------------------------------------------------
+
+def _commitment_on_disk(tmp_path, monkeypatch, created_by=None, validity=None,
+                        key=None):
+    """A real signed commitment.yaml in cwd, as run_verify_release expects.
+
+    The createdBy block matches what _make_valid_bundle() writes, because the
+    bundle's build_hash covers createdBy: editing it afterwards to make the two
+    agree would break the hash instead.
+    """
+    if key is None:
+        key, cert = make_test_key_and_cert("Dev")
+        created_by = created_by or {"name": "Test Dev", "email": "dev@example.com",
+                                    "certificate": cert}
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    validity = validity or {"from": str(today), "until": "2099-01-01"}
+    digest = compiler.get_sha256_b64(compiler.to_canonical_json(
+        {"createdBy": created_by, "validity": validity}))
+    monkeypatch.chdir(tmp_path)
+    compiler.write_yaml("commitment.yaml", {
+        "kind": "DeveloperCommitment", "validity": validity,
+        "createdBy": created_by,
+        "pledge": {"content_hash": digest, "sign": sign_hash(key, digest)},
+    })
+    return created_by
+
+
+def test_verify_rejects_a_tampered_pledge_beside_the_bundle(tmp_path, monkeypatch):
+    """Survivor: `if not (recorded and sign and cert)` -> the `not` removed.
+
+    Inverted, a COMPLETE pledge takes the "incomplete, skip it" branch and is
+    never verified, while an incomplete one is checked. The pledge verification
+    added yesterday would silently stop happening, and every artifact would
+    still report success.
+    """
+    key, cert = make_test_key_and_cert("Dev")
+    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": cert}
+    _commitment_on_disk(tmp_path, monkeypatch, created_by=created_by, key=key)
+    commitment = compiler.load_yaml("commitment.yaml")
+    commitment["createdBy"]["name"] = "Mallory"
+    compiler.write_yaml("commitment.yaml", commitment)
+
+    bundle = _make_valid_bundle(private_key=key, cert_pem=cert)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_verify_accepts_an_intact_pledge_beside_the_bundle(tmp_path, monkeypatch, capsys):
+    key, cert = make_test_key_and_cert("Dev")
+    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": cert}
+    _commitment_on_disk(tmp_path, monkeypatch, created_by=created_by, key=key)
+    bundle = _make_valid_bundle(private_key=key, cert_pem=cert)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "Pledge signature verified" in out
+    assert "names the developer your local pledge covers" in out
+
+
+def test_verify_reports_a_pledge_for_a_different_developer(tmp_path, monkeypatch, capsys):
+    """A foreign artifact is the normal case; it must be stated, not fatal."""
+    _commitment_on_disk(tmp_path, monkeypatch)
+    bundle = _make_valid_bundle()  # its createdBy is someone else
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "covers a different developer" in out
+
+
+def test_verify_exits_when_the_pinned_trust_root_is_missing(tmp_path, mocker):
+    """Survivor: `if not os.path.isfile(trust_root)` -> the `not` removed.
+
+    Inverted, a MISSING anchor is accepted and a present one is rejected: the
+    strongest check in the tool would pass precisely when there is nothing to
+    check against.
+    """
+    bundle = _add_countersign(_make_valid_bundle())
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact), trust_root=str(tmp_path / "nope.pem"))
+    assert e.value.code == 1
+
+
+def test_verify_accepts_a_matching_pinned_root(tmp_path, mocker, capsys):
+    key, cert = make_test_key_and_cert("CIC Source CA")
+    bundle = _add_countersign(_make_valid_bundle(), authority_key=key,
+                              authority_cert=cert, root_pem=cert)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    root = tmp_path / "root.pem"
+    root.write_text(cert)
+    mocker.patch("os.path.isfile",
+                 side_effect=lambda p: str(p) in (str(artifact), str(root)))
+    compiler.run_verify_release(str(artifact), trust_root=str(root))
+    assert "pinned CIC trust anchor" in capsys.readouterr().out
+
+
+def test_verify_says_countersign_absent_when_there_is_none(tmp_path, mocker, capsys):
+    """Survivors: the `countersigned` flag set to a constant.
+
+    With it forced true, an artifact carrying NO counter-signature would be
+    reported as counter-signed.
+    """
+    bundle = _make_valid_bundle()
+    assert "cic_countersign" not in bundle
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "no CIC counter-signature is present" in out
+    assert "cic_countersign verifies" not in out
+
+
+def test_verify_says_chain_unanchored_without_a_root(tmp_path, mocker, capsys):
+    """Survivors: the `chain_ok` flag set to a constant."""
+    key, cert = make_test_key_and_cert("CIC Source CA")
+    bundle = _add_countersign(_make_valid_bundle(), authority_key=key,
+                              authority_cert=cert)
+    del bundle["cic_countersign"]["authority"]["root_certificate"]
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "unanchored" in out
+    assert "issued by the root carried in the bundle" not in out
+
+
+def test_release_writes_a_signature_that_verifies(tmp_path, monkeypatch, mocker):
+    """Survivor: `bundle['release']['sign'] = None`.
+
+    The artifact was checked for its envelope, hash and provenance, but nothing
+    asserted that it carries a signature at all — let alone one that verifies
+    against the certificate beside it.
+    """
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_release()
+    bundle = yaml.safe_load(
+        (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
+    ok, reason = compiler._verify_cert_signature(
+        bundle["release"]["createdBy"]["certificate"],
+        bundle["release"]["sign"],
+        bundle["release"]["build_hash"])
+    assert ok, reason
+
+
+def test_release_collects_specs_from_nested_directories(tmp_path, monkeypatch, mocker):
+    """Survivor: `glob(..., recursive=False)`.
+
+    Without recursion the bundle silently omits deeper schemas — a release that
+    claims to cover the primitive set while shipping part of it.
+    """
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    deep = root / "schemas" / "atomic" / "nested"
+    deep.mkdir()
+    (deep / "deep.yaml").write_text(
+        _META.format(name="Deep", version="v0.1.dev")
+        + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
+    compiler.run_release()
+    bundle = yaml.safe_load(
+        (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
+    assert any(s["source_path"].endswith("nested/deep.yaml") for s in bundle["specs"])
