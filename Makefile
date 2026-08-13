@@ -98,8 +98,9 @@ release:
 	@docker compose exec builder python tools/compiler.py release
 
 verify-release:
-	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml [STRICT=1]"; exit 1; fi
-	@docker compose exec builder python tools/compiler.py verify-release $(FILE) $(if $(STRICT),--strict,)
+	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml [STRICT=1] [TRUST_ROOT=path/to/root.pem]"; exit 1; fi
+	@docker compose exec builder python tools/compiler.py verify-release $(FILE) \
+	  $(if $(STRICT),--strict,) $(if $(TRUST_ROOT),--trust-root $(TRUST_ROOT),)
 
 verify-release-strict:
 	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release-strict FILE=release/<name>-vX.Y.Z.yaml"; exit 1; fi

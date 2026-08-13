@@ -1299,7 +1299,7 @@ specs:
           note: "Shape \u2192 OpenAPI schema properties / JSON Schema"
         runtime:
           note: "Shape \u2192 Go struct field / Python dataclass field"
-release:
+rella.ease:
   createdBy:
     name: Gabor Zoltan Sinko
     email: sinkog@centralinfracore.hu

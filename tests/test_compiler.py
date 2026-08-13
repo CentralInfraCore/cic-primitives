@@ -428,20 +428,6 @@ def test_verify_release_bad_signature(mocker, tmp_path):
     assert e.value.code == 1
 
 
-def test_verify_release_bad_signature(mocker, tmp_path):
-    """A tampered signature (wrong key) must fail verification."""
-    bundle = _make_valid_bundle()
-    # Replace signature with one from a different key
-    other_key, _ = _make_test_key_and_cert()
-    bundle["release"]["sign"] = _sign_hash(other_key, bundle["release"]["build_hash"])
-    artifact = tmp_path / "release.yaml"
-    artifact.write_text(yaml.dump(bundle))
-    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
-    with pytest.raises(SystemExit) as e:
-        compiler.run_verify_release(str(artifact))
-    assert e.value.code == 1
-
-
 def test_verify_release_wrong_kind(mocker, tmp_path):
     bundle = _make_valid_bundle()
     bundle["kind"] = "SomethingElse"
