@@ -157,13 +157,13 @@ The schema release is available as an OCI artifact in GitHub Container Registry.
 **With ORAS:**
 
 ```bash
-oras pull ghcr.io/centralinfracore/schema/cic-primitives:v0.1.5-src2026
+oras pull ghcr.io/centralinfracore/schema/cic-primitives:v0.2.0-src2026
 ```
 
 **With curl (no ORAS required):**
 
 ```bash
-REPO="centralinfracore/schema/cic-primitives"; TAG="v0.1.5-src2026"; \
+REPO="centralinfracore/schema/cic-primitives"; TAG="v0.2.0-src2026"; \
 TOKEN=$(curl -fsSL "https://ghcr.io/token?scope=repository:${REPO}:pull" | jq -r .token); \
 DIGEST=$(curl -fsSL \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -171,5 +171,5 @@ DIGEST=$(curl -fsSL \
   "https://ghcr.io/v2/${REPO}/manifests/${TAG}" | jq -r '.layers[0].digest'); \
 curl -fL -H "Authorization: Bearer ${TOKEN}" \
   "https://ghcr.io/v2/${REPO}/blobs/${DIGEST}" \
-  -o cic-primitives-v0.1.5.yaml
+  -o cic-primitives-v0.2.0.yaml
 ```
