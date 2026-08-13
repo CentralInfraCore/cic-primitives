@@ -229,3 +229,140 @@ def test_main_exits_nonzero_for_a_missing_required_dependency(tmp_path, monkeypa
         ["check_provenance.py", "--dependency-file", str(path), "--offline",
          "--require", "cic-primitives"])
     assert prov.main() != 0
+
+
+# ---------------------------------------------------------------------------
+# Killers for the mutants that survived the first mutation run
+# ---------------------------------------------------------------------------
+
+def _fetching(mocker, files):
+    """Make fetch_tag() materialise a fake upstream instead of cloning."""
+    def fake(source, tag, dest):
+        for rel, text in files.items():
+            path = dest / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        return None
+    return mocker.patch("tools.check_provenance.fetch_tag", side_effect=fake)
+
+
+def test_a_difference_alone_is_a_failure(tmp_path, mocker):
+    """Survivor: `r.differs or r.missing` -> `and`.
+
+    With `and`, a tree where files DIFFER but none are MISSING came out green —
+    which is exactly the live cic-compute case: five imported files changed,
+    nothing absent. The tool's whole purpose would have been inverted, and the
+    suite would not have noticed.
+    """
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    (tmp_path / "schemas" / "atomic" / "shape.yaml").write_text("local\n")
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    _fetching(mocker, {"schemas/atomic/shape.yaml": "upstream\n"})
+    status, results = prov.check(path, offline=False, required=None)
+    assert status == 1
+    assert results[0].differs and not results[0].missing
+
+
+def test_a_missing_file_alone_is_a_failure(tmp_path, mocker):
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    _fetching(mocker, {"schemas/atomic/shape.yaml": "upstream\n"})
+    status, results = prov.check(path, offline=False, required=None)
+    assert status == 1
+    assert results[0].missing and not results[0].differs
+
+
+def test_a_local_addition_alone_is_not_a_failure(tmp_path, mocker):
+    """remote-merge seeds a path; it does not freeze it."""
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    (tmp_path / "schemas" / "atomic" / "same.yaml").write_text("x\n")
+    (tmp_path / "schemas" / "atomic" / "local.yaml").write_text("mine\n")
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    _fetching(mocker, {"schemas/atomic/same.yaml": "x\n"})
+    status, results = prov.check(path, offline=False, required=None)
+    assert status == 0
+    assert results[0].extra == ["schemas/atomic/local.yaml"]
+
+
+def test_a_declaration_with_a_source_but_no_tag_is_an_error(tmp_path):
+    """Survivor: `not source or not tag` -> `and`. Half a declaration is none."""
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    status, results = prov.check(path, offline=False, required=None)
+    assert status == 2
+    assert "no source or no tag" in results[0].error
+
+
+def test_a_bad_declaration_does_not_hide_the_ones_after_it(tmp_path, mocker):
+    """Survivor: `continue` -> `break`. One malformed entry must not end the scan."""
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    (tmp_path / "schemas" / "atomic" / "shape.yaml").write_text("local\n")
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "broken", "source": "github.com/x/y",
+         "imported_paths": ["schemas/atomic/"]},
+        {"name": "cic-primitives", "source": "github.com/x/z", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    _fetching(mocker, {"schemas/atomic/shape.yaml": "upstream\n"})
+    status, results = prov.check(path, offline=False, required=None)
+    assert [r.dep for r in results] == ["broken", "cic-primitives"]
+    assert results[1].differs == ["schemas/atomic/shape.yaml"]
+
+
+def test_a_fetch_failure_is_carried_into_the_result(tmp_path, mocker):
+    """Survivors: `err = None` and `res.error = None` both dropped the failure."""
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    mocker.patch("tools.check_provenance.fetch_tag", return_value="cannot fetch")
+    status, results = prov.check(path, offline=False, required=None)
+    assert status == 2
+    assert results[0].error == "cannot fetch"
+
+
+def test_files_under_lists_files_only(tmp_path):
+    """Survivor: `is_file() and ...` -> `or`, which would count directories."""
+    (tmp_path / "schemas" / "atomic" / "nested").mkdir(parents=True)
+    (tmp_path / "schemas" / "atomic" / "a.yaml").write_text("x\n")
+    (tmp_path / "schemas" / "atomic" / "nested" / "b.yaml").write_text("y\n")
+    found = prov.files_under(tmp_path, "schemas/atomic/")
+    assert found == {"schemas/atomic/a.yaml", "schemas/atomic/nested/b.yaml"}
+
+
+def test_report_prints_every_result(capsys):
+    """Survivors: `continue` -> `break` in report(), hiding later dependencies."""
+    ok = prov.Result("first")
+    bad = prov.Result("second")
+    bad.differs = ["x"]
+    err = prov.Result("third")
+    err.error = "boom"
+    prov.report([ok, bad, err])
+    out = capsys.readouterr().out
+    assert "first" in out and "second" in out and "third" in out
+
+
+def test_a_clean_run_reports_success(tmp_path, mocker):
+    """Survivor: `status = 0` -> `1`. A matching tree must exit zero."""
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    (tmp_path / "schemas" / "atomic" / "shape.yaml").write_text("same\n")
+    path = _write(tmp_path, {"schema_version": "1", "dependencies": [
+        {"name": "cic-primitives", "source": "github.com/x/y", "tag": "v1",
+         "imported_paths": ["schemas/atomic/"]},
+    ]})
+    _fetching(mocker, {"schemas/atomic/shape.yaml": "same\n"})
+    status, results = prov.check(path, offline=False, required=None)
+    assert status == 0
+    assert not results[0].failed
