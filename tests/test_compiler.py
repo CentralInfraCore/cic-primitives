@@ -327,16 +327,91 @@ def test_load_valid_commitment_expired(mocker):
     assert e.value.code == 1
 
 
+def _make_signed_commitment(key=None, cert=None, until="2099-01-01"):
+    """A commitment whose pledge really is signed over {createdBy, validity}.
+
+    The fixture used to carry `certificate: "PEM"` and no pledge at all, and
+    passed — which was the defect: the loader checked the date window and
+    nothing else.
+    """
+    if key is None or cert is None:
+        key, cert = make_test_key_and_cert("Test Dev")
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    validity = {"from": str(today), "until": until}
+    created_by = {"name": "Test", "email": "t@example.com", "certificate": cert}
+    content_hash = compiler.get_sha256_b64(
+        compiler.to_canonical_json({"createdBy": created_by, "validity": validity}))
+    return key, {
+        "kind": "DeveloperCommitment",
+        "validity": validity,
+        "createdBy": created_by,
+        "pledge": {"content_hash": content_hash, "sign": sign_hash(key, content_hash)},
+    }
+
+
 def test_load_valid_commitment_ok(mocker):
     mocker.patch("os.path.isfile", return_value=True)
-    today = datetime.datetime.now(datetime.timezone.utc).date()
-    mocker.patch("tools.compiler.load_yaml", return_value={
-        "kind": "DeveloperCommitment",
-        "validity": {"from": str(today), "until": "2099-01-01"},
-        "createdBy": {"name": "Test", "email": "t@example.com", "certificate": "PEM"},
-    })
+    _, commitment = _make_signed_commitment()
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
     result = compiler._load_valid_commitment()
     assert result["kind"] == "DeveloperCommitment"
+
+
+def test_commitment_without_a_pledge_is_rejected(mocker):
+    """The exact shape the old fixture had: dates only, no signature."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    del commitment["pledge"]
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_with_edited_fields_is_rejected(mocker):
+    """A forged identity: the name is changed after the pledge was signed."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    commitment["createdBy"]["name"] = "Mallory"
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_with_extended_validity_is_rejected(mocker):
+    """Stretching the window after signing must break the hash."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    commitment["validity"]["until"] = "2199-01-01"
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_signed_by_another_key_is_rejected(mocker):
+    """The hash is right, the signature is someone else's."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    other_key, _ = make_test_key_and_cert("Someone Else")
+    commitment["pledge"]["sign"] = sign_hash(
+        other_key, commitment["pledge"]["content_hash"])
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_without_certificate_is_rejected(mocker):
+    """Nothing to verify the signature against."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    del commitment["createdBy"]["certificate"]
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
 
 
 # ── run_verify_release ────────────────────────────────────────────────────────

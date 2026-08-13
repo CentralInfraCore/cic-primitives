@@ -454,8 +454,31 @@ def _cert_fingerprint(cert_pem):
         return None
 
 
-def _load_valid_commitment():
-    """Loads commitment.yaml and verifies it is present and within its validity window."""
+def _load_valid_commitment(require_signature=True):
+    """Loads commitment.yaml, and proves it says what it was signed to say.
+
+    Until 2026-08-13 this checked two things: that `kind` was
+    `DeveloperCommitment`, and that today fell inside the validity window. It
+    did NOT recompute the pledge hash and did NOT verify the pledge signature,
+    so a hand-written commitment with invented `createdBy` fields and any
+    certificate was accepted as long as the dates were plausible. The release
+    signature would then close cleanly over that claim: a consistent artifact
+    asserting a developer identity nothing had checked.
+
+    What this proves now:
+
+      * the pledge hash is a recomputation over {createdBy, validity} — the
+        exact payload run_pledge() signs, so the fields cannot be edited after
+        signing;
+      * the signature verifies against the certificate carried in `createdBy`.
+
+    What it still does NOT prove, and the caller must not assume: that the
+    certificate belongs to anyone in particular. Someone signing their own
+    forged commitment with their own key passes both checks — the artifact is
+    self-consistent, which is not the same as authentic. Anchoring the developer
+    certificate to a trust root is the separate step, and `verify-release
+    --trust-root` is where it belongs.
+    """
     if not os.path.isfile('commitment.yaml'):
         print("\033[91m✗ ERROR: commitment.yaml not found. Run 'make pledge' first.\033[0m")
         sys.exit(1)
@@ -463,14 +486,48 @@ def _load_valid_commitment():
     if commitment.get('kind') != 'DeveloperCommitment':
         print(f"\033[91m✗ ERROR: commitment.yaml has unexpected kind: {commitment.get('kind')}\033[0m")
         sys.exit(1)
+
     validity = commitment.get('validity', {})
     today = datetime.datetime.now(datetime.timezone.utc).date()
     valid_from = datetime.date.fromisoformat(validity.get('from', '1970-01-01'))
     valid_until = datetime.date.fromisoformat(validity.get('until', '1970-01-01'))
     if not (valid_from <= today <= valid_until):
-        print(f"\033[91m✗ ERROR: Developer commitment is not valid today. Run 'make pledge' to renew.\033[0m")
+        print("\033[91m✗ ERROR: Developer commitment is not valid today. Run 'make pledge' to renew.\033[0m")
         print(f"  valid_from: {valid_from}, valid_until: {valid_until}, today: {today}")
         sys.exit(1)
+
+    if require_signature:
+        created_by = commitment.get('createdBy') or {}
+        pledge = commitment.get('pledge') or {}
+        recorded_hash = pledge.get('content_hash', '')
+        pledge_sign = pledge.get('sign', '')
+        cert_pem = created_by.get('certificate', '')
+
+        if not recorded_hash or not pledge_sign:
+            print("\033[91m✗ ERROR: commitment.yaml carries no signed pledge "
+                  "(content_hash and sign are required).\033[0m")
+            sys.exit(1)
+        if not cert_pem:
+            print("\033[91m✗ ERROR: commitment.yaml has no createdBy.certificate — "
+                  "the pledge signature cannot be checked against anything.\033[0m")
+            sys.exit(1)
+
+        # The payload run_pledge() signs, recomputed from what the file says now.
+        recomputed = get_sha256_b64(to_canonical_json(
+            {'createdBy': created_by, 'validity': validity}))
+        if recomputed != recorded_hash:
+            print("\033[91m✗ ERROR: commitment.yaml pledge hash MISMATCH — the "
+                  "createdBy or validity block was changed after signing.\033[0m")
+            print(f"  recorded:   {recorded_hash[:24]}...")
+            print(f"  recomputed: {recomputed[:24]}...")
+            sys.exit(1)
+
+        ok, reason = _verify_cert_signature(cert_pem, pledge_sign, recorded_hash)
+        if not ok:
+            print(f"\033[91m✗ ERROR: pledge signature FAILED: {reason}\033[0m")
+            sys.exit(1)
+        print(f"  \033[92m✓ Pledge signature verified over {{createdBy, validity}}\033[0m")
+
     print(f"  \033[92m✓ Developer commitment valid: {valid_from} → {valid_until}\033[0m")
     return commitment
 
@@ -931,25 +988,67 @@ def run_verify_release(artifact_path, strict=False, trust_root=None):
         print(f"  \033[91m✗ Release signature FAILED: {reason}\033[0m")
         sys.exit(1)
 
-    # Optional pledge signature verification if commitment.yaml is present
+    # ── Developer pledge, and whether this bundle is the one it covers ──────
+    #
+    # Verifying the pledge signature is only half of it. The question a
+    # PrimitiveRelease implicitly answers is "who committed to this artifact",
+    # and that needs the bundle's createdBy to BE the pledged one — otherwise a
+    # valid pledge sits next to a bundle claiming a different developer, and
+    # both check out separately.
+    pledge_verified = False
+    pledge_binds_bundle = False
     if os.path.isfile('commitment.yaml'):
         try:
             commitment = load_yaml('commitment.yaml')
-            pledge = commitment.get('pledge', {})
-            pledge_hash = pledge.get('content_hash', '')
+            pledge = commitment.get('pledge', {}) or {}
+            pledge_created_by = commitment.get('createdBy', {}) or {}
+            pledge_validity = commitment.get('validity', {}) or {}
+            recorded = pledge.get('content_hash', '')
             pledge_sign = pledge.get('sign', '')
-            pledge_cert = commitment.get('createdBy', {}).get('certificate', '')
-            if pledge_cert and pledge_sign and pledge_hash:
-                ok, reason = _verify_cert_signature(pledge_cert, pledge_sign, pledge_hash)
-                if ok:
-                    print(f"  \033[92m✓ Pledge signature verified (commitment.yaml)\033[0m")
-                else:
+            pledge_cert = pledge_created_by.get('certificate', '')
+
+            if not (recorded and pledge_sign and pledge_cert):
+                print("  \033[93m⚠ commitment.yaml carries no complete signed pledge — "
+                      "not verified\033[0m")
+            else:
+                recomputed = get_sha256_b64(to_canonical_json(
+                    {'createdBy': pledge_created_by, 'validity': pledge_validity}))
+                if recomputed != recorded:
+                    print("  \033[91m✗ Pledge hash MISMATCH — commitment.yaml was edited "
+                          "after signing\033[0m")
+                    sys.exit(1)
+                ok, reason = _verify_cert_signature(pledge_cert, pledge_sign, recorded)
+                if not ok:
                     print(f"  \033[91m✗ Pledge signature FAILED: {reason}\033[0m")
                     sys.exit(1)
+                pledge_verified = True
+                print("  \033[92m✓ Pledge signature verified over "
+                      "{createdBy, validity}\033[0m")
+
+                # Reported, NOT enforced. commitment.yaml is the LOCAL
+                # developer's pledge, and verifying someone else's artifact is
+                # the normal case — a foreign bundle naming a different
+                # developer is correct, not a forgery. Exiting here would have
+                # made verify-release usable only on one's own releases.
+                #
+                # The real fix is for the bundle to carry the pledge it is
+                # covered by, so the binding travels with the artifact. Under
+                # envelope v2 that block would be signed automatically. Until
+                # then this states what the local file can and cannot say.
+                if created_by == pledge_created_by:
+                    pledge_binds_bundle = True
+                    print("  \033[92m✓ This bundle names the developer your local "
+                          "pledge covers\033[0m")
+                else:
+                    print("  \033[93m·\033[0m your local pledge covers a different "
+                          "developer than this bundle names — expected when "
+                          "verifying someone else's artifact")
+        except SystemExit:
+            raise
         except Exception as e:
-            print(f"  \033[93m⚠ Could not verify pledge signature: {e}\033[0m")
+            print(f"  \033[93m⚠ Could not verify pledge: {e}\033[0m")
     else:
-        print(f"  \033[93m⚠ commitment.yaml not found — pledge signature not verified\033[0m")
+        print("  \033[93m⚠ commitment.yaml not found — pledge not verified\033[0m")
 
     # ── CIC counter-signature ───────────────────────────────────────────────
     #
@@ -1039,6 +1138,10 @@ def run_verify_release(artifact_path, strict=False, trust_root=None):
         "build_hash equals a recomputation over {createdBy, releasedBy, specs, validity}",
         "release.sign verifies against the issuer certificate carried in the bundle",
     ]
+    if pledge_verified:
+        proven.append("the developer pledge is signed over its own {createdBy, validity}")
+    if pledge_binds_bundle:
+        proven.append("the bundle names the developer your local pledge covers")
     if countersigned:
         proven.append("cic_countersign verifies over build_hash with the authority certificate")
     if chain_ok:
@@ -1046,7 +1149,12 @@ def run_verify_release(artifact_path, strict=False, trust_root=None):
     if pinned:
         proven.append("that root is byte-identical to the out-of-band root you pinned")
 
-    unproven = []
+    unproven = [
+        "the bundle does not carry the pledge it is covered by, so the developer "
+        "claim rests on a file that travels separately",
+    ]
+    if not pledge_verified:
+        unproven.append("no verified developer pledge was available locally")
     if not countersigned:
         unproven.append("no CIC counter-signature is present")
     if countersigned and not chain_ok:
