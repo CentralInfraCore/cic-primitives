@@ -10,7 +10,6 @@ Everything here runs offline: the network paths are exercised through the
 the suite stays deterministic and runnable in CI without credentials.
 """
 
-import textwrap
 
 import pytest
 import yaml
@@ -126,3 +125,71 @@ def test_unreadable_dependency_file_is_an_error(tmp_path):
     path.write_text("a: [unclosed\n")
     status, results = prov.check(path, offline=True, required=None)
     assert status == 2
+
+
+# ---------------------------------------------------------------------------
+# Fetching, and what the report says
+# ---------------------------------------------------------------------------
+
+def test_fetch_tag_reports_a_failed_clone(mocker, tmp_path):
+    """A tag that cannot be fetched must be an error, never a silent pass."""
+    mocker.patch("tools.check_provenance.subprocess.run",
+                 return_value=mocker.Mock(returncode=128, stderr="fatal: not found"))
+    err = prov.fetch_tag("github.com/a/b", "v9", tmp_path / "x")
+    assert err and "not found" in err
+
+
+def test_fetch_tag_reports_a_timeout(mocker, tmp_path):
+    import subprocess as sp
+    mocker.patch("tools.check_provenance.subprocess.run",
+                 side_effect=sp.TimeoutExpired(cmd="git", timeout=1))
+    err = prov.fetch_tag("github.com/a/b", "v1", tmp_path / "x")
+    assert err and "timed out" in err
+
+
+def test_fetch_tag_reports_missing_git(mocker, tmp_path):
+    mocker.patch("tools.check_provenance.subprocess.run", side_effect=FileNotFoundError)
+    err = prov.fetch_tag("github.com/a/b", "v1", tmp_path / "x")
+    assert err == "git is not available"
+
+
+def test_fetch_tag_success_returns_none(mocker, tmp_path):
+    mocker.patch("tools.check_provenance.subprocess.run",
+                 return_value=mocker.Mock(returncode=0, stderr=""))
+    assert prov.fetch_tag("github.com/a/b", "v1", tmp_path / "x") is None
+
+
+def test_report_marks_an_enforced_failure_as_a_failure(capsys):
+    r = prov.Result("cic-primitives")
+    r.differs = ["schemas/atomic/shape.yaml"]
+    r.enforced = True
+    prov.report([r])
+    out = capsys.readouterr().out
+    assert "✗" in out and "shape.yaml" in out
+    assert "reported only" not in out
+
+
+def test_report_marks_an_unenforced_finding_as_reported_only(capsys):
+    """Red beside exit 0 teaches the reader to stop believing the output."""
+    r = prov.Result("base-repo")
+    r.differs = ["Makefile"]
+    r.enforced = False
+    prov.report([r])
+    out = capsys.readouterr().out
+    assert "reported only" in out
+    assert "✗" not in out
+
+
+def test_report_states_local_additions_without_failing(capsys):
+    r = prov.Result("cic-primitives")
+    r.extra = ["schemas/atomic/local.yaml"]
+    prov.report([r])
+    out = capsys.readouterr().out
+    assert "matches its tag" in out and "1 local addition" in out
+    assert not r.failed
+
+
+def test_files_under_handles_a_single_file_and_a_missing_path(tmp_path):
+    (tmp_path / "a.yaml").write_text("x: 1\n")
+    assert prov.files_under(tmp_path, "a.yaml") == {"a.yaml"}
+    assert prov.files_under(tmp_path, "nope/") == set()

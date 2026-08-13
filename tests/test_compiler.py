@@ -1,6 +1,8 @@
 import pytest
+import pathlib
+
 from tools import compiler
-from _helpers import make_test_key_and_cert, sign_hash
+from _helpers import cert_subject_name, make_test_key_and_cert, sign_hash
 import os
 import yaml
 import sys
@@ -773,3 +775,211 @@ def test_countersign_wrong_signed_payload_is_rejected(mocker, tmp_path):
     with pytest.raises(SystemExit) as e:
         compiler.run_verify_release(str(artifact))
     assert e.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# Certificate chain and signature: the branches that decide trust
+# ---------------------------------------------------------------------------
+
+def test_chain_accepts_a_genuinely_issued_certificate():
+    root_key, root_pem = make_test_key_and_cert("Test Root")
+    _, leaf_pem = make_test_key_and_cert(
+        "Leaf", issuer_key=root_key, issuer_name=cert_subject_name("Test Root"))
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert ok, reason
+
+
+def test_chain_rejects_an_expired_root():
+    """A chain check that accepts an expired CA proves nothing about today."""
+    root_key, root_pem = make_test_key_and_cert(
+        "Old Root", not_before_days=-800, not_after_days=-400)
+    _, leaf_pem = make_test_key_and_cert(
+        "Leaf", issuer_key=root_key, issuer_name=cert_subject_name("Old Root"))
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert not ok
+    assert "expired" in reason
+
+
+def test_chain_rejects_a_not_yet_valid_certificate():
+    root_key, root_pem = make_test_key_and_cert("Test Root")
+    _, leaf_pem = make_test_key_and_cert(
+        "Future Leaf", not_before_days=30, not_after_days=400,
+        issuer_key=root_key, issuer_name=cert_subject_name("Test Root"))
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert not ok
+    assert "not valid yet" in reason
+
+
+def test_chain_rejects_an_unrelated_root():
+    _, root_pem = make_test_key_and_cert("Unrelated Root")
+    _, leaf_pem = make_test_key_and_cert("Leaf")
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert not ok
+    assert "issuer mismatch" in reason
+
+
+def test_chain_rejects_garbage_pem():
+    _, root_pem = make_test_key_and_cert("Root")
+    ok, reason = compiler._verify_cert_chain("not a certificate", root_pem)
+    assert not ok
+    assert "parse error" in reason
+
+
+def test_signature_rejects_a_foreign_prefix():
+    """Only vault:v1: is a signature this tool knows how to read."""
+    key, cert = make_test_key_and_cert()
+    digest = compiler.get_sha256_b64(b"payload")
+    real = sign_hash(key, digest)
+    ok, reason = compiler._verify_cert_signature(
+        cert, real.replace("vault:v1:", "vault:v9:"), digest)
+    assert not ok
+    assert "signature format" in reason.lower()
+
+
+def test_signature_rejects_undecodable_base64():
+    key, cert = make_test_key_and_cert()
+    digest = compiler.get_sha256_b64(b"payload")
+    ok, reason = compiler._verify_cert_signature(cert, "vault:v1:!!!!", digest)
+    assert not ok
+
+
+def test_fingerprint_of_garbage_is_none():
+    assert compiler._cert_fingerprint("not a pem") is None
+
+
+def test_fingerprint_is_stable_and_distinguishing():
+    _, a = make_test_key_and_cert("A")
+    _, b = make_test_key_and_cert("B")
+    assert compiler._cert_fingerprint(a) == compiler._cert_fingerprint(a)
+    assert compiler._cert_fingerprint(a) != compiler._cert_fingerprint(b)
+
+
+# ---------------------------------------------------------------------------
+# Provenance block: what the signature covers about the build's origin
+# ---------------------------------------------------------------------------
+
+def test_collect_provenance_records_the_source_and_digests():
+    p = compiler._collect_provenance()
+    assert p["envelope"] == compiler.RELEASE_ENVELOPE_VERSION
+    # In a git checkout this is a real commit id; the point is that the field
+    # exists so the signature covers it either way.
+    assert "source_commit" in p
+    for key in ("dependency_lock_sha256", "grammar_sha256", "grammar_schema_sha256"):
+        assert key in p
+
+
+def test_collect_provenance_digest_follows_the_file(tmp_path, monkeypatch):
+    """A changed dependency lock must change the digest the release signs."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "dependency.yaml").write_text("a: 1\n")
+    first = compiler._collect_provenance()["dependency_lock_sha256"]
+    (tmp_path / "dependency.yaml").write_text("a: 2\n")
+    second = compiler._collect_provenance()["dependency_lock_sha256"]
+    assert first != second
+
+
+def test_collect_provenance_survives_a_missing_file(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    p = compiler._collect_provenance()
+    assert p["dependency_lock_sha256"] is None
+
+
+# ---------------------------------------------------------------------------
+# The release grammar gate
+# ---------------------------------------------------------------------------
+
+def _grammar_sandbox(tmp_path, composition_text):
+    """A tree run_grammar_gate() can run in: the real grammar, a chosen corpus."""
+    repo = pathlib.Path(compiler.__file__).resolve().parent.parent
+    (tmp_path / "proposals").mkdir()
+    (tmp_path / "proposals" / "atom-grammar").symlink_to(
+        repo / "proposals" / "atom-grammar", target_is_directory=True)
+    (tmp_path / "schemas" / "examples").mkdir(parents=True)
+    (tmp_path / "schemas" / "examples" / "c.yaml").write_text(composition_text)
+    return tmp_path
+
+
+_GOOD_COMPOSITION = """
+spec:
+  config_surface:
+    nodes:
+      - name: replicas
+        shape_type: scalar
+        scalar_type: integer
+        role: config
+        optional: true
+        default: 1
+        contract:
+          - type: range
+            expression: "1..1000"
+"""
+
+_BAD_COMPOSITION = _GOOD_COMPOSITION.replace("default: 1", "default: 0")
+
+
+def test_grammar_gate_passes_a_clean_composition(tmp_path, monkeypatch):
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, _GOOD_COMPOSITION))
+    compiler.run_grammar_gate()
+
+
+def test_grammar_gate_refuses_to_release_a_rejected_composition(tmp_path, monkeypatch):
+    """A release must not ship what this repository's own gate rejects."""
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, _BAD_COMPOSITION))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
+
+
+def test_grammar_gate_refuses_unparseable_yaml(tmp_path, monkeypatch):
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, "spec: [unclosed\n"))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
+
+
+def test_grammar_gate_refuses_to_run_without_the_grammar(tmp_path, monkeypatch):
+    """Missing checker is a failure, not a skip: absence must not read as pass."""
+    (tmp_path / "schemas" / "examples").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# Vault transport
+# ---------------------------------------------------------------------------
+
+def test_vault_sign_returns_the_signature(mocker):
+    resp = mocker.Mock(status_code=200)
+    resp.json.return_value = {"data": {"signature": "vault:v1:abc"}}
+    mocker.patch("tools.compiler.requests.post", return_value=resp)
+    assert compiler._vault_sign("aGFzaA==", "https://v", "t", "k", False) == "vault:v1:abc"
+
+
+def test_vault_sign_exits_on_an_error_response(mocker):
+    resp = mocker.Mock(status_code=403, text="permission denied")
+    mocker.patch("tools.compiler.requests.post", return_value=resp)
+    with pytest.raises(SystemExit):
+        compiler._vault_sign("aGFzaA==", "https://v", "t", "k", False)
+
+
+def test_vault_get_cert_returns_the_pem(mocker):
+    resp = mocker.Mock(status_code=200)
+    resp.json.return_value = {"data": {"data": {"crt": "-----BEGIN CERTIFICATE-----"}}}
+    mocker.patch("tools.compiler.requests.get", return_value=resp)
+    got = compiler._vault_get_cert("https://v", "t", "kv/certs/crt", False)
+    assert got.startswith("-----BEGIN CERTIFICATE-----")
+
+
+def test_vault_get_cert_exits_on_an_error_response(mocker):
+    resp = mocker.Mock(status_code=404, text="no such path")
+    mocker.patch("tools.compiler.requests.get", return_value=resp)
+    with pytest.raises(SystemExit):
+        compiler._vault_get_cert("https://v", "t", "kv/certs/crt", False)
+
+
+def test_vault_get_cert_rejects_a_malformed_path():
+    """`mount/secret/key` or nothing — a guessed path fetches the wrong secret."""
+    with pytest.raises(SystemExit):
+        compiler._vault_get_cert("https://v", "t", "just-a-name", False)

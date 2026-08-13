@@ -78,9 +78,15 @@ provenance:
 	@echo "--- Provenance: imported paths vs their declared tags ---"
 	@python3 tools/check_provenance.py $(PROVENANCE_ARGS)
 
+# The threshold is a ratchet, set at what the suite actually reaches today. It
+# exists so coverage cannot quietly fall while the suite still reports success;
+# raise it when the number rises, never lower it to make a change fit.
+COVERAGE_MIN ?= 74
+
 test.local:
-	@echo "--- pytest (compiler infrastructure) ---"
-	@python3 -m pytest tests/ -q
+	@echo "--- pytest (compiler infrastructure), coverage floor $(COVERAGE_MIN)% ---"
+	@python3 -m pytest tests/ -q --cov=tools --cov-report=term-missing:skip-covered \
+	  --cov-fail-under=$(COVERAGE_MIN)
 
 validate.local: grammar.local
 	@echo "--- Validating all schemas against the meta-schema ---"
