@@ -644,6 +644,22 @@ def run_grammar_gate():
         print(f"\033[91m✗ ERROR: cannot load the atom grammar: {e}\033[0m")
         sys.exit(1)
 
+    # The grammar's own self-test runs FIRST. CI runs it separately, so this
+    # path was protected in practice — but a release must not depend on
+    # something else having checked the checker. A grammar whose negative
+    # fixtures no longer fail proves nothing about the compositions it then
+    # approves.
+    print("--- Atom grammar: self-test ---")
+    grammar_self_test = getattr(grammar, 'self_test', None)
+    if grammar_self_test is None:
+        print("\033[91m✗ ERROR: the grammar has no self-test — nothing establishes "
+              "that it is capable of rejecting anything.\033[0m")
+        sys.exit(1)
+    if grammar_self_test(validator) != 0:
+        print("\033[91m✗ ERROR: the grammar's own self-test failed. Its findings "
+              "about the compositions below cannot be trusted.\033[0m")
+        sys.exit(1)
+
     compositions = sorted(
         glob.glob(os.path.join('schemas', 'examples', '*.yaml'))
         + glob.glob(os.path.join('schemas', 'domain', '*.yaml')))

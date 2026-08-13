@@ -163,7 +163,7 @@ Phase 1–7 végrehajtva. A repo első signed release-szel lezárt.
 | ExecutionSurface aggregate | **concept** — D-009, Relay modell után |
 | PrimitiveRelease bundle (`compiler.py release`) | **defined** — `release/<name>-vX.Y.Z.yaml` |
 | `verify-release` parancs | **defined** — build_hash + meta_hash + pledge + countersign + lánc; `--trust-root` horgony |
-| Vault signature verification (`verify-release`) | **concept** — ECDSA ellenőrzés Vault pubkey-jel |
+| Vault signature verification (`verify-release`) | **implemented** — cert-alapú ECDSA, countersign, lánc-ellenőrzés, `--trust-root` külső horgony |
 | build_hash | **implemented** — a D-013-at a D-015 módosította: envelope v2 az egész bundle-t fedi, `provenance` blokkal (source_commit, dependency lock, grammatika digest) |
 | `make release` yq PATH fix | **defined** — yq telepítve a Dockerfile-ban |
 
@@ -387,7 +387,7 @@ Phases 1–7 executed. The repo is closed with its first signed release.
 | ExecutionSurface aggregate | **concept** — D-009, after Relay model |
 | PrimitiveRelease bundle (`compiler.py release`) | **defined** — `release/<name>-vX.Y.Z.yaml` |
 | `verify-release` command | **defined** — build_hash + meta_hash + pledge + countersign + chain; `--trust-root` anchor |
-| Vault signature verification (`verify-release`) | **concept** — ECDSA verification with Vault pubkey |
+| Vault signature verification (`verify-release`) | **implemented** — cert-based ECDSA, countersign, chain verification, `--trust-root` external anchor |
 | build_hash | **implemented** — D-013 amended by D-015: envelope v2 covers the whole bundle, with a `provenance` block (source_commit, dependency lock, grammar digest) |
 | `make release` yq PATH fix | **defined** — yq installed in Dockerfile |
 

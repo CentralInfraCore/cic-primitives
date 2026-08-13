@@ -1473,3 +1473,23 @@ def test_release_collects_specs_from_nested_directories(tmp_path, monkeypatch, m
     bundle = yaml.safe_load(
         (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
     assert any(s["source_path"].endswith("nested/deep.yaml") for s in bundle["specs"])
+
+
+def test_release_gate_refuses_when_the_grammar_self_test_fails(tmp_path, monkeypatch, mocker):
+    """A checker whose own negative fixtures pass proves nothing about anything.
+
+    The release path must not depend on CI having checked the checker
+    separately: if the grammar can no longer reject its own broken fixtures,
+    its verdict on the compositions below it is worthless.
+    """
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, _GOOD_COMPOSITION))
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "_g", "proposals/atom-grammar/check_grammar.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    mocker.patch.object(module, "self_test", return_value=1)
+    mocker.patch("importlib.util.module_from_spec", return_value=module)
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
