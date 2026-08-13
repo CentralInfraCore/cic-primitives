@@ -99,11 +99,31 @@ Az `default` mező nemcsak opcionális kényelmi funkció, hanem **a rendszer de
 
 Az alapértelmezett értékek alkalmazása:
 
-* **kötelező érvényesítés** során: ha egy nem kötelező mező nem szerepel, automatikusan a default érték kerül beillesztésre,
 * **interfész-konformitás** megőrzéséhez: a végrehajtó Relay vagy modul minden esetben ugyanazt a konfigurációs struktúrát kapja,
-* **önjavító működés**: kisebb hibák vagy hiányzó kulcsok esetén nem áll le a rendszer, hanem feltölti az értelmes alapértelmezetttel.
+* **determinisztikus működés**: ugyanabból a bemenetből ugyanaz a materializált objektum keletkezik.
 
-Ez a viselkedés be van építve a validációs pipeline-ba, és a rendszer minden egyes kontextusban egységesen kezeli azt.
+> **A defaultolás NEM uniform — a Role dönti el.** Ez a szakasz korábban azt
+> állította, hogy „ha egy nem kötelező mező nem szerepel, automatikusan a
+> default érték kerül beillesztésre", és hogy a rendszer „minden kontextusban
+> egységesen" kezeli. **Ez 2026-08-12 óta nem igaz, és veszélyes is volt.**
+>
+> | Role | defaultolható? | miért |
+> |---|---|---|
+> | `authority: config` | igen | a séma meghatározhat kívánt alapállapotot |
+> | `authority: state` | **nem** | a hiányzó megfigyelést nem fedheti el kitalált érték |
+> | `authority: operational` | **nem** | mérési adatot a séma nem gyárthat |
+> | `lifecycle: derived` | **nem** | ha a bemenetek hiányoznak, az eredmény hiányzik |
+> | `lifecycle: volatile` | **nem** | a hiány itt maga a frissességi információ |
+> | `structural: key` | **nem** | az identitást nem találhatja ki a defaultolás |
+>
+> Ha egy adapter nem tudta megfigyelni a `power_state`-et, abból **nem lesz**
+> `power_state: running` csak azért, mert az a séma defaultja: a `missing`, az
+> `unknown`, a `not_observed`, a `not_implemented` és a **defaultolt érték** öt
+> különböző állítás. Az „önjavító működés", ami hiányzó kulcsokat csendben
+> feltölt, pont azt az esetet rejti el, amit egy üzemeltetőnek látnia kell.
+>
+> Kikényszerítve: `proposals/atom-grammar/` C11–C13 szabályok, a `make validate`
+> kapuban.
 
 ---
 

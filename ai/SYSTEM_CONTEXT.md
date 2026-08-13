@@ -19,7 +19,7 @@ anélkül, hogy menedzsment-szemantikát veszítene.
 | Atom | Mit képvisel |
 |---|---|
 | Shape | Adat struktúrája — milyen mezők, milyen típusok |
-| Role | Mit jelent menedzsment szempontból (config? state? kulcs? referencia?) |
+| Role | Mit jelent menedzsment szempontból — **három ortogonális tengely**: `authority` (config/state/operational), `structural` (key/reference), `lifecycle` (derived/volatile) |
 | Behavior | Milyen műveletek hajthatók végre |
 | Contract | Milyen feltételeknek kell teljesülnie (kényszer, validáció) |
 | Address | Hogyan érhetjük el, hol lakik a rendszerben |
@@ -70,7 +70,7 @@ mk/infra.mk           Makefile include
 
 Release pipeline:
 1. `compiler.py release` → per-schema `meta_hash` (raw bytes SHA256)
-2. `specs[]` canonical JSON → `content_hash` (SHA256 base64)
+2. a teljes bundle canonical JSON-ja → `build_hash` (SHA256 base64), envelope v2; kizárva: `release.sign`, `release.build_hash`, `cic_countersign` — D-015
 3. Vault Transit: ECDSA SHA256 aláírás (`prehashed=true`)
 4. X.509 cert (Vault KV v2, `VAULT_CERT_PATH` vagy `VAULT_CERT` env)
 5. `release/<project-name>-vX.Y.Z.yaml` kiírva (PrimitiveRelease bundle)
@@ -162,9 +162,9 @@ Phase 1–7 végrehajtva. A repo első signed release-szel lezárt.
 | első signed release (`primitives/@v0.1.0`) | **defined** — Phase 7 |
 | ExecutionSurface aggregate | **concept** — D-009, Relay modell után |
 | PrimitiveRelease bundle (`compiler.py release`) | **defined** — `release/<name>-vX.Y.Z.yaml` |
-| `verify-release` parancs | **defined** — content_hash + meta_hash ellenőrzés |
+| `verify-release` parancs | **defined** — build_hash + meta_hash + pledge + countersign + lánc; `--trust-root` horgony |
 | Vault signature verification (`verify-release`) | **concept** — ECDSA ellenőrzés Vault pubkey-jel |
-| build_hash tényleges build env-vel | **n/a** — D-013 lezárva, content_hash váltja fel |
+| build_hash | **implemented** — a D-013-at a D-015 módosította: envelope v2 az egész bundle-t fedi, `provenance` blokkal (source_commit, dependency lock, grammatika digest) |
 | `make release` yq PATH fix | **defined** — yq telepítve a Dockerfile-ban |
 
 ---
@@ -183,7 +183,7 @@ export VAULT_CERT_PATH="secret/cic-cert/pem" # KV v2 mount/secret/key formátum
 
 # 3. Release bundle generálás
 make release
-# → validál → specs[] összeáll → content_hash → Vault sign → release/cic-primitives-vX.Y.Z.yaml
+# → validál → specs[] összeáll → bundle → build_hash (envelope v2) → Vault sign → release/cic-primitives-vX.Y.Z.yaml
 
 # 4. Commit + tag
 git add release/cic-primitives-vX.Y.Z.yaml
@@ -217,10 +217,33 @@ Primitives exist at two levels:
 **Atomic primitive** — an irreducible semantic atom. Cannot be decomposed further
 without losing management semantics.
 
+### Amit egy következő session ne feledjen a Role-ról
+
+A Role **nem lapos enum** 2026-08-12 óta, és ennek gépi következménye van:
+
+| Szabály | Mit tilt |
+|---|---|
+| C11 | `authority ∈ {state, operational}` → **nincs séma-default** |
+| C12 | `lifecycle ∈ {derived, volatile}` → **nincs séma-default** |
+| C13 | `structural: key` → **nincs séma-default** |
+| C14 | a node nem mondhat ellent a felületnek (`config_surface` → `config`, `state_surface` → `state \| operational`); a beágyazott mezők a szülő felületét öröklik |
+| C15 | egy konténerben két node nem viselhet azonos nevet |
+
+A defaultolás tehát **nem uniform**. Ha egy adapter nem tudta megfigyelni a
+`power_state`-et, abból nem lesz `power_state: running` csak azért, mert az a
+séma defaultja: a `missing`, az `unknown`, a `not_observed`, a
+`not_implemented` és a **defaultolt érték** öt különböző állítás.
+
+Kikényszerítve: `proposals/atom-grammar/check_grammar.py`, a `make validate`
+kapuban. A `role` elhagyása **nem** menekülőút — az alapértelmezett authority a
+felületből jön.
+
+
+
 | Atom | What it represents |
 |---|---|
 | Shape | Data structure — what fields, what types |
-| Role | What it means from a management perspective (config? state? key? reference?) |
+| Role | What it means from a management perspective — **three orthogonal axes**: `authority` (config/state/operational), `structural` (key/reference), `lifecycle` (derived/volatile) |
 | Behavior | What operations can be executed |
 | Contract | What conditions must be satisfied (constraints, validation) |
 | Address | How to reach it, where it lives in the system |
@@ -271,7 +294,7 @@ mk/infra.mk           Makefile include
 
 Release pipeline:
 1. `compiler.py release` → per-schema `meta_hash` (raw bytes SHA256)
-2. `specs[]` canonical JSON → `content_hash` (SHA256 base64)
+2. a teljes bundle canonical JSON-ja → `build_hash` (SHA256 base64), envelope v2; kizárva: `release.sign`, `release.build_hash`, `cic_countersign` — D-015
 3. Vault Transit: ECDSA SHA256 signature (`prehashed=true`)
 4. X.509 cert (Vault KV v2, `VAULT_CERT_PATH` or `VAULT_CERT` env)
 5. Write `release/<project-name>-vX.Y.Z.yaml` (PrimitiveRelease bundle)
@@ -363,9 +386,9 @@ Phases 1–7 executed. The repo is closed with its first signed release.
 | first signed release (`primitives/@v0.1.0`) | **defined** — Phase 7 |
 | ExecutionSurface aggregate | **concept** — D-009, after Relay model |
 | PrimitiveRelease bundle (`compiler.py release`) | **defined** — `release/<name>-vX.Y.Z.yaml` |
-| `verify-release` command | **defined** — content_hash + meta_hash verification |
+| `verify-release` command | **defined** — build_hash + meta_hash + pledge + countersign + chain; `--trust-root` anchor |
 | Vault signature verification (`verify-release`) | **concept** — ECDSA verification with Vault pubkey |
-| build_hash with actual build env | **n/a** — D-013 closed, replaced by content_hash |
+| build_hash | **implemented** — D-013 amended by D-015: envelope v2 covers the whole bundle, with a `provenance` block (source_commit, dependency lock, grammar digest) |
 | `make release` yq PATH fix | **defined** — yq installed in Dockerfile |
 
 ---
@@ -384,7 +407,7 @@ export VAULT_CERT_PATH="secret/cic-cert/pem" # KV v2 mount/secret/key format
 
 # 3. Generate release bundle
 make release
-# → validates → assembles specs[] → content_hash → Vault sign → release/cic-primitives-vX.Y.Z.yaml
+# → validates → assembles specs[] → bundle → build_hash (envelope v2) → Vault sign → release/cic-primitives-vX.Y.Z.yaml
 
 # 4. Commit + tag
 git add release/cic-primitives-vX.Y.Z.yaml

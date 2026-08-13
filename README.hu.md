@@ -51,9 +51,9 @@ make release     # signed artifact (Vault szükséges)
 | Primitive meta-schema validáció | **defined** | `schemas/index.yaml` + `compiler.py` — `make validate` zöld |
 | sealed/required slot enforcement | **defined** | domain specializáció kompatibilitás ellenőrzött |
 | KubernetesPod domain példa | **defined** | `schemas/examples/kubernetes-pod.yaml` |
-| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], content_hash, Vault sign |
-| verify-release | **defined** | `make verify-release FILE=...` — schema + content_hash + meta_hash ellenőrzés |
-| Vault signature verification | **concept** | ECDSA ellenőrzés Vault pubkey-jel — következő fázis |
+| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], build_hash (envelope v2: a teljes bundle), provenance, Vault sign, cic_countersign — D-015 |
+| verify-release | **defined** | `make verify-release FILE=... [TRUST_ROOT=...]` — schema + build_hash + meta_hash + pledge + countersign és lánc |
+| Vault signature verification | **implemented** | ECDSA ellenőrzés a bundle certje ellen; countersign + lánc; `--trust-root` külső horgony. Horgony nélkül NEM ír „integrity OK"-t |
 | defaulted slot merge szemantika | **draft** | replace/deep_merge/append/union — D-008, első domain override-nál dől el |
 | LifecycleSurface / CapabilitySurface / NotificationSurface | **concept** | Relay execution modell előfeltétel |
 | ExecutionSurface aggregate | **concept** | D-009, Relay modell előfeltétel |
@@ -127,9 +127,9 @@ make release     # signed artifact (Vault required)
 | Primitive meta-schema validation | **defined** | `schemas/index.yaml` + `compiler.py` — `make validate` green |
 | sealed/required slot enforcement | **defined** | domain specialization compatibility verified |
 | KubernetesPod domain example | **defined** | `schemas/examples/kubernetes-pod.yaml` |
-| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], content_hash, Vault sign |
-| verify-release | **defined** | `make verify-release FILE=...` — schema + content_hash + meta_hash check |
-| Vault signature verification | **concept** | ECDSA verification with Vault pubkey — next phase |
+| PrimitiveRelease bundle | **defined** | `release/<name>-vX.Y.Z.yaml` — inline specs[], build_hash (envelope v2: a teljes bundle), provenance, Vault sign, cic_countersign — D-015 |
+| verify-release | **defined** | `make verify-release FILE=... [TRUST_ROOT=...]` — schema + build_hash + meta_hash + pledge + countersign and chain |
+| Vault signature verification | **implemented** | ECDSA against the bundle's cert; countersign + chain; `--trust-root` external anchor. Without an anchor it does NOT claim "integrity OK" |
 | defaulted slot merge semantics | **draft** | replace/deep_merge/append/union — D-008, decided at first domain override |
 | LifecycleSurface / CapabilitySurface / NotificationSurface | **concept** | Relay execution model prerequisite |
 | ExecutionSurface aggregate | **concept** | D-009, Relay model prerequisite |
