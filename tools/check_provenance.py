@@ -256,6 +256,11 @@ def main() -> int:
     status, results = check(args.dependency_file, args.offline,
                             set(args.require) if args.require else None)
     if args.report_only:
+        # Nothing is enforced, so nothing may be printed as a failure. Red marks
+        # beside exit 0 taught the reader that this output does not mean what it
+        # looks like, which is how a gate stops being read at all.
+        for r in results:
+            r.enforced = False
         report(results)
         return 0
     report(results)

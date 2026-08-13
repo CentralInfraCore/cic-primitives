@@ -1,6 +1,8 @@
 import pytest
+import pathlib
+
 from tools import compiler
-from _helpers import make_test_key_and_cert, sign_hash
+from _helpers import cert_subject_name, make_test_key_and_cert, sign_hash
 import os
 import yaml
 import sys
@@ -327,16 +329,91 @@ def test_load_valid_commitment_expired(mocker):
     assert e.value.code == 1
 
 
+def _make_signed_commitment(key=None, cert=None, until="2099-01-01"):
+    """A commitment whose pledge really is signed over {createdBy, validity}.
+
+    The fixture used to carry `certificate: "PEM"` and no pledge at all, and
+    passed — which was the defect: the loader checked the date window and
+    nothing else.
+    """
+    if key is None or cert is None:
+        key, cert = make_test_key_and_cert("Test Dev")
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    validity = {"from": str(today), "until": until}
+    created_by = {"name": "Test", "email": "t@example.com", "certificate": cert}
+    content_hash = compiler.get_sha256_b64(
+        compiler.to_canonical_json({"createdBy": created_by, "validity": validity}))
+    return key, {
+        "kind": "DeveloperCommitment",
+        "validity": validity,
+        "createdBy": created_by,
+        "pledge": {"content_hash": content_hash, "sign": sign_hash(key, content_hash)},
+    }
+
+
 def test_load_valid_commitment_ok(mocker):
     mocker.patch("os.path.isfile", return_value=True)
-    today = datetime.datetime.now(datetime.timezone.utc).date()
-    mocker.patch("tools.compiler.load_yaml", return_value={
-        "kind": "DeveloperCommitment",
-        "validity": {"from": str(today), "until": "2099-01-01"},
-        "createdBy": {"name": "Test", "email": "t@example.com", "certificate": "PEM"},
-    })
+    _, commitment = _make_signed_commitment()
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
     result = compiler._load_valid_commitment()
     assert result["kind"] == "DeveloperCommitment"
+
+
+def test_commitment_without_a_pledge_is_rejected(mocker):
+    """The exact shape the old fixture had: dates only, no signature."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    del commitment["pledge"]
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_with_edited_fields_is_rejected(mocker):
+    """A forged identity: the name is changed after the pledge was signed."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    commitment["createdBy"]["name"] = "Mallory"
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_with_extended_validity_is_rejected(mocker):
+    """Stretching the window after signing must break the hash."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    commitment["validity"]["until"] = "2199-01-01"
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_signed_by_another_key_is_rejected(mocker):
+    """The hash is right, the signature is someone else's."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    other_key, _ = make_test_key_and_cert("Someone Else")
+    commitment["pledge"]["sign"] = sign_hash(
+        other_key, commitment["pledge"]["content_hash"])
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_commitment_without_certificate_is_rejected(mocker):
+    """Nothing to verify the signature against."""
+    mocker.patch("os.path.isfile", return_value=True)
+    _, commitment = _make_signed_commitment()
+    del commitment["createdBy"]["certificate"]
+    mocker.patch("tools.compiler.load_yaml", return_value=commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
 
 
 # ── run_verify_release ────────────────────────────────────────────────────────
@@ -406,20 +483,6 @@ def test_verify_release_missing_cert(mocker, tmp_path):
 def test_verify_release_hash_mismatch(mocker, tmp_path):
     bundle = _make_valid_bundle()
     bundle["release"]["build_hash"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-    artifact = tmp_path / "release.yaml"
-    artifact.write_text(yaml.dump(bundle))
-    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
-    with pytest.raises(SystemExit) as e:
-        compiler.run_verify_release(str(artifact))
-    assert e.value.code == 1
-
-
-def test_verify_release_bad_signature(mocker, tmp_path):
-    """A tampered signature (wrong key) must fail verification."""
-    bundle = _make_valid_bundle()
-    # Replace signature with one from a different key
-    other_key, _ = _make_test_key_and_cert()
-    bundle["release"]["sign"] = _sign_hash(other_key, bundle["release"]["build_hash"])
     artifact = tmp_path / "release.yaml"
     artifact.write_text(yaml.dump(bundle))
     mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
@@ -711,4 +774,722 @@ def test_countersign_wrong_signed_payload_is_rejected(mocker, tmp_path):
     mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
     with pytest.raises(SystemExit) as e:
         compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# Certificate chain and signature: the branches that decide trust
+# ---------------------------------------------------------------------------
+
+def test_chain_accepts_a_genuinely_issued_certificate():
+    root_key, root_pem = make_test_key_and_cert("Test Root")
+    _, leaf_pem = make_test_key_and_cert(
+        "Leaf", issuer_key=root_key, issuer_name=cert_subject_name("Test Root"))
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert ok, reason
+
+
+def test_chain_rejects_an_expired_root():
+    """A chain check that accepts an expired CA proves nothing about today."""
+    root_key, root_pem = make_test_key_and_cert(
+        "Old Root", not_before_days=-800, not_after_days=-400)
+    _, leaf_pem = make_test_key_and_cert(
+        "Leaf", issuer_key=root_key, issuer_name=cert_subject_name("Old Root"))
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert not ok
+    assert "expired" in reason
+
+
+def test_chain_rejects_a_not_yet_valid_certificate():
+    root_key, root_pem = make_test_key_and_cert("Test Root")
+    _, leaf_pem = make_test_key_and_cert(
+        "Future Leaf", not_before_days=30, not_after_days=400,
+        issuer_key=root_key, issuer_name=cert_subject_name("Test Root"))
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert not ok
+    assert "not valid yet" in reason
+
+
+def test_chain_rejects_an_unrelated_root():
+    _, root_pem = make_test_key_and_cert("Unrelated Root")
+    _, leaf_pem = make_test_key_and_cert("Leaf")
+    ok, reason = compiler._verify_cert_chain(leaf_pem, root_pem)
+    assert not ok
+    assert "issuer mismatch" in reason
+
+
+def test_chain_rejects_garbage_pem():
+    _, root_pem = make_test_key_and_cert("Root")
+    ok, reason = compiler._verify_cert_chain("not a certificate", root_pem)
+    assert not ok
+    assert "parse error" in reason
+
+
+def test_signature_rejects_a_foreign_prefix():
+    """Only vault:v1: is a signature this tool knows how to read."""
+    key, cert = make_test_key_and_cert()
+    digest = compiler.get_sha256_b64(b"payload")
+    real = sign_hash(key, digest)
+    ok, reason = compiler._verify_cert_signature(
+        cert, real.replace("vault:v1:", "vault:v9:"), digest)
+    assert not ok
+    assert "signature format" in reason.lower()
+
+
+def test_signature_rejects_undecodable_base64():
+    key, cert = make_test_key_and_cert()
+    digest = compiler.get_sha256_b64(b"payload")
+    ok, reason = compiler._verify_cert_signature(cert, "vault:v1:!!!!", digest)
+    assert not ok
+
+
+def test_fingerprint_of_garbage_is_none():
+    assert compiler._cert_fingerprint("not a pem") is None
+
+
+def test_fingerprint_is_stable_and_distinguishing():
+    _, a = make_test_key_and_cert("A")
+    _, b = make_test_key_and_cert("B")
+    assert compiler._cert_fingerprint(a) == compiler._cert_fingerprint(a)
+    assert compiler._cert_fingerprint(a) != compiler._cert_fingerprint(b)
+
+
+# ---------------------------------------------------------------------------
+# Provenance block: what the signature covers about the build's origin
+# ---------------------------------------------------------------------------
+
+def test_collect_provenance_records_the_source_and_digests():
+    p = compiler._collect_provenance()
+    assert p["envelope"] == compiler.RELEASE_ENVELOPE_VERSION
+    # In a git checkout this is a real commit id; the point is that the field
+    # exists so the signature covers it either way.
+    assert "source_commit" in p
+    for key in ("dependency_lock_sha256", "grammar_sha256", "grammar_schema_sha256"):
+        assert key in p
+
+
+def test_collect_provenance_digest_follows_the_file(tmp_path, monkeypatch):
+    """A changed dependency lock must change the digest the release signs."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "dependency.yaml").write_text("a: 1\n")
+    first = compiler._collect_provenance()["dependency_lock_sha256"]
+    (tmp_path / "dependency.yaml").write_text("a: 2\n")
+    second = compiler._collect_provenance()["dependency_lock_sha256"]
+    assert first != second
+
+
+def test_collect_provenance_survives_a_missing_file(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    p = compiler._collect_provenance()
+    assert p["dependency_lock_sha256"] is None
+
+
+# ---------------------------------------------------------------------------
+# The release grammar gate
+# ---------------------------------------------------------------------------
+
+def _grammar_sandbox(tmp_path, composition_text):
+    """A tree run_grammar_gate() can run in: the real grammar, a chosen corpus."""
+    repo = pathlib.Path(compiler.__file__).resolve().parent.parent
+    (tmp_path / "proposals").mkdir()
+    (tmp_path / "proposals" / "atom-grammar").symlink_to(
+        repo / "proposals" / "atom-grammar", target_is_directory=True)
+    (tmp_path / "schemas" / "examples").mkdir(parents=True)
+    (tmp_path / "schemas" / "examples" / "c.yaml").write_text(composition_text)
+    return tmp_path
+
+
+_GOOD_COMPOSITION = """
+spec:
+  kind: AtomicPrimitive
+  config_surface:
+    nodes:
+      - name: replicas
+        shape_type: scalar
+        scalar_type: integer
+        role: config
+        optional: true
+        default: 1
+        contract:
+          - type: range
+            expression: "1..1000"
+"""
+
+_BAD_COMPOSITION = _GOOD_COMPOSITION.replace("default: 1", "default: 0")
+
+
+def test_grammar_gate_passes_a_clean_composition(tmp_path, monkeypatch):
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, _GOOD_COMPOSITION))
+    compiler.run_grammar_gate()
+
+
+def test_grammar_gate_refuses_to_release_a_rejected_composition(tmp_path, monkeypatch):
+    """A release must not ship what this repository's own gate rejects."""
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, _BAD_COMPOSITION))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
+
+
+def test_grammar_gate_refuses_unparseable_yaml(tmp_path, monkeypatch):
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, "spec: [unclosed\n"))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
+
+
+def test_grammar_gate_refuses_to_run_without_the_grammar(tmp_path, monkeypatch):
+    """Missing checker is a failure, not a skip: absence must not read as pass."""
+    (tmp_path / "schemas" / "examples").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
+    assert e.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# Vault transport
+# ---------------------------------------------------------------------------
+
+def test_vault_sign_returns_the_signature(mocker):
+    resp = mocker.Mock(status_code=200)
+    resp.json.return_value = {"data": {"signature": "vault:v1:abc"}}
+    mocker.patch("tools.compiler.requests.post", return_value=resp)
+    assert compiler._vault_sign("aGFzaA==", "https://v", "t", "k", False) == "vault:v1:abc"
+
+
+def test_vault_sign_exits_on_an_error_response(mocker):
+    resp = mocker.Mock(status_code=403, text="permission denied")
+    mocker.patch("tools.compiler.requests.post", return_value=resp)
+    with pytest.raises(SystemExit):
+        compiler._vault_sign("aGFzaA==", "https://v", "t", "k", False)
+
+
+def test_vault_get_cert_returns_the_pem(mocker):
+    resp = mocker.Mock(status_code=200)
+    resp.json.return_value = {"data": {"data": {"crt": "-----BEGIN CERTIFICATE-----"}}}
+    mocker.patch("tools.compiler.requests.get", return_value=resp)
+    got = compiler._vault_get_cert("https://v", "t", "kv/certs/crt", False)
+    assert got.startswith("-----BEGIN CERTIFICATE-----")
+
+
+def test_vault_get_cert_exits_on_an_error_response(mocker):
+    resp = mocker.Mock(status_code=404, text="no such path")
+    mocker.patch("tools.compiler.requests.get", return_value=resp)
+    with pytest.raises(SystemExit):
+        compiler._vault_get_cert("https://v", "t", "kv/certs/crt", False)
+
+
+def test_vault_get_cert_rejects_a_malformed_path():
+    """`mount/secret/key` or nothing — a guessed path fetches the wrong secret."""
+    with pytest.raises(SystemExit):
+        compiler._vault_get_cert("https://v", "t", "just-a-name", False)
+
+
+# ---------------------------------------------------------------------------
+# run_release: the whole envelope v2 assembly, with Vault and git mocked
+# ---------------------------------------------------------------------------
+
+_META = """metadata:
+  name: {name}
+  version: {version}
+  description: Sandbox fixture for the release tests.
+  owner: Test
+  tags: [test]
+  validatedBy:
+    name: cic-primitives
+    version: v0.1.dev
+"""
+
+_RELEASE_SETTINGS = {
+    "source_dir": "schemas",
+    "meta_schemas_dir": "./",
+    "meta_schema_file": "md.meta.schema.yaml",
+    "primitive_schema_file": "schemas/index.yaml",
+    "vault_key_name": "k",
+    "vault_cert_path": "kv/c/crt",
+    "validity_days": 365,
+}
+
+
+def _release_sandbox(tmp_path, monkeypatch, mocker, version="0.1.6"):
+    """A tree run_release() can complete in without Vault, git or a network.
+
+    Worth the setup: run_release had 104 of its 120 lines uncovered, and it is
+    the function that decides what a signed artifact contains. Every property
+    asserted below — that the envelope is v2, that the hash covers the whole
+    bundle, that provenance is inside it — was previously only checked by
+    reading the code.
+    """
+    repo = pathlib.Path(compiler.__file__).resolve().parent.parent
+    (tmp_path / "proposals").mkdir()
+    (tmp_path / "proposals" / "atom-grammar").symlink_to(
+        repo / "proposals" / "atom-grammar", target_is_directory=True)
+    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
+    (tmp_path / "schemas" / "atomic" / "shape.yaml").write_text(
+        _META.format(name="Shape", version="v0.1.dev")
+        + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
+    (tmp_path / "schemas" / "examples").mkdir()
+    (tmp_path / "schemas" / "examples" / "c.yaml").write_text(
+        _META.format(name="Example", version="v0.1.dev") + _GOOD_COMPOSITION.lstrip("\n"))
+    (tmp_path / "dependency.yaml").write_text("schema_version: '1'\n")
+    # run_release() runs the three older validations first; they need the two
+    # meta-schemas and a docs tree, so the sandbox carries the real ones.
+    repo_root = pathlib.Path(compiler.__file__).resolve().parent.parent
+    for name in ("md.meta.schema.yaml",):
+        (tmp_path / name).write_text((repo_root / name).read_text())
+    (tmp_path / "schemas" / "index.yaml").write_text(
+        (repo_root / "schemas" / "index.yaml").read_text())
+    monkeypatch.chdir(tmp_path)
+
+    dev_key, dev_cert = make_test_key_and_cert("Dev")
+    rel_key, rel_cert = make_test_key_and_cert("Releaser")
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    validity = {"from": str(today), "until": "2099-01-01"}
+    created_by = {"name": "Dev", "email": "d@e", "certificate": dev_cert}
+    commitment = {
+        "kind": "DeveloperCommitment", "validity": validity, "createdBy": created_by,
+    }
+
+    monkeypatch.setenv("VAULT_ADDR", "https://vault")
+    monkeypatch.setenv("VAULT_TOKEN", "token")
+    mocker.patch("tools.compiler.validate_release_prerequisites",
+                 return_value=(version, "primitives/"))
+    mocker.patch("tools.compiler._load_valid_commitment", return_value=commitment)
+    mocker.patch("tools.compiler._vault_get_cert", return_value=rel_cert)
+    mocker.patch("tools.compiler._vault_sign",
+                 side_effect=lambda digest, *a, **k: sign_hash(rel_key, digest))
+    mocker.patch("tools.compiler.load_project_config", side_effect=lambda full_config=False: (
+        {"project": {"name": "cic-primitives", "owner": "Dev"},
+         "compiler_settings": _RELEASE_SETTINGS}
+        if full_config else _RELEASE_SETTINGS))
+    return tmp_path, version
+
+
+def test_release_writes_an_envelope_v2_bundle(tmp_path, monkeypatch, mocker):
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_release()
+    artifact = root / "release" / f"cic-primitives-v{version}.yaml"
+    assert artifact.is_file()
+    bundle = yaml.safe_load(artifact.read_text())
+    assert bundle["kind"] == "PrimitiveRelease"
+    assert bundle["release"]["envelope"] == compiler.RELEASE_ENVELOPE_VERSION == 2
+    assert bundle["provenance"]["envelope"] == 2
+    assert "source_commit" in bundle["provenance"]
+
+
+def test_release_hash_covers_the_whole_bundle(tmp_path, monkeypatch, mocker):
+    """Recomputing the v2 payload over the written artifact must reproduce it."""
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_release()
+    bundle = yaml.safe_load(
+        (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
+    recomputed = compiler.get_sha256_b64(compiler.to_canonical_json(
+        compiler._release_hash_payload(bundle, 2)))
+    assert recomputed == bundle["release"]["build_hash"]
+
+
+def test_release_injects_the_version_into_every_spec(tmp_path, monkeypatch, mocker):
+    """The v0.1.dev regression: a placeholder must not reach a signed artifact."""
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_release()
+    bundle = yaml.safe_load(
+        (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
+    versions = [s["spec"].get("metadata", {}).get("version")
+                for s in bundle["specs"] if isinstance(s.get("spec"), dict)]
+    assert all(v is None or not str(v).endswith(".dev") for v in versions)
+
+
+def test_release_refuses_a_composition_the_grammar_rejects(tmp_path, monkeypatch, mocker):
+    """The gate that was missing: a release must not ship a rejected composition."""
+    root, _ = _release_sandbox(tmp_path, monkeypatch, mocker)
+    (root / "schemas" / "examples" / "c.yaml").write_text(_BAD_COMPOSITION)
+    with pytest.raises(SystemExit) as e:
+        compiler.run_release()
+    assert e.value.code == 1
+    assert not (root / "release").exists()
+
+
+def test_release_without_vault_credentials_exits(tmp_path, monkeypatch, mocker):
+    _release_sandbox(tmp_path, monkeypatch, mocker)
+    monkeypatch.delenv("VAULT_TOKEN")
+    with pytest.raises(SystemExit):
+        compiler.run_release()
+
+
+# ---------------------------------------------------------------------------
+# run_pledge: what the developer actually commits to
+# ---------------------------------------------------------------------------
+
+def _pledge_sandbox(tmp_path, monkeypatch, mocker):
+    monkeypatch.chdir(tmp_path)
+    key, cert = make_test_key_and_cert("Dev")
+    monkeypatch.setenv("VAULT_ADDR", "https://vault")
+    monkeypatch.setenv("VAULT_TOKEN", "token")
+    mocker.patch("tools.compiler._vault_get_cert", return_value=cert)
+    mocker.patch("tools.compiler._vault_sign",
+                 side_effect=lambda digest, *a, **k: sign_hash(key, digest))
+    mocker.patch("tools.compiler.load_project_config", side_effect=lambda full_config=False: (
+        {"project": {"name": "cic-primitives", "owner": "Dev",
+                     "contacts": [{"type": "email", "value": "d@e"}]},
+         "compiler_settings": _RELEASE_SETTINGS}
+        if full_config else _RELEASE_SETTINGS))
+    return key, cert
+
+
+def test_pledge_writes_a_commitment_its_own_loader_accepts(tmp_path, monkeypatch, mocker):
+    """The round trip that matters: what run_pledge writes must verify.
+
+    Before the pledge was cryptographically checked, this round trip proved
+    nothing — the loader looked at dates only. Now it is the test that would
+    catch a payload change on either side.
+    """
+    _pledge_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_pledge()
+    assert (tmp_path / "commitment.yaml").is_file()
+    commitment = compiler._load_valid_commitment()
+    assert commitment["kind"] == "DeveloperCommitment"
+
+
+def test_pledge_hash_covers_created_by_and_validity(tmp_path, monkeypatch, mocker):
+    _pledge_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_pledge()
+    commitment = compiler.load_yaml("commitment.yaml")
+    expected = compiler.get_sha256_b64(compiler.to_canonical_json(
+        {"createdBy": commitment["createdBy"], "validity": commitment["validity"]}))
+    assert commitment["pledge"]["content_hash"] == expected
+
+
+def test_a_pledge_edited_after_signing_stops_verifying(tmp_path, monkeypatch, mocker):
+    """End to end: write a real pledge, tamper it, watch the loader refuse."""
+    _pledge_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_pledge()
+    commitment = compiler.load_yaml("commitment.yaml")
+    commitment["createdBy"]["name"] = "Mallory"
+    compiler.write_yaml("commitment.yaml", commitment)
+    with pytest.raises(SystemExit) as e:
+        compiler._load_valid_commitment()
+    assert e.value.code == 1
+
+
+def test_pledge_without_vault_credentials_exits(tmp_path, monkeypatch, mocker):
+    _pledge_sandbox(tmp_path, monkeypatch, mocker)
+    monkeypatch.delenv("VAULT_ADDR")
+    with pytest.raises(SystemExit):
+        compiler.run_pledge()
+
+
+# ---------------------------------------------------------------------------
+# CLI dispatch
+# ---------------------------------------------------------------------------
+
+def test_cli_without_arguments_exits(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["compiler.py"])
+    with pytest.raises(SystemExit):
+        compiler.main()
+
+
+def test_cli_rejects_an_unknown_command(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["compiler.py", "not-a-command"])
+    with pytest.raises(SystemExit):
+        compiler.main()
+
+
+def test_cli_verify_release_requires_a_file(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["compiler.py", "verify-release"])
+    with pytest.raises(SystemExit):
+        compiler.main()
+
+
+def test_cli_trust_root_without_a_path_exits(monkeypatch):
+    """A flag that silently does nothing is worse than a rejected one."""
+    monkeypatch.setattr(
+        "sys.argv", ["compiler.py", "verify-release", "a.yaml", "--trust-root"])
+    with pytest.raises(SystemExit) as e:
+        compiler.main()
+    assert e.value.code == 2
+
+
+def test_cli_passes_strict_and_trust_root_through(monkeypatch, mocker):
+    called = {}
+    mocker.patch("tools.compiler.run_verify_release",
+                 side_effect=lambda p, strict=False, trust_root=None: called.update(
+                     path=p, strict=strict, trust_root=trust_root))
+    monkeypatch.setattr("sys.argv", [
+        "compiler.py", "verify-release", "a.yaml", "--strict",
+        "--trust-root", "root.pem"])
+    compiler.main()
+    assert called == {"path": "a.yaml", "strict": True, "trust_root": "root.pem"}
+
+
+def test_cli_dispatches_validate(monkeypatch, mocker):
+    v = mocker.patch("tools.compiler.run_validation")
+    mocker.patch("tools.compiler.run_primitive_validation")
+    mocker.patch("tools.compiler.run_domain_compatibility_check")
+    monkeypatch.setattr("sys.argv", ["compiler.py", "validate"])
+    compiler.main()
+    v.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# to_canonical_json: the function every hash in this repository is taken over
+# ---------------------------------------------------------------------------
+
+def test_canonical_json_is_independent_of_key_order():
+    """Found by mutation testing: `sort_keys=True` -> `False` SURVIVED.
+
+    Every digest here — build_hash, the pledge hash, meta_hash — is taken over
+    this function's output. If key order leaked into it, two objects with the
+    same content but different insertion order would hash differently, and no
+    test would have noticed: every expected value in the suite is computed with
+    the same function, so a mutation moves both sides together.
+
+    This asserts the property directly instead, against a literal.
+    """
+    a = {"b": 1, "a": {"y": 2, "x": 3}, "c": [1, {"n": 1, "m": 2}]}
+    b = {"c": [1, {"m": 2, "n": 1}], "a": {"x": 3, "y": 2}, "b": 1}
+    assert compiler.to_canonical_json(a) == compiler.to_canonical_json(b)
+    assert compiler.to_canonical_json(a) == (
+        b'{"a":{"x":3,"y":2},"b":1,"c":[1,{"m":2,"n":1}]}')
+
+
+def test_canonical_json_has_no_incidental_whitespace():
+    """Separators are part of the contract: a space would change every digest."""
+    assert compiler.to_canonical_json({"a": 1, "b": [1, 2]}) == b'{"a":1,"b":[1,2]}'
+
+
+def test_canonical_json_preserves_list_order():
+    """Sequences are ordered data; only MAPPING order is incidental."""
+    assert (compiler.to_canonical_json([1, 2]) != compiler.to_canonical_json([2, 1]))
+
+
+def test_sha256_helpers_are_stable_and_distinguishing():
+    assert compiler.get_sha256_b64(b"a") == compiler.get_sha256_b64(b"a")
+    assert compiler.get_sha256_b64(b"a") != compiler.get_sha256_b64(b"b")
+    assert compiler.get_sha256_hex(b"a") != compiler.get_sha256_hex(b"b")
+
+
+# ---------------------------------------------------------------------------
+# Release version increments (mutation survivors in the gap logic)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("latest,candidate,allowed", [
+    ("0.1.5", "0.1.6", True),    # patch
+    ("0.1.5", "0.2.0", True),    # minor
+    ("0.1.5", "1.0.0", True),    # major
+    ("0.1.5", "0.1.7", False),   # patch gap
+    ("0.1.5", "0.3.0", False),   # minor gap
+    ("0.1.5", "2.0.0", False),   # major gap
+    ("0.1.5", "0.2.1", False),   # minor bump with a non-zero patch
+    ("0.1.5", "0.1.5", False),   # no increment at all
+])
+def test_release_version_must_be_the_next_increment(
+        latest, candidate, allowed, mocker, monkeypatch, tmp_path):
+    """A release that skips a version leaves an unexplained hole in the chain."""
+    monkeypatch.chdir(tmp_path)
+    mocker.patch("tools.compiler.load_project_config", return_value={
+        "project": {"main_branch": "primitives/main"}})
+    mocker.patch("tools.compiler.run_git_command", side_effect=lambda cmd: {
+        "status": "", "rev-parse": f"primitives/releases/v{candidate}",
+        "tag": f"primitives/@v{latest}",
+    }[cmd[1]])
+    if allowed:
+        version, _ = compiler.validate_release_prerequisites()
+        assert version == candidate
+    else:
+        with pytest.raises(SystemExit):
+            compiler.validate_release_prerequisites()
+
+
+# ---------------------------------------------------------------------------
+# Killers for the trust-critical mutants that survived the compiler.py run
+# ---------------------------------------------------------------------------
+
+def _commitment_on_disk(tmp_path, monkeypatch, created_by=None, validity=None,
+                        key=None):
+    """A real signed commitment.yaml in cwd, as run_verify_release expects.
+
+    The createdBy block matches what _make_valid_bundle() writes, because the
+    bundle's build_hash covers createdBy: editing it afterwards to make the two
+    agree would break the hash instead.
+    """
+    if key is None:
+        key, cert = make_test_key_and_cert("Dev")
+        created_by = created_by or {"name": "Test Dev", "email": "dev@example.com",
+                                    "certificate": cert}
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    validity = validity or {"from": str(today), "until": "2099-01-01"}
+    digest = compiler.get_sha256_b64(compiler.to_canonical_json(
+        {"createdBy": created_by, "validity": validity}))
+    monkeypatch.chdir(tmp_path)
+    compiler.write_yaml("commitment.yaml", {
+        "kind": "DeveloperCommitment", "validity": validity,
+        "createdBy": created_by,
+        "pledge": {"content_hash": digest, "sign": sign_hash(key, digest)},
+    })
+    return created_by
+
+
+def test_verify_rejects_a_tampered_pledge_beside_the_bundle(tmp_path, monkeypatch):
+    """Survivor: `if not (recorded and sign and cert)` -> the `not` removed.
+
+    Inverted, a COMPLETE pledge takes the "incomplete, skip it" branch and is
+    never verified, while an incomplete one is checked. The pledge verification
+    added yesterday would silently stop happening, and every artifact would
+    still report success.
+    """
+    key, cert = make_test_key_and_cert("Dev")
+    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": cert}
+    _commitment_on_disk(tmp_path, monkeypatch, created_by=created_by, key=key)
+    commitment = compiler.load_yaml("commitment.yaml")
+    commitment["createdBy"]["name"] = "Mallory"
+    compiler.write_yaml("commitment.yaml", commitment)
+
+    bundle = _make_valid_bundle(private_key=key, cert_pem=cert)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact))
+    assert e.value.code == 1
+
+
+def test_verify_accepts_an_intact_pledge_beside_the_bundle(tmp_path, monkeypatch, capsys):
+    key, cert = make_test_key_and_cert("Dev")
+    created_by = {"name": "Test Dev", "email": "dev@example.com", "certificate": cert}
+    _commitment_on_disk(tmp_path, monkeypatch, created_by=created_by, key=key)
+    bundle = _make_valid_bundle(private_key=key, cert_pem=cert)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "Pledge signature verified" in out
+    assert "names the developer your local pledge covers" in out
+
+
+def test_verify_reports_a_pledge_for_a_different_developer(tmp_path, monkeypatch, capsys):
+    """A foreign artifact is the normal case; it must be stated, not fatal."""
+    _commitment_on_disk(tmp_path, monkeypatch)
+    bundle = _make_valid_bundle()  # its createdBy is someone else
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "covers a different developer" in out
+
+
+def test_verify_exits_when_the_pinned_trust_root_is_missing(tmp_path, mocker):
+    """Survivor: `if not os.path.isfile(trust_root)` -> the `not` removed.
+
+    Inverted, a MISSING anchor is accepted and a present one is rejected: the
+    strongest check in the tool would pass precisely when there is nothing to
+    check against.
+    """
+    bundle = _add_countersign(_make_valid_bundle())
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    with pytest.raises(SystemExit) as e:
+        compiler.run_verify_release(str(artifact), trust_root=str(tmp_path / "nope.pem"))
+    assert e.value.code == 1
+
+
+def test_verify_accepts_a_matching_pinned_root(tmp_path, mocker, capsys):
+    key, cert = make_test_key_and_cert("CIC Source CA")
+    bundle = _add_countersign(_make_valid_bundle(), authority_key=key,
+                              authority_cert=cert, root_pem=cert)
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    root = tmp_path / "root.pem"
+    root.write_text(cert)
+    mocker.patch("os.path.isfile",
+                 side_effect=lambda p: str(p) in (str(artifact), str(root)))
+    compiler.run_verify_release(str(artifact), trust_root=str(root))
+    assert "pinned CIC trust anchor" in capsys.readouterr().out
+
+
+def test_verify_says_countersign_absent_when_there_is_none(tmp_path, mocker, capsys):
+    """Survivors: the `countersigned` flag set to a constant.
+
+    With it forced true, an artifact carrying NO counter-signature would be
+    reported as counter-signed.
+    """
+    bundle = _make_valid_bundle()
+    assert "cic_countersign" not in bundle
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "no CIC counter-signature is present" in out
+    assert "cic_countersign verifies" not in out
+
+
+def test_verify_says_chain_unanchored_without_a_root(tmp_path, mocker, capsys):
+    """Survivors: the `chain_ok` flag set to a constant."""
+    key, cert = make_test_key_and_cert("CIC Source CA")
+    bundle = _add_countersign(_make_valid_bundle(), authority_key=key,
+                              authority_cert=cert)
+    del bundle["cic_countersign"]["authority"]["root_certificate"]
+    artifact = tmp_path / "release.yaml"
+    artifact.write_text(yaml.dump(bundle))
+    mocker.patch("os.path.isfile", side_effect=lambda p: str(p) == str(artifact))
+    compiler.run_verify_release(str(artifact))
+    out = capsys.readouterr().out
+    assert "unanchored" in out
+    assert "issued by the root carried in the bundle" not in out
+
+
+def test_release_writes_a_signature_that_verifies(tmp_path, monkeypatch, mocker):
+    """Survivor: `bundle['release']['sign'] = None`.
+
+    The artifact was checked for its envelope, hash and provenance, but nothing
+    asserted that it carries a signature at all — let alone one that verifies
+    against the certificate beside it.
+    """
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    compiler.run_release()
+    bundle = yaml.safe_load(
+        (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
+    ok, reason = compiler._verify_cert_signature(
+        bundle["release"]["createdBy"]["certificate"],
+        bundle["release"]["sign"],
+        bundle["release"]["build_hash"])
+    assert ok, reason
+
+
+def test_release_collects_specs_from_nested_directories(tmp_path, monkeypatch, mocker):
+    """Survivor: `glob(..., recursive=False)`.
+
+    Without recursion the bundle silently omits deeper schemas — a release that
+    claims to cover the primitive set while shipping part of it.
+    """
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
+    deep = root / "schemas" / "atomic" / "nested"
+    deep.mkdir()
+    (deep / "deep.yaml").write_text(
+        _META.format(name="Deep", version="v0.1.dev")
+        + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
+    compiler.run_release()
+    bundle = yaml.safe_load(
+        (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
+    assert any(s["source_path"].endswith("nested/deep.yaml") for s in bundle["specs"])
+
+
+def test_release_gate_refuses_when_the_grammar_self_test_fails(tmp_path, monkeypatch, mocker):
+    """A checker whose own negative fixtures pass proves nothing about anything.
+
+    The release path must not depend on CI having checked the checker
+    separately: if the grammar can no longer reject its own broken fixtures,
+    its verdict on the compositions below it is worthless.
+    """
+    monkeypatch.chdir(_grammar_sandbox(tmp_path, _GOOD_COMPOSITION))
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "_g", "proposals/atom-grammar/check_grammar.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    mocker.patch.object(module, "self_test", return_value=1)
+    mocker.patch("importlib.util.module_from_spec", return_value=module)
+    with pytest.raises(SystemExit) as e:
+        compiler.run_grammar_gate()
     assert e.value.code == 1

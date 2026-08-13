@@ -9,8 +9,9 @@
 #   * every live composition satisfies the grammar
 #   * every schema still validates against the meta-schema, and every
 #     DomainComposition against its base aggregate
-#   * the compiler's own test suite still passes — it was outside the gate
-#     while five of its tests had been failing against the build_hash contract
+#   * the compiler's own test suite still passes, above a coverage floor — it
+#     was outside the gate entirely while five of its tests had been failing
+#     against the build_hash contract
 #   * the imported paths still match the tags they claim (report-only here:
 #     this repository is the source of the primitive set, not a consumer)
 #
@@ -61,7 +62,7 @@ jobs:
           sed -E 's/\[[^]]*\]//' requirements.txt > /tmp/gate-constraints.txt
           pip install -c /tmp/gate-constraints.txt \
             pyyaml jsonschema semver requests cryptography \
-            pytest pytest-mock
+            pytest pytest-mock pytest-cov
         # `requests` is not used by the validate path, but compiler.py imports
         # it at module level (line 7) alongside semver, so the module will not
         # load without it. Listed here rather than made lazy, because changing

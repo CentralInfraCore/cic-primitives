@@ -81,8 +81,8 @@ Ez field-szintű jogosultság — nem schema különbség, hanem access context.
 | # | Feladat | Státusz |
 |---|---|---|
 | 7.1 | PrimitiveRelease bundle model | ✓ done — `compiler.py release` → `release/<name>-vX.Y.Z.yaml` |
-| 7.2 | `verify-release` parancs | ✓ done — content_hash + meta_hash ellenőrzés |
-| 7.3 | Vault signature verification | concept — Vault public key / cert-alapú ECDSA ellenőrzés |
+| 7.2 | `verify-release` parancs | ✓ done — build_hash (envelope v1/v2) + meta_hash + pledge + countersign + lánc |
+| 7.3 | Vault signature verification | ✓ done — cert-alapú ECDSA; countersign és lánc ellenőrizve; `--trust-root` horgony |
 | 7.4 | Artifact más repó `dependencies/`-be | concept |
 
 ---
@@ -92,13 +92,13 @@ Ez field-szintű jogosultság — nem schema különbség, hanem access context.
 | ID | Kérdés | Státusz |
 |---|---|---|
 | D-006 | repo_type: primitive | **LEZÁRVA** — `x-cic.repo_type: primitive` |
-| D-013 | build_hash vs source_hash | **LEZÁRVA** — nincs build_hash, csak content_hash |
+| D-013 | build_hash vs source_hash | **MÓDOSÍTVA a D-015-tel (2026-08-12)** — a bundle TARTALMAZ build_hash-t, envelope-verzióval; a content_hash a pledge-nél marad |
 
 ## Megjegyzés
 
 - Phase 1–6: **defined** (YAML fájlok léteznek, make validate zöld)
 - Phase 4.4–4.7 (NotificationSurface, CapabilitySurface, LifecycleSurface, BindingSurface): ManagedEntity-ben defaulted/sealed slot-ként dokumentálva, önálló aggregate séma még nincs
-- Phase 7: bundle modell kész, Vault signature verification következő lépés
+- Phase 7: bundle modell és a teljes aláírás-ellenőrzés kész (envelope v2, countersign, lánc, pledge-kötés). Következő: a bundle hordozza a pledge-et, amire hivatkozik
 
 ---
 ---
@@ -186,8 +186,8 @@ This is field-level access control — not a schema difference, but an access co
 | # | Task | Status |
 |---|---|---|
 | 7.1 | PrimitiveRelease bundle model | ✓ done — `compiler.py release` → `release/<name>-vX.Y.Z.yaml` |
-| 7.2 | `verify-release` command | ✓ done — content_hash + meta_hash verification |
-| 7.3 | Vault signature verification | concept — Vault public key / cert-based ECDSA verification |
+| 7.2 | `verify-release` command | ✓ done — build_hash (envelope v1/v2) + meta_hash + pledge + countersign + chain |
+| 7.3 | Vault signature verification | ✓ done — cert-based ECDSA; countersign and chain verified; `--trust-root` anchor |
 | 7.4 | Artifact into another repo's `dependencies/` | concept |
 
 ---
@@ -197,10 +197,10 @@ This is field-level access control — not a schema difference, but an access co
 | ID | Question | Status |
 |---|---|---|
 | D-006 | repo_type: primitive | **CLOSED** — `x-cic.repo_type: primitive` |
-| D-013 | build_hash vs source_hash | **CLOSED** — no build_hash, only content_hash |
+| D-013 | build_hash vs source_hash | **AMENDED by D-015 (2026-08-12)** — the bundle DOES carry build_hash, with an envelope version; content_hash stays with the pledge |
 
 ## Notes
 
 - Phase 1–6: **defined** (YAML files exist, make validate green)
 - Phase 4.4–4.7 (NotificationSurface, CapabilitySurface, LifecycleSurface, BindingSurface): documented as defaulted/sealed slots in ManagedEntity, standalone aggregate schema not yet created
-- Phase 7: bundle model done, Vault signature verification is the next step
+- Phase 7: bundle model and full signature verification done (envelope v2, countersign, chain, pledge binding). Next: the bundle should carry the pledge it is covered by

@@ -1,6 +1,6 @@
 # Makefile for Schema Development Environment
 
-.PHONY: all help up down shell validate grammar grammar.local validate.local test.local gate.local provenance pledge release verify-release verify-release-strict test mutation-test repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
+.PHONY: all help up down shell validate grammar grammar.local validate.local test.local gate.local provenance pledge release verify-release verify-release-strict test mutation-test mutation-test.changed repo.init infra.deps infra.coverage infra.clean fmt lint check typecheck build
 
 # Default to showing help
 all: help
@@ -78,9 +78,15 @@ provenance:
 	@echo "--- Provenance: imported paths vs their declared tags ---"
 	@python3 tools/check_provenance.py $(PROVENANCE_ARGS)
 
+# The threshold is a ratchet, set at what the suite actually reaches today. It
+# exists so coverage cannot quietly fall while the suite still reports success;
+# raise it when the number rises, never lower it to make a change fit.
+COVERAGE_MIN ?= 88
+
 test.local:
-	@echo "--- pytest (compiler infrastructure) ---"
-	@python3 -m pytest tests/ -q
+	@echo "--- pytest (compiler infrastructure), coverage floor $(COVERAGE_MIN)% ---"
+	@python3 -m pytest tests/ -q --cov=tools --cov-report=term-missing:skip-covered \
+	  --cov-fail-under=$(COVERAGE_MIN)
 
 validate.local: grammar.local
 	@echo "--- Validating all schemas against the meta-schema ---"
@@ -93,13 +99,16 @@ pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
 	@docker compose exec builder python tools/compiler.py pledge
 
+# The grammar gate runs INSIDE compiler.py release, not here: a step only the
+# Makefile performs is bypassed by calling the tool directly.
 release:
 	@echo "--- Building and signing release schemas ---"
 	@docker compose exec builder python tools/compiler.py release
 
 verify-release:
-	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml [STRICT=1]"; exit 1; fi
-	@docker compose exec builder python tools/compiler.py verify-release $(FILE) $(if $(STRICT),--strict,)
+	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml [STRICT=1] [TRUST_ROOT=path/to/root.pem]"; exit 1; fi
+	@docker compose exec builder python tools/compiler.py verify-release $(FILE) \
+	  $(if $(STRICT),--strict,) $(if $(TRUST_ROOT),--trust-root $(TRUST_ROOT),)
 
 verify-release-strict:
 	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release-strict FILE=release/<name>-vX.Y.Z.yaml"; exit 1; fi
@@ -108,6 +117,27 @@ verify-release-strict:
 test:
 	@echo "--- Running pytest for the compiler infrastructure ---"
 	@docker compose exec builder python -m pytest --cov=tools.compiler --cov-report=term-missing tests/
+
+# The full run is NOT in the CI gate: 990 mutants over compiler.py take ~25
+# minutes, and a gate slow enough to be skipped is worse than none.
+#
+# mutation-test.changed is the one that can live in CI. mutmut's
+# --use-patch-file mutates only lines a patch adds or changes, so the cost
+# scales with the diff instead of the repository. A ten-line change is seconds.
+#
+#   make mutation-test.changed                  # vs origin/main
+#   make mutation-test.changed BASE=HEAD~1      # vs the previous commit
+BASE ?= origin/main
+
+mutation-test.changed:
+	@echo "--- Mutation testing the diff against $(BASE) ---"
+	@git diff --unified=0 $(BASE)...HEAD -- 'tools/*.py' > /tmp/mutmut-changed.patch
+	@if [ ! -s /tmp/mutmut-changed.patch ]; then \
+	  echo "  no Python changes under tools/ — nothing to mutate"; exit 0; fi
+	@echo "  changed hunks: $$(grep -c '^@@' /tmp/mutmut-changed.patch)"
+	@docker compose exec -T builder mutmut run \
+	  --use-patch-file=/tmp/mutmut-changed.patch || true
+	@docker compose exec -T builder mutmut results
 
 mutation-test:
 	@echo "--- Running mutation tests (mutmut) ---"

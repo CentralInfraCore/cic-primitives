@@ -63,8 +63,14 @@ SHORT_ROLE_EXPANSION = {
     "config": {"authority": "config", "structural": [], "lifecycle": None},
     "state": {"authority": "state", "structural": [], "lifecycle": None},
     "operational": {"authority": "operational", "structural": [], "lifecycle": None},
-    # A key is supplied by the requester at creation, so its authority is config.
-    "key": {"authority": "config", "structural": ["key"], "lifecycle": None},
+    # `key` contributes the STRUCTURAL axis only; its authority comes from the
+    # surface. The first version fixed it to `config` on the reasoning that a
+    # key is supplied by the requester — true of a config list, false of an
+    # observed one. `container_statuses[].name` is the key of a list the adapter
+    # reports: the key is part of the observation, not a desired state someone
+    # set. Measured on the live corpus, which is where the over-specification
+    # surfaced.
+    "key": {"authority": None, "structural": ["key"], "lifecycle": None},
     # `derived` and `volatile` are lifecycle values, and both exclude authority
     # `config` — so the bare default cannot apply to them. They expand to
     # `state`: role.yaml maps both to `config false`, GET only, and every corpus
@@ -75,10 +81,35 @@ SHORT_ROLE_EXPANSION = {
 }
 
 
-def expand_role(raw, path: str, out: list[Finding]) -> dict | None:
+# Which authorities a surface admits. A surface is not decoration: it already
+# states who owns the values under it, and a node cannot contradict the surface
+# it lives on.
+SURFACE_AUTHORITY = {
+    "config_surface": {"config"},
+    "state_surface": {"state", "operational"},
+}
+
+
+def surface_default_authority(surface: str | None) -> str:
+    """The authority a node inherits when it declares no role.
+
+    This used to be `config` everywhere, which made the C11 default ban
+    trivially avoidable: a field on a state_surface that simply omitted `role`
+    was treated as config, so "observed values take no schema default" did not
+    apply to it. Omitting a member must never be a way to escape a rule — that
+    is the same fail-open shape as discovering nodes by their `shape_type`.
+    """
+    if surface in SURFACE_AUTHORITY:
+        return sorted(SURFACE_AUTHORITY[surface])[0]
+    return "config"
+
+
+def expand_role(raw, path: str, out: list[Finding],
+                surface: str | None = None) -> dict | None:
     """Return the long form of a role, or None if it is unusable."""
     if raw is None:
-        return {"authority": "config", "structural": [], "lifecycle": None}
+        return {"authority": surface_default_authority(surface),
+                "structural": [], "lifecycle": None}
     if isinstance(raw, str):
         if raw == "reference":
             out.append(Finding(
@@ -92,7 +123,10 @@ def expand_role(raw, path: str, out: list[Finding]) -> dict | None:
                 f"`{raw}` is not a short role form "
                 f"({', '.join(sorted(SHORT_ROLE_EXPANSION))})"))
             return None
-        return dict(SHORT_ROLE_EXPANSION[raw])
+        expanded = dict(SHORT_ROLE_EXPANSION[raw])
+        if expanded["authority"] is None:
+            expanded["authority"] = surface_default_authority(surface)
+        return expanded
     if isinstance(raw, dict):
         return {
             "authority": raw.get("authority", "config"),
@@ -145,15 +179,19 @@ def _node_children(node: dict, here: str):
                     yield child, f"{here}<{case.get('name', '?')}>", frozenset()
 
 
-def _walk_node(node: dict, path: str, in_item_key: frozenset[str]):
+def _walk_node(node: dict, path: str, in_item_key: frozenset[str],
+               surface: str | None):
     name = node.get("name", "?")
     here = f"{path}.{name}"
-    yield node, here, name in in_item_key
+    yield node, here, name in in_item_key, surface
     for child, cpath, ckeys in _node_children(node, here):
-        yield from _walk_node(child, cpath, ckeys)
+        # A child lives on the same surface as its parent: a nested field of a
+        # state node is observed too, whatever it says about itself.
+        yield from _walk_node(child, cpath, ckeys, surface)
 
 
-def walk_nodes(obj, path: str = "$", in_item_key: frozenset[str] = frozenset()):
+def walk_nodes(obj, path: str = "$", in_item_key: frozenset[str] = frozenset(),
+               surface: str | None = None):
     """Yield (node, path, is_key_position) for every node position in a document.
 
     A node is an element of a `nodes`, `fields` or `item_fields` LIST — whatever
@@ -167,20 +205,23 @@ def walk_nodes(obj, path: str = "$", in_item_key: frozenset[str] = frozenset()):
                 continue
             for item in entries:
                 if isinstance(item, dict):
-                    yield from _walk_node(item, f"{path}.{key}", in_item_key)
+                    yield from _walk_node(item, f"{path}.{key}", in_item_key,
+                                          surface)
         for k, v in obj.items():
             # The containers above are fully handled by _walk_node, and `cases`
             # is reached through it; descending again would double-report.
             if k in NODE_CONTAINERS or k == "cases":
                 continue
-            yield from walk_nodes(v, f"{path}.{k}", in_item_key)
+            # Entering a surface sets the context every node below inherits.
+            yield from walk_nodes(v, f"{path}.{k}", in_item_key,
+                                  k if k.endswith("_surface") else surface)
     elif isinstance(obj, list):
         for item in obj:
-            yield from walk_nodes(item, path, in_item_key)
+            yield from walk_nodes(item, path, in_item_key, surface)
 
 
 def collect_shape_names(doc) -> set[str]:
-    return {n.get("name") for n, _, _ in walk_nodes(doc) if n.get("name")}
+    return {n.get("name") for n, _, _, _ in walk_nodes(doc) if n.get("name")}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -201,7 +242,10 @@ def check_default_against_contracts(node, path, out: list[Finding]) -> None:
     if scalar_type in SCALAR_PY_TYPES and default is not None:
         expected = SCALAR_PY_TYPES[scalar_type]
         # bool is a subclass of int in Python; keep integer strict.
-        if scalar_type == "integer" and isinstance(default, bool):
+        # bool is a subclass of int in Python, so an unguarded isinstance lets
+        # `true` satisfy both integer and number. YAML has a boolean type; a
+        # numeric field taking `true` is a mistake, not a widening.
+        if scalar_type in ("integer", "number") and isinstance(default, bool):
             ok = False
         else:
             ok = isinstance(default, expected)
@@ -239,6 +283,115 @@ def check_default_against_contracts(node, path, out: list[Finding]) -> None:
             except re.error:
                 out.append(Finding(
                     "C3", path, f"pattern {expr!r} is not a valid regex"))
+
+
+def check_duplicate_names(obj, path: str, out: list[Finding]) -> None:
+    """C15 — two nodes in one container may not share a name.
+
+    A name is an address. Two `dup` entries under the same `nodes` list give one
+    address two meanings, and every consumer resolves it differently or silently
+    keeps one. The reader already refuses duplicate MAPPING keys for the same
+    reason; these are list entries, so YAML cannot catch them.
+    """
+    if isinstance(obj, dict):
+        for key in NODE_CONTAINERS:
+            entries = obj.get(key)
+            if not isinstance(entries, list):
+                continue
+            seen = {}
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name")
+                if name is None:
+                    continue
+                if name in seen:
+                    out.append(Finding(
+                        "C15", f"{path}.{key}.{name}",
+                        f"`{name}` appears twice in the same `{key}` list; a node "
+                        f"name is an address and cannot mean two things"))
+                seen[name] = True
+            for item in entries:
+                if isinstance(item, dict):
+                    check_duplicate_names(item, f"{path}.{key}.{item.get('name','?')}", out)
+        for k, v in obj.items():
+            if k in NODE_CONTAINERS:
+                continue
+            check_duplicate_names(v, f"{path}.{k}", out)
+    elif isinstance(obj, list):
+        for item in obj:
+            check_duplicate_names(item, path, out)
+
+
+def check_role_against_surface(node, role, path, surface, out: list[Finding]) -> None:
+    """C14 — a node may not contradict the surface it lives on.
+
+    A surface is not decoration. `config_surface` holds desired state and
+    `state_surface` holds observed state; a node declaring the other authority
+    is not an unusual case, it is a misplaced node. Checking this also closes
+    the hole the surface default alone would leave: an explicit
+    `role: config` on a state_surface would otherwise re-enable schema
+    defaulting for an observed value.
+    """
+    allowed = SURFACE_AUTHORITY.get(surface)
+    if allowed is None or role["authority"] in allowed:
+        return
+    out.append(Finding(
+        "C14", path,
+        f"`{surface}` admits authority {sorted(allowed)}, but this node declares "
+        f"`{role['authority']}`. Either the role is wrong or the node is on the "
+        f"wrong surface"))
+
+
+def check_default_against_role(node, role, path, out: list[Finding]) -> None:
+    """C11-C13 — a default is only legitimate where the schema owns the value.
+
+    Filling every absent value from the schema is wrong, and dangerously so. If
+    an adapter could not observe `power_state`, the answer is not
+    `power_state: running` because that happens to be the schema default:
+    `missing`, `unknown`, `not_observed`, `not_implemented` and a defaulted
+    value are five different statements, and collapsing them hides the one case
+    an operator most needs to see.
+
+    Defaultability follows the Role axes, which is what having three axes buys:
+
+        authority: config       defaultable — the schema may define desired state
+        authority: state        NOT — a missing observation is not an invented one
+        authority: operational  NOT — measurement is not manufactured by a schema
+        lifecycle: derived      NOT by default — deterministic derivation instead
+        lifecycle: volatile     NOT — absence here is itself data about freshness
+        structural: key         NOT — identity is never guessed
+    """
+    if "default" not in node:
+        return
+    authority = role["authority"]
+    structural = set(role["structural"])
+    lifecycle = role["lifecycle"]
+
+    if authority in ("state", "operational"):
+        out.append(Finding(
+            "C11", path,
+            f"a `{authority}` value is observed, not authored, so the schema may "
+            f"not supply a default for it. A field the adapter could not read "
+            f"must stay absent — absent and defaulted are different answers"))
+
+    if lifecycle == "derived":
+        out.append(Finding(
+            "C12", path,
+            "a derived value is computed from other fields, so it has no default: "
+            "if the inputs are missing the result is missing, not the schema's "
+            "guess"))
+    elif lifecycle == "volatile":
+        out.append(Finding(
+            "C12", path,
+            "a volatile value is short-lived and its absence is itself data about "
+            "freshness; a default would erase that"))
+
+    if "key" in structural:
+        out.append(Finding(
+            "C13", path,
+            "a key identifies a list entry and is supplied by the requester; "
+            "identity is never defaulted"))
 
 
 def check_access_against_role(node, role, path, out: list[Finding]) -> None:
@@ -285,11 +438,10 @@ def check_role_algebra(node, role, path, is_key_position, out: list[Finding]) ->
             "no desired state"))
 
     if "key" in structural:
-        if authority != "config":
-            out.append(Finding(
-                "R-KEY", path,
-                f"a key is supplied by the requester, so its authority must be "
-                f"`config`, not `{authority}`"))
+        # No authority constraint: a key takes the authority of the surface it
+        # is on. What stays true everywhere is that a key is fixed at creation
+        # and never defaulted (C13, and the lifecycle rule below).
+        pass
         if node.get("optional"):
             out.append(Finding("R-KEY", path, "a key cannot be optional"))
         if lifecycle:
@@ -338,7 +490,15 @@ def check_collection(node, path, out: list[Finding]) -> None:
                 "explicitly"))
         return
 
+    seen = set()
     for key in declared:
+        if key in seen:
+            out.append(Finding(
+                "C8", path,
+                f"`{key}` is listed twice in item_key; a composite key's order is "
+                f"a sequence of distinct fields, and a repeat makes the key "
+                f"ambiguous rather than more specific"))
+        seen.add(key)
         if key not in item_names:
             out.append(Finding(
                 "C8", path, f"item_key names `{key}`, which is not an item field"))
@@ -407,16 +567,19 @@ def load_schema():
 
 def check_document(doc, validator) -> list[Finding]:
     out: list[Finding] = []
-    for node, path, is_key_position in walk_nodes(doc):
+    for node, path, is_key_position, surface in walk_nodes(doc):
         for err in sorted(validator.iter_errors(node), key=lambda e: list(e.path)):
             out.append(Finding("S2", path, err.message))
-        role = expand_role(node.get("role"), path, out)
+        role = expand_role(node.get("role"), path, out, surface)
         if role is not None:
+            check_role_against_surface(node, role, path, surface, out)
             check_role_algebra(node, role, path, is_key_position, out)
             check_access_against_role(node, role, path, out)
+            check_default_against_role(node, role, path, out)
         check_default_against_contracts(node, path, out)
         check_collection(node, path, out)
         check_reference_target(node, path, out)
+    check_duplicate_names(doc, "$", out)
     check_shape_references(doc, out)
     return out
 
@@ -495,6 +658,66 @@ MUST_REJECT = {
 # Fixtures that must be rejected but are documents, not bare nodes: the defect
 # is the absence of a member, so they only exist at a real node position.
 MUST_REJECT_DOCS = {
+    "an observed value that simply omits its role": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "power_state", "shape_type": "scalar", "scalar_type": "string",
+             "optional": True, "default": "running"}]}}},
+    "a nested field of an observed node, role omitted": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "outer", "shape_type": "composite", "fields": [
+                {"name": "inner", "shape_type": "scalar", "scalar_type": "string",
+                 "optional": True, "default": "up"}]}]}}},
+    "config authority declared on a state surface": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "x", "shape_type": "scalar", "scalar_type": "string",
+             "role": "config"}]}}},
+    "state authority declared on a config surface": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "scalar", "scalar_type": "string",
+             "role": "state"}]}}},
+    "two nodes with the same name": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "dup", "shape_type": "scalar", "scalar_type": "string",
+             "role": "config"},
+            {"name": "dup", "shape_type": "scalar", "scalar_type": "integer",
+             "role": "config"}]}}},
+    "the same field listed twice in item_key": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "l", "shape_type": "collection", "collection_variant": "list",
+             "role": "config", "item_key": ["a", "a"],
+             "item_fields": [
+                 {"name": "a", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "mandatory": True},
+                 {"name": "b", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "mandatory": True}]}]}}},
+    "a boolean default on a number": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "scalar", "scalar_type": "number",
+             "role": "config", "optional": True, "default": True}]}}},
+    "a schema default on an observed value": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "power_state", "shape_type": "scalar", "scalar_type": "string",
+             "role": "state", "optional": True, "default": "running"}]}}},
+    "a schema default on a measurement": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "cpu_usage", "shape_type": "scalar", "scalar_type": "integer",
+             "role": "operational", "optional": True, "default": 0}]}}},
+    "a schema default on a derived value": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "effective_state", "shape_type": "scalar",
+             "scalar_type": "string", "role": "derived", "optional": True,
+             "default": "up"}]}}},
+    "a schema default on a volatile value": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "last_seen", "shape_type": "scalar", "scalar_type": "string",
+             "role": "volatile", "optional": True, "default": "never"}]}}},
+    "a schema default on a list key": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "ifaces", "shape_type": "collection",
+             "collection_variant": "list", "role": "config",
+             "item_fields": [
+                 {"name": "name", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "optional": True, "default": "eth0"}]}]}}},
     "a field with no shape_type at all": {
         "spec": {"config_surface": {"nodes": [
             {"name": "ghost", "scalar_type": "string", "role": "config"}]}}},
@@ -556,13 +779,26 @@ MUST_ACCEPT = {
 
 
 def as_document(node: dict) -> dict:
-    """Put a bare node fixture at a real node position.
+    """Put a bare node fixture at a real node position, on a fitting surface.
 
-    Discovery is structural now, so a fixture floating outside any `nodes` list
-    would simply not be looked at — which is exactly the bug these fixtures
+    Discovery is structural, so a fixture floating outside any `nodes` list
+    would not be looked at at all — which is exactly the bug these fixtures
     exist to catch.
+
+    The surface is chosen from the fixture's own role rather than fixed to
+    `config_surface`: a node is now checked against the surface it sits on
+    (C14), so wrapping an observed value in a config surface would fail it for
+    the wrapper's reason instead of its own.
     """
-    return {"spec": {"config_surface": {"nodes": [node]}}}
+    role = node.get("role")
+    observed = False
+    if isinstance(role, str):
+        observed = role in ("state", "operational", "derived", "volatile")
+    elif isinstance(role, dict):
+        observed = (role.get("authority") in ("state", "operational")
+                    or role.get("lifecycle") in ("derived", "volatile"))
+    surface = "state_surface" if observed else "config_surface"
+    return {"spec": {surface: {"nodes": [node]}}}
 
 
 def self_test(validator) -> int:
