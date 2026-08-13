@@ -39,3 +39,4 @@ primitive.txt
 # mutation testing
 .mutmut-cache
 mutants/
+.vault-ca.crt

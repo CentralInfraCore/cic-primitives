@@ -29,6 +29,12 @@ build:
 # Main Development Tasks
 # =============================================================================
 
+# Anything needing Vault goes through tools/vault-exec.sh, which fixes the three
+# ways host credentials fail to reach the container: creation-time
+# interpolation, 127.0.0.1 meaning the container's own loopback, and TLS
+# degrading to "disabled" because the CA path is a host path. See its header.
+VAULT_EXEC := ./tools/vault-exec.sh
+
 validate: grammar
 	@echo "--- Validating all schemas against the meta-schema ---"
 	@docker compose exec builder python tools/compiler.py validate
@@ -97,22 +103,22 @@ gate.local: validate.local test.local provenance
 
 pledge:
 	@echo "--- Developer commitment: validity + createdBy signed by Vault ---"
-	@docker compose exec builder python tools/compiler.py pledge
+	@$(VAULT_EXEC) python tools/compiler.py pledge
 
 # The grammar gate runs INSIDE compiler.py release, not here: a step only the
 # Makefile performs is bypassed by calling the tool directly.
 release:
 	@echo "--- Building and signing release schemas ---"
-	@docker compose exec builder python tools/compiler.py release
+	@$(VAULT_EXEC) python tools/compiler.py release
 
 verify-release:
 	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release FILE=release/<name>-vX.Y.Z.yaml [STRICT=1] [TRUST_ROOT=path/to/root.pem]"; exit 1; fi
-	@docker compose exec builder python tools/compiler.py verify-release $(FILE) \
+	@$(VAULT_EXEC) python tools/compiler.py verify-release $(FILE) \
 	  $(if $(STRICT),--strict,) $(if $(TRUST_ROOT),--trust-root $(TRUST_ROOT),)
 
 verify-release-strict:
 	@if [ -z "$(FILE)" ]; then echo "Usage: make verify-release-strict FILE=release/<name>-vX.Y.Z.yaml"; exit 1; fi
-	@docker compose exec builder python tools/compiler.py verify-release $(FILE) --strict
+	@$(VAULT_EXEC) python tools/compiler.py verify-release $(FILE) --strict
 
 test:
 	@echo "--- Running pytest for the compiler infrastructure ---"
