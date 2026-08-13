@@ -241,6 +241,57 @@ def check_default_against_contracts(node, path, out: list[Finding]) -> None:
                     "C3", path, f"pattern {expr!r} is not a valid regex"))
 
 
+def check_default_against_role(node, role, path, out: list[Finding]) -> None:
+    """C11-C13 — a default is only legitimate where the schema owns the value.
+
+    Filling every absent value from the schema is wrong, and dangerously so. If
+    an adapter could not observe `power_state`, the answer is not
+    `power_state: running` because that happens to be the schema default:
+    `missing`, `unknown`, `not_observed`, `not_implemented` and a defaulted
+    value are five different statements, and collapsing them hides the one case
+    an operator most needs to see.
+
+    Defaultability follows the Role axes, which is what having three axes buys:
+
+        authority: config       defaultable — the schema may define desired state
+        authority: state        NOT — a missing observation is not an invented one
+        authority: operational  NOT — measurement is not manufactured by a schema
+        lifecycle: derived      NOT by default — deterministic derivation instead
+        lifecycle: volatile     NOT — absence here is itself data about freshness
+        structural: key         NOT — identity is never guessed
+    """
+    if "default" not in node:
+        return
+    authority = role["authority"]
+    structural = set(role["structural"])
+    lifecycle = role["lifecycle"]
+
+    if authority in ("state", "operational"):
+        out.append(Finding(
+            "C11", path,
+            f"a `{authority}` value is observed, not authored, so the schema may "
+            f"not supply a default for it. A field the adapter could not read "
+            f"must stay absent — absent and defaulted are different answers"))
+
+    if lifecycle == "derived":
+        out.append(Finding(
+            "C12", path,
+            "a derived value is computed from other fields, so it has no default: "
+            "if the inputs are missing the result is missing, not the schema's "
+            "guess"))
+    elif lifecycle == "volatile":
+        out.append(Finding(
+            "C12", path,
+            "a volatile value is short-lived and its absence is itself data about "
+            "freshness; a default would erase that"))
+
+    if "key" in structural:
+        out.append(Finding(
+            "C13", path,
+            "a key identifies a list entry and is supplied by the requester; "
+            "identity is never defaulted"))
+
+
 def check_access_against_role(node, role, path, out: list[Finding]) -> None:
     """C1 and C2 — who may write is constrained by what the node means."""
     access = node.get("access")
@@ -414,6 +465,7 @@ def check_document(doc, validator) -> list[Finding]:
         if role is not None:
             check_role_algebra(node, role, path, is_key_position, out)
             check_access_against_role(node, role, path, out)
+            check_default_against_role(node, role, path, out)
         check_default_against_contracts(node, path, out)
         check_collection(node, path, out)
         check_reference_target(node, path, out)
@@ -495,6 +547,30 @@ MUST_REJECT = {
 # Fixtures that must be rejected but are documents, not bare nodes: the defect
 # is the absence of a member, so they only exist at a real node position.
 MUST_REJECT_DOCS = {
+    "a schema default on an observed value": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "power_state", "shape_type": "scalar", "scalar_type": "string",
+             "role": "state", "optional": True, "default": "running"}]}}},
+    "a schema default on a measurement": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "cpu_usage", "shape_type": "scalar", "scalar_type": "integer",
+             "role": "operational", "optional": True, "default": 0}]}}},
+    "a schema default on a derived value": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "effective_state", "shape_type": "scalar",
+             "scalar_type": "string", "role": "derived", "optional": True,
+             "default": "up"}]}}},
+    "a schema default on a volatile value": {
+        "spec": {"state_surface": {"nodes": [
+            {"name": "last_seen", "shape_type": "scalar", "scalar_type": "string",
+             "role": "volatile", "optional": True, "default": "never"}]}}},
+    "a schema default on a list key": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "ifaces", "shape_type": "collection",
+             "collection_variant": "list", "role": "config",
+             "item_fields": [
+                 {"name": "name", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "optional": True, "default": "eth0"}]}]}}},
     "a field with no shape_type at all": {
         "spec": {"config_surface": {"nodes": [
             {"name": "ghost", "scalar_type": "string", "role": "config"}]}}},
