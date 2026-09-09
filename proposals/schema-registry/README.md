@@ -267,14 +267,18 @@ pontosítható.
    `cic:core:ManagedEntity@v0.2.0`) még nincs megírva.
 3. ✅ `cic-primitives` kernel migrálva, §3.1 szerint EGY bundle-fájlként
    (`general/primitives/cic-primitives/cic-primitives.v0.2.0-src2026.yaml`).
-4. ⏳ `cic-compute` (`ComputeResource` + 3 adapter) és `cic-storage`
-   (`StorageResource` + `StorageAdapter`) migrálása §3.1 szerint, KÜLÖN
-   fájlonként — a `cic-storage` esetében a valódi tartalom a `storage/main`/
-   `storage/releases/v0.1.0` ágon van, sosem lett mergelve a `devel`-re,
-   onnan kell hozni. Folyamatban.
+4. ✅ `cic-storage` (`StorageResource` + `StorageAdapter`, `storage/@v0.1.2`-ből)
+   és `cic-compute` (`ComputeResource` + 3 adapter, `compute/@v0.2.3`-ból)
+   migrálva §3.1 szerint, KÜLÖN fájlonként — mindkét aláírás ténylegesen
+   `openssl`-lel ellenőrizve, bő README-vel (hatókör-indoklás, mechanizmus,
+   nyitva hagyott pinnelési kérdések).
 5. ⏳ `cic-kubernetes` (`KubernetesCluster`+`KubernetesNode` + 5 adapter) és
    `cic-yang` (8 IETF YANG-fragment) migrálása — nincs elkezdve.
-6. ⏳ Régi repók archiválása — csak a fentiek után.
+6. ⏳ `identity.base`/`reference_target` pinnelése verzióra minden migrált
+   fájlban (`cic:core:ManagedEntity@v0.2.0`, `cic:compute:ComputeResource@...`)
+   — technikailag még nem oldható fel, amíg a `registrylib` nem lát bele a
+   kernel bundle `specs[]` tömbjébe (§3.1/§10.2 nyitott pontja).
+7. ⏳ Régi repók archiválása — csak a fentiek után.
 
 A pontos ütemezés/becslés továbbra sincs rögzítve — ez a lista a haladást
 követi, nem commitmentet ad határidőre.
