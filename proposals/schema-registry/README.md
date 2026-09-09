@@ -272,13 +272,29 @@ pontosítható.
    migrálva §3.1 szerint, KÜLÖN fájlonként — mindkét aláírás ténylegesen
    `openssl`-lel ellenőrizve, bő README-vel (hatókör-indoklás, mechanizmus,
    nyitva hagyott pinnelési kérdések).
-5. ⏳ `cic-kubernetes` (`KubernetesCluster`+`KubernetesNode` + 5 adapter) és
-   `cic-yang` (8 IETF YANG-fragment) migrálása — nincs elkezdve.
-6. ⏳ `identity.base`/`reference_target` pinnelése verzióra minden migrált
-   fájlban (`cic:core:ManagedEntity@v0.2.0`, `cic:compute:ComputeResource@...`)
-   — technikailag még nem oldható fel, amíg a `registrylib` nem lát bele a
-   kernel bundle `specs[]` tömbjébe (§3.1/§10.2 nyitott pontja).
+5. ✅ `cic-kubernetes` (`KubernetesCluster`+`KubernetesNode` + 5 adapter,
+   `kubernetes/@v0.1.2`-ből — NEM a frissebb `v0.1.3`-ból, mert abból
+   hiányzik a `cic_countersign`, dokumentált forrás-repó-regresszió) és
+   `cic-yang` (`ietf-interfaces-*` + `ietf-ip-*` + `ietf-lldp` +
+   `cic-yang-block-schema`, `yang/@v0.1.3`-ból, az első `standards/`
+   tartalom) migrálva. Mindkét migráció aláírása ténylegesen `openssl`-lel
+   ellenőrizve.
+6. ⏳ `identity.base`/`reference_target`/`extends` pinnelése/ellenőrzése
+   minden migrált fájlban — technikailag még nem oldható fel teljesen,
+   amíg a `registrylib` nem lát bele a kernel bundle `specs[]` tömbjébe
+   (§3.1/§10.2), és nem is ismeri a `YANGBlock.extends` mezőt (talált a
+   `cic-yang` migrációkor — ott a forrás már exact-version-pinnelt
+   kiterjesztést használ, más dialektusban, mint a mi mechanizmusunk).
 7. ⏳ Régi repók archiválása — csak a fentiek után.
+
+### 10.1 A `cic-network` kérdése — még nincs migrálva
+
+A `cic-network` (`NetworkInterface` domain composition) az egyetlen
+primitives-group repó, amit ez a migrációs sorozat még nem érintett — a
+tartalma a `devel` ágon él (nem egy elárvult `<domain>/main`-en, mint a
+storage/kubernetes esetében volt), tehát technikailag egyszerűbb elérni,
+de a hatókör-átvizsgálás (kernel-vs-loose, aláírás-ellenőrzés,
+inkonzisztencia-keresés) ugyanúgy elvégzendő rá, mielőtt migrálódik.
 
 A pontos ütemezés/becslés továbbra sincs rögzítve — ez a lista a haladást
 követi, nem commitmentet ad határidőre.
