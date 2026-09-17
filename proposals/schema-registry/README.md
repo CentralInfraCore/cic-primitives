@@ -141,9 +141,31 @@ teljesen lefedi a problémát:
   implementálva, vagy explicit `conformance: not_implemented` csonkként.
   Ha egy szülő-mező **hiányzik** a leszármazottból (se implementálva, se
   lezárva), az **compile-time hiba**.
-- Ugyanez a mechanizmus (a compiler-diff kiterjesztve) érvényesíti a
-  `reference_target`-et is (`cic-reference` szemantikus típus) — ez is
-  explicit tartalmi verzióra pin-el, szimmetrikusan a `base`-szel.
+- **`reference_target` (`cic-reference` szemantikus típus) SZÁNDÉKOSAN
+  NEM verzió-pin-elt** — javítva 2026-09-17, lásd
+  [cic-schema-registry#100](https://github.com/CentralInfraCore/cic-schema-registry/issues/100).
+  Korábban ez a szakasz szimmetrikus pinnelést írt elő a `base`-szel
+  (`{namespace}:{Kind}@vX.Y.Z`), de ez tévesen egyenlő súlyú
+  mechanizmusnak kezelte az öröklést és a kereszt-domain hivatkozást —
+  a kettő fogalmilag más:
+  - `identity.base` egy ÖRÖKLÉSI kapcsolat — a leszármazott SAJÁT
+    definíciója mechanikusan függ attól, pontosan milyen mezői voltak a
+    szülőnek egy adott verzióban. Ezért kell pontos tartalmi-verzió pin.
+  - `reference_target` egy TÍPUS-hivatkozás — csak azt mondja meg, hogy
+    a mező egy adott Kind-ra mutat (`"cic:compute:ComputeResource"`). A
+    tényleges futásidejű érték egy `logical_id`, ami egy KONKRÉT
+    PÉLDÁNYRA mutat, nem egy séma-verzióra — nincs mechanikus függőség a
+    hivatkozó és a hivatkozott séma KONKRÉT VERZIÓJA között, csak a
+    Kind-ja között. Ha a célzott Kind sémája később bővül, egy régi
+    hivatkozás attól még érvényes marad.
+
+  A kernel élő grammatikája (`proposals/atom-grammar/
+  instance-grammar.schema.yaml`, `reference_target.pattern:
+  "^cic:[a-z][a-z0-9-]*:[A-Z][A-Za-z0-9]*$"`) ezt már helyesen,
+  verzió-utótag nélkül definiálja — ez a szakasz korábban ennek
+  ellentmondott. A `cic-schema-registry` tooling-ja emiatt sosem
+  implementálta a `reference_target` pin-elést: a kernel grammatikája
+  volt a helyes forrás, nem ez a próza.
 
 Ez **kiterjeszti**, nem hatálytalanítja a `cic-primitives` D-001 döntését
 ("git remote = öröklődési lánc, nem YAML override rules") — az a döntés a
