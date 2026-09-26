@@ -220,6 +220,69 @@ Az `opaque` **terminális**: nincs alatta séma-ismert gyermek, és a
 validátor nem lép bele. A `contract` továbbra is alkalmazható rá
 (pl. `pattern` a szerializált alakra), de a belső szerkezetére nem.
 
+### 2.7 Address `key_fields` — formalizálva
+
+A `binding_surface.addresses[].key_fields` a corpuson eddig `{name, type,
+values}` objektumként élt (`compute-resource.yaml:489`, és minden más
+domain-objektum ugyanígy) — nem Shape, nem validált, nincs Contract-algebrája.
+Ez a hiány külön issue-ként lett rögzítve
+(cic-schema-registry-oldalon: `cic-primitives#5`, "Address atom does not
+formalize keyed binding"), miután egy konkrét provider-specializáció
+(`StorageResourceOracleCloud`) megpróbálta kifejezni a `backend`/`provider`
+szűkítését, és nem tudta — nem a specializáció mechanizmusa hiányzott
+(`identity.base` már működik), hanem maga a `key_fields` fogalom nem volt
+Shape-ként deklarálva, amin a szűkítést el lehetett volna végezni.
+
+**A formalizáció**: a `key_fields` minden eleme egy rendes Shape-node,
+`role: key`-vel — ugyanaz a primitívkészlet (Shape/Role/Contract), amit
+minden más mező is használ, nem új mechanizmus. A `schemas/atomic/
+address.yaml` `fields.properties.key_fields` hordozza (`type: list<Shape>`).
+
+```yaml
+binding_surface:
+  addresses:
+    - namespace: "cic:storage"
+      key_fields:
+        - name: backend
+          shape_type: scalar
+          scalar_type: string
+          role: key
+          mandatory: true
+          contract:
+            - type: enum
+              expression: [hypervisor, san, cloud]
+        - name: provider
+          shape_type: scalar
+          scalar_type: string
+          role: key
+          mandatory: true
+        - name: location
+          shape_type: scalar
+          scalar_type: string
+          role: key
+          mandatory: true
+        - name: id
+          shape_type: scalar
+          scalar_type: string
+          role: key
+          mandatory: true
+```
+
+**Miért nem `item_key`.** A §2.3 jegyzete a fordítottját magyarázza (miért
+kapott a Shape-collection összetett kulcsa `item_key` nevet) — ugyanaz a
+válasz erről az oldalról nézve: a `key_fields` egy ENTITÁST azonosít a
+saját Address-én keresztül, az `item_key` egy ELEMET egyetlen entitás
+collection-mezőjén belül. A két fogalom nem esik egybe, csak a nevük
+kollidált volna.
+
+**Grammatikai kezelés** (`check_grammar.py`): a `key_fields` felkerült a
+`NODE_CONTAINERS`-re, tehát minden eleme rendes Shape-node-ként validálódik
+(S2, a JSON Schema réteg). Az `item_fields`-től eltérően — ahol csak
+NÉHÁNY elem kulcs, és az `item_key`/egyetlen-`role:key` levezetés dönti el,
+melyik — a `key_fields` MINDEN eleme kulcs a definíciójából adódóan, tehát
+nincs "levezetés": minden elemnek EXPLICIT `role: key`-t kell hordoznia
+(**C16**), és a hiányzó `role` itt hiba, nem levezethető alapértelmezés.
+
 ---
 
 ## 3. Role — kombinációs algebra (P0.2)
@@ -284,7 +347,7 @@ role:
 | `volatile` **kizárja** a `config`-ot | nem perzisztens értéknek nincs kívánt állapota |
 | `key` **megköveteli** a `config`-ot | a kulcsot a kérő adja meg |
 | `key` **megköveteli** a `mandatory`-t | kulcs nem hiányozhat |
-| `key` **csak** `collection.key_fields`-ben álló mezőn | máshol nincs mit azonosítania |
+| `key` **csak** `item_key`-ben megnevezett/egyetlen-kulcsos `item_fields` mezőn, VAGY egy Address `key_fields` elemén | máshol nincs mit azonosítania. (Ez a sor korábban `collection.key_fields`-et mondott — a §2.3 döntés, ami az `item_key` nevet választotta pont azért, hogy ne ütközzön a §2.7-ben formalizált Address `key_fields`-szel, itt nem lett átvezetve. Javítva, amikor a §2.7 megszületett.) |
 | `key` **kizárja** a `derived`-et és a `volatile`-t | a kulcs a létrehozás után nem változhat |
 | `reference` **megköveteli** a `semantic_type: cic-reference`-t | különben nincs mire mutatnia |
 
@@ -327,6 +390,12 @@ külön dokumentum marad ahelyett, hogy egy nyelv lenne.
 | **C8** | minden listának van kulcsa; összetett kulcsnál `item_key` kötelező, és minden eleme `role: key`-es `item_fields` elem | §2.3 |
 | **C9** | `semantic_type: cic-reference` ⇔ `reference_target` | egyik sem állhat a másik nélkül |
 | **C10** | `reference_target` MUST `{namespace}:{Kind}` alakú legyen, és a `{namespace}` MUST `cic:`-vel kezdődjön | §2.4 |
+| **C16** | Address `key_fields` minden eleme MUST `role: key`-t hordozzon explicit | §2.7 — nincs "levezetés", mert nincs nem-kulcs elem, amitől meg kéne különböztetni |
+
+(C11–C15 a kódban léteznek — `check_role_algebra`/`check_default_against_role`/
+`check_role_against_surface`/`check_duplicate_names` — de sosem kerültek be
+ebbe a táblázatba. Nem ez a szál pótolja őket; a C16-ot azért a valódi
+következő szabad szám alá vettem fel, nem C11 alá, hogy ne ütközzön velük.)
 
 ### Amit szándékosan NEM zárok le
 
