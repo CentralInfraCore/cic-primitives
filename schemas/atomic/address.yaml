@@ -66,6 +66,32 @@ spec:
         description: >
           CIC namespace in which this address is interpreted.
           E.g. cic:network, cic:kubernetes, cic:compute
+      key_fields:
+        type: list<Shape>
+        optional: true
+        description: >
+          Ordered list of Shape-typed key components that together identify
+          an entity within this Address's namespace (the corpus convention
+          {backend}:{provider}:{location}:{id}, composed into logical_id as
+          cic:{namespace}:{backend}:{provider}:{location}:{id}). Every entry
+          MUST be a Shape (shape_type: scalar in every corpus occurrence —
+          nothing has needed a composite or collection key component yet)
+          with role: key, per proposals/atom-grammar/README.md §2.7. Formalized
+          here rather than left as a bare {name, type, values} corpus
+          convention, which carried no Shape/Contract typing and so could
+          not be validated at all (cic-schema-registry cic-primitives#5).
+
+          Order matters and is significant: it fixes the position of each
+          component in logical_id and in schema_path/api_path's key
+          expression, the same way a YANG list key's declared order does.
+
+          Distinct from a Shape-collection's own item_key (proposals/
+          atom-grammar/README.md §2.3) despite the near-identical name in
+          the corpus's pre-formalization convention: item_key identifies one
+          ELEMENT within a single entity's own collection-typed field;
+          key_fields identifies the ENTITY itself via its Address. The two
+          were kept apart on purpose when item_key was named, specifically
+          because key_fields was already taken by this field.
       note:
         type: string
         optional: true

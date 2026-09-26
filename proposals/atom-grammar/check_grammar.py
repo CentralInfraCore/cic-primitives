@@ -156,7 +156,22 @@ def expand_role(raw, path: str, out: list[Finding],
 # because they happen to carry `shape_type`. When these members hold a STRING
 # instead of a list they are a reference, and C6/C7 resolve them; the isinstance
 # guard below keeps the two cases apart.
-NODE_CONTAINERS = ("nodes", "fields", "item_fields", "input", "output", "payload")
+#
+# `key_fields` (an Address's key components — README §2.7) is a fourth case
+# added later, not from diffing the walker but from the corpus itself: every
+# `binding_surface.addresses[].key_fields` entry across the live corpus (e.g.
+# `cic-schema-registry` general/storage/storage-resource) is written as
+# `{name, type, values}`, structurally identical to a field descriptor in
+# every way that matters except the member name `type` instead of
+# `shape_type` — a naming accident, not a different kind of thing. Formalizing
+# it here (instead of leaving it corpus-convention-only, as it was) is what
+# lets a Shape/Contract narrowing question about it be asked and checked at
+# all. See §2.7 for why this is NOT the same position as `item_key`/
+# `item_fields`, despite the superficial name collision `key_fields` almost
+# caused (§2.3's note on why the Shape-collection composite key was named
+# `item_key` instead).
+NODE_CONTAINERS = ("nodes", "fields", "item_fields", "input", "output",
+                    "payload", "key_fields")
 
 
 def _node_children(node: dict, here: str):
@@ -205,7 +220,17 @@ def walk_nodes(obj, path: str = "$", in_item_key: frozenset[str] = frozenset(),
                 continue
             for item in entries:
                 if isinstance(item, dict):
-                    yield from _walk_node(item, f"{path}.{key}", in_item_key,
+                    # Every entry of an Address's key_fields is a key
+                    # component by definition — unlike item_fields, which
+                    # holds both key and non-key fields side by side and
+                    # needs item_key/role: key to say which is which,
+                    # key_fields has no non-key entries to distinguish from
+                    # (§2.7). So its own name is always "in the key set"
+                    # here, regardless of whatever in_item_key carried down
+                    # from an enclosing collection.
+                    item_in_key = (frozenset({item.get("name")})
+                                   if key == "key_fields" else in_item_key)
+                    yield from _walk_node(item, f"{path}.{key}", item_in_key,
                                           surface)
         for k, v in obj.items():
             # The containers above are fully handled by _walk_node, and `cases`
@@ -452,7 +477,8 @@ def check_role_algebra(node, role, path, is_key_position, out: list[Finding]) ->
             out.append(Finding(
                 "R-KEY", path,
                 "`role: key` is only meaningful on a field listed in the "
-                "enclosing collection's item_key"))
+                "enclosing collection's item_key, or on an entry of an "
+                "Address's key_fields (§2.7)"))
 
     if "reference" in structural and node.get("semantic_type") != "cic-reference":
         out.append(Finding(
@@ -510,6 +536,39 @@ def check_collection(node, path, out: list[Finding]) -> None:
                 "C8", path,
                 f"item field `{key}` is named in item_key but its role is "
                 f"`{krole_name}`, not key"))
+
+
+def check_address_key_fields(obj, path: str, out: list[Finding]) -> None:
+    """C16 — every entry of an Address's key_fields carries `role: key` (§2.7).
+
+    Unlike item_fields, key_fields has no non-key entries to tell a key
+    apart from by role — everything in it identifies the entity. So the role
+    is not optional/derivable the way a single-key item_fields list lets it
+    be (§2.3): a key_fields entry that omits `role` would otherwise pass
+    silently, since `expand_role(None, ...)` treats a missing role as a
+    valid empty one, not an error (see check_document). This check is what
+    turns "the field is where a key must be" into "the field also has to
+    say so."
+    """
+    if isinstance(obj, dict):
+        entries = obj.get("key_fields")
+        if isinstance(entries, list):
+            for item in entries:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name", "?")
+                if not is_key_role(item.get("role")):
+                    out.append(Finding(
+                        "C16", f"{path}.key_fields.{name}",
+                        f"`{name}` is a key_fields entry but its role is "
+                        f"`{item.get('role')!r}`, not key — every key_fields "
+                        "entry identifies the entity, so none of them are "
+                        "optional about saying so"))
+        for k, v in obj.items():
+            check_address_key_fields(v, f"{path}.{k}", out)
+    elif isinstance(obj, list):
+        for item in obj:
+            check_address_key_fields(item, path, out)
 
 
 def check_reference_target(node, path, out: list[Finding]) -> None:
@@ -581,6 +640,7 @@ def check_document(doc, validator) -> list[Finding]:
         check_reference_target(node, path, out)
     check_duplicate_names(doc, "$", out)
     check_shape_references(doc, out)
+    check_address_key_fields(doc, "$", out)
     return out
 
 
@@ -736,6 +796,32 @@ MUST_REJECT_DOCS = {
                               "scalar_type": "string", "role": "key",
                               "mandatory": True},
                              {"name": "broken"}]}]}}},
+    "an Address key_fields entry that omits role: key": {
+        "spec": {"binding_surface": {"addresses": [
+            {"namespace": "cic:storage", "key_fields": [
+                {"name": "backend", "shape_type": "scalar",
+                 "scalar_type": "string", "mandatory": True,
+                 "contract": [{"type": "enum",
+                              "expression": ["hypervisor", "san", "cloud"]}]}]}
+        ]}}},
+}
+
+MUST_ACCEPT_DOCS = {
+    "the corpus's real Address key_fields, formalized (§2.7)": {
+        "spec": {"binding_surface": {"addresses": [
+            {"namespace": "cic:storage", "key_fields": [
+                {"name": "backend", "shape_type": "scalar",
+                 "scalar_type": "string", "role": "key", "mandatory": True,
+                 "contract": [{"type": "enum",
+                              "expression": ["hypervisor", "san", "cloud"]}]},
+                {"name": "provider", "shape_type": "scalar",
+                 "scalar_type": "string", "role": "key", "mandatory": True},
+                {"name": "location", "shape_type": "scalar",
+                 "scalar_type": "string", "role": "key", "mandatory": True},
+                {"name": "id", "shape_type": "scalar",
+                 "scalar_type": "string", "role": "key", "mandatory": True},
+            ]}
+        ]}}},
 }
 
 MUST_ACCEPT = {
@@ -814,8 +900,9 @@ def self_test(validator) -> int:
             failures += 1
 
     print("\n--- must be accepted ---")
-    for label, node in MUST_ACCEPT.items():
-        findings = check_document(as_document(node), validator)
+    for label, node in {**{k: as_document(v) for k, v in MUST_ACCEPT.items()},
+                        **MUST_ACCEPT_DOCS}.items():
+        findings = check_document(node, validator)
         if not findings:
             print(f"  \033[92maccepted\033[0m  {label}")
         else:
@@ -824,7 +911,8 @@ def self_test(validator) -> int:
                 print(f)
             failures += 1
 
-    total = len(MUST_REJECT) + len(MUST_REJECT_DOCS) + len(MUST_ACCEPT)
+    total = (len(MUST_REJECT) + len(MUST_REJECT_DOCS)
+             + len(MUST_ACCEPT) + len(MUST_ACCEPT_DOCS))
     print(f"\nself-test: {total - failures}/{total}")
     return 1 if failures else 0
 
