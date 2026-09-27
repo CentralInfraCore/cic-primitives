@@ -132,6 +132,128 @@ között, és MUST `role`-ja `key` legyen (→ §4, C8).
 > egyik sem igényel `item_key`-t. A feltételes szabály tehát nem migrációs
 > teher — a jövőbeli összetett kulcsot zárja le, amit ma semmi nem definiál.
 
+#### `item_choice` — collection-elem diszkriminált unió (cic-primitives#8)
+
+A fenti modell egyetlen feltevésre épül: **egy lista minden eleme azonos
+mezőszerkezetű.** A `cic-schema-registry` `network-interface.yaml`
+`vlans`/`vxlans` listája ezt cáfolta: minden elem VAGY `{ref}` (egy megosztott
+VLAN-definícióra mutat), VAGY egy inline definíció (`{vlan_id, vlan_mode,
+allowed_vlans, dhcp_service}`) — `ref` és `vlan_id` **alternatívák**, nem
+együtt kötelezők. A fenti szabállyal ez csak úgy volt kifejezhető, hogy
+`vlan_id`-t `role: key, mandatory: true`-vá tették — ami kielégíti a "van
+kulcs" követelményt, de emellett **azt is megköveteli, hogy `vlan_id` akkor
+is jelen legyen, amikor `ref`-et használnak** — egy redundáns identitás-
+állítás (`dereference(ref).vlan_id == vlan_id`) semmilyen konzisztencia-
+garancia nélkül. Részletek: `cic-schema-registry` `theads/thead10.txt`.
+
+A helyes megoldás **nem** a kulcs-mező optionallá tétele — az visszahozná a
+pozicionális identitás hibáját, amit a fenti szabály pont kizár. A cél:
+**minden elem pontosan egy stabil identitásra oldódjon fel, de az, hogy
+MELYIK mező(k) alkotják ezt az identitást, elem-variánsonként eltérhessen.**
+
+**Pontosítás egy külső review után:** ez a mondat CÉL, nem a mechanizmus
+által GARANTÁLT tulajdonság — `item_choice` séma-szinten (típusalgebra)
+ellenőriz, nem futásidejű adatpéldányokon. A "pontosan egy case illeszkedik"
+tényleges biztosítéka a séma-szerző felelőssége: a case-eket úgy kell
+megírni, hogy mezőik alapján kölcsönösen megkülönböztethetők legyenek. A
+grammatika ezt NEM bizonyítja általánosságban (ehhez explicit
+diszkriminátor kellene — lásd lent, miért nem azt választottam), de **C17**
+elkap egy konkrét, gyakori hibaosztályt: ha két case UGYANAZT a
+kulcs-mezőhalmazt oldja fel (pl. mindkettő kulcsa `id`), egy csak azokat a
+mezőket hordozó elem mindkettőre illeszkedne — ez most hiba. A `vlans`
+mintában ez nem probléma, mert a `referenced`/`inline` case kulcsa
+(`ref` vs. `vlan_id`) eleve különbözik.
+
+```yaml
+item_choice:
+  cases:
+    - name: <case-név>
+      key: [<mezőnév>, ...]     # opcionális — ua. levezetési szabály, mint item_key, de case-lokális
+      fields: [...]              # a variáns saját, teljes mezőhalmaza
+```
+
+`item_fields` **helyett** áll (kölcsönösen kizáróak, `list` variánson
+pontosan az egyik kötelező; `set`-en egyik sem megengedett). Minden `case`
+egy önálló, teljes mezőhalmazt ír le, **saját** kulccsal — a kulcs-levezetés
+szabálya (pontosan egy `role: key` mező ⇒ levezethető; kettő vagy több ⇒
+`key:` kötelező; egyik sem ⇒ hiba) case-enként, egymástól függetlenül fut.
+
+```yaml
+- name: vlans
+  shape_type: collection
+  collection_variant: list
+  role: config
+  optional: true
+  item_choice:
+    cases:
+      - name: referenced
+        key: [ref]
+        fields:
+          - name: ref
+            shape_type: scalar
+            scalar_type: string
+            semantic_type: cic-reference
+            reference_target: "cic:network:Vlan"
+            role: key
+            mandatory: true
+      - name: inline
+        key: [vlan_id]
+        fields:
+          - name: vlan_id
+            shape_type: scalar
+            scalar_type: integer
+            role: key
+            mandatory: true
+          - name: vlan_mode
+            shape_type: scalar
+            scalar_type: string
+            role: config
+            mandatory: true
+            contract:
+              - type: enum
+                expression: [access, trunk]
+```
+
+A `referenced` case-ben **csak** `ref` szerepel, az `inline` case-ben
+**csak** `vlan_id` (+ a többi inline mező) — nincs redundáns kettős
+állítás, mert a két mező sosem szerepel egyazon elemen.
+
+**Diszkrimináció: implicit, mezőjelenlét alapján** — ugyanaz az elv, mint a
+meglévő `shape_type: choice`/`cases` mechanizmusnál (§2.1), ami szintén nem
+használ explicit diszkriminátor-mezőt. Nem vezetek be új elvet csak erre a
+pozícióra: melyik `case` illik egy konkrét elemre, az a jelenlévő mezők
+halmazából derül ki, nem egy külön "melyik variáns" jelző mezőből.
+
+**Amit ez MÉG mindig nem old meg** (tudott korlátozás, nem blokkoló, C17
+után is): a C17 csak a LEGGYAKORIBB, legközvetlenebb ütközést kapja el
+(azonos kulcs-mezőhalmaz két case közt) — nem bizonyítja általánosságban,
+hogy két case kölcsönösen kizárja egymást (pl. két eltérő nevű, de
+egyaránt opcionális mezőkészlet elméletileg átfedhet egy olyan elemen,
+ami egyik case egyetlen mandatory mezőjét sem tölti ki). Egy TELJES
+garanciához explicit diszkriminátor kellene:
+
+```yaml
+item_choice:
+  discriminator: kind
+  cases:
+    - name: referenced
+      when: "kind == referenced"
+      ...
+```
+
+Ezt SZÁNDÉKOSAN nem vezettem be: új nyelvi elem lenne, a `vlans`/`vxlans`
+motiváló esetben a mezőjelenlét már önmagában egyértelmű (nincs rá
+szükség), és a meglévő sima `choice` sem használ ilyet — konzisztencia
+mellett döntöttem az erősebb garancia helyett. Ha egy jövőbeli eset
+ténylegesen megköveteli az explicit diszkriminátort, az külön döntés.
+
+Egy mező-szintű feltételes Contract (pl. egy `key_fields` elem érvényes
+értékkészlete egy szomszédos `key_fields` elem értékétől függ — lásd
+`cic-schema-registry` `theads/thead12.txt`, `StorageResourceOracleCloud`
+`binding_surface.addresses[].key_fields.provider`) **más** probléma: ott a
+mezőhalmaz fix, csak egy mező Contract-ja feltételes — `item_choice` erre
+nem alkalmazható, külön kérdés marad.
+
 ### 2.4 `reference` — annotáció, nem típus
 
 A katalógus a `reference`-t `shape_type` értékként sorolja fel. A korpusz nem
@@ -387,10 +509,11 @@ külön dokumentum marad ahelyett, hogy egy nyelv lenne.
 | **C5** | `contract type: enum` → a `default` MUST az értéklistában legyen | a C3 speciális esete, külön nevesítve, mert ez a leggyakoribb |
 | **C6** | `behavior.input` / `.output` MUST létező Shape-re oldódjon fel | ma bármilyen string állhat ott |
 | **C7** | `event.payload` MUST létező Shape-re oldódjon fel | ua. |
-| **C8** | minden listának van kulcsa; összetett kulcsnál `item_key` kötelező, és minden eleme `role: key`-es `item_fields` elem | §2.3 |
+| **C8** | minden listának van kulcsa; összetett kulcsnál `item_key` kötelező, és minden eleme `role: key`-es `item_fields` elem. `item_choice` esetén ugyanez a szabály case-enként, függetlenül fut | §2.3 |
 | **C9** | `semantic_type: cic-reference` ⇔ `reference_target` | egyik sem állhat a másik nélkül |
 | **C10** | `reference_target` MUST `{namespace}:{Kind}` alakú legyen, és a `{namespace}` MUST `cic:`-vel kezdődjön | §2.4 |
 | **C16** | Address `key_fields` minden eleme MUST `role: key`-t hordozzon explicit | §2.7 — nincs "levezetés", mert nincs nem-kulcs elem, amitől meg kéne különböztetni |
+| **C17** | `choice`/`item_choice` két case-e MUST NOT azonos nevű legyen; `item_choice` két case-e MUST NOT azonos kulcs-mezőhalmazra oldódjon fel | §2.3 — külső review találta: a `cases` nem `NODE_CONTAINER`, tehát C15 sosem nézett bele; a kulcs-ütközés ellenőrzés szükséges, de nem elégséges feltétele annak, hogy a case-ek kölcsönösen kizárják egymást (lásd §2.3 "Amit ez MÉG mindig nem old meg") |
 
 (C11–C15 a kódban léteznek — `check_role_algebra`/`check_default_against_role`/
 `check_role_against_surface`/`check_duplicate_names` — de sosem kerültek be

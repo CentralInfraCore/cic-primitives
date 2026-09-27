@@ -49,6 +49,37 @@ properties:
     minItems: 1
     items: {$ref: "#"}
 
+  # Collection item discriminated union (cic-primitives#8, §2.3's "ref OR
+  # inline" case). Alternative to item_fields: every element resolves to
+  # exactly one case, discriminated implicitly by which case's fields are
+  # present — same principle as the plain `choice` shape_type's `cases`,
+  # not a new discrimination mechanism invented just for this position.
+  item_choice:
+    type: object
+    required: [cases]
+    additionalProperties: false
+    properties:
+      cases:
+        type: array
+        minItems: 2
+        items:
+          type: object
+          required: [name, fields]
+          additionalProperties: false
+          properties:
+            name: {type: string, minLength: 1}
+            # Same role as the collection-level item_key, but scoped to
+            # this case's own fields: each variant may need a different
+            # field (or field combination) as its identity.
+            key:
+              type: array
+              minItems: 1
+              items: {type: string, minLength: 1}
+            fields:
+              type: array
+              minItems: 1
+              items: {$ref: "#"}
+
   item_scalar_type:
     enum: [string, integer, boolean, number, bytes]
 
@@ -165,6 +196,7 @@ allOf:
         anyOf:
           - required: [fields]
           - required: [item_fields]
+          - required: [item_choice]
           - required: [cases]
           - required: [collection_variant]
 
@@ -177,6 +209,7 @@ allOf:
         anyOf:
           - required: [scalar_type]
           - required: [item_fields]
+          - required: [item_choice]
           - required: [cases]
           - required: [collection_variant]
 
@@ -200,6 +233,7 @@ allOf:
           - required: [scalar_type]
           - required: [fields]
           - required: [item_fields]
+          - required: [item_choice]
 
   - if:
       properties: {shape_type: {const: opaque}}
@@ -210,16 +244,24 @@ allOf:
           - required: [scalar_type]
           - required: [fields]
           - required: [item_fields]
+          - required: [item_choice]
           - required: [cases]
           - required: [collection_variant]
 
-  # ── section 2.3 — list needs item_fields; the key rule is conditional and
-  #    lives in check_grammar.py (JSON Schema cannot count key-roled children) ─
+  # ── section 2.3 — list needs exactly one of item_fields/item_choice; the
+  #    key rule (either shape) is conditional and lives in check_grammar.py
+  #    (JSON Schema cannot count key-roled children) ─────────────────────────
   - if:
       properties: {collection_variant: {const: list}}
       required: [collection_variant]
     then:
-      required: [item_fields]
+      oneOf:
+        - allOf:
+            - required: [item_fields]
+            - not: {required: [item_choice]}
+        - allOf:
+            - required: [item_choice]
+            - not: {required: [item_fields]}
 
   - if:
       properties: {collection_variant: {const: set}}
@@ -230,6 +272,7 @@ allOf:
         anyOf:
           - required: [item_key]
           - required: [item_fields]
+          - required: [item_choice]
 
   # ── section 2.5 — presence is one axis ─────────────────────────────────────
   - not:
