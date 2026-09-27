@@ -187,6 +187,20 @@ def _node_children(node: dict, here: str):
     for child in node.get("item_fields") or []:
         if isinstance(child, dict):
             yield child, here + "[]", keys
+    # item_choice (cic-primitives#8): each case is a self-contained item
+    # variant with its OWN key, independent of the others -- a case's key
+    # need not be, and often cannot be, the same field as another case's
+    # (the whole point: "ref" identifies a referenced entry, "vlan_id" an
+    # inline one, and neither is meaningful on the other variant).
+    for case in (node.get("item_choice") or {}).get("cases") or []:
+        if not isinstance(case, dict):
+            continue
+        case_fields = [f for f in (case.get("fields") or []) if isinstance(f, dict)]
+        case_keys = frozenset(case.get("key") or [
+            f.get("name") for f in case_fields if is_key_role(f.get("role"))])
+        case_here = f"{here}[]<{case.get('name', '?')}>"
+        for child in case_fields:
+            yield child, case_here, case_keys
     for case in node.get("cases") or []:
         if isinstance(case, dict):
             for child in case.get("fields") or []:
@@ -491,28 +505,30 @@ def is_key_role(role) -> bool:
                              and "key" in (role.get("structural") or []))
 
 
-def check_collection(node, path, out: list[Finding]) -> None:
-    """C8 — every list has a key, and a composite key states its order."""
-    if node.get("collection_variant") != "list":
-        return
-    items = [f for f in (node.get("item_fields") or []) if isinstance(f, dict)]
-    item_names = {f.get("name") for f in items}
-    by_name = {f.get("name"): f for f in items}
-    declared = node.get("item_key")
-    keyed = [f.get("name") for f in items if is_key_role(f.get("role"))]
+def _check_keyed_fields(fields: list[dict], declared, path, out: list[Finding],
+                        key_member: str = "item_key",
+                        no_key_msg: str = (
+                            "a list has no key: declare `item_key`, or mark an "
+                            "item field `role: key`. Without one an element's "
+                            "address is its position, and a position moves when "
+                            "a neighbour is inserted")) -> None:
+    """Shared C8 logic: a set of fields (either a plain item_fields list, or
+    one item_choice case's own fields) MUST resolve to exactly one key,
+    declared or derived. Factored out because item_choice needs the exact
+    same check applied independently per case (cic-primitives#8) -- each
+    case's key is local to that case, not a slice of one shared item_key."""
+    item_names = {f.get("name") for f in fields}
+    by_name = {f.get("name"): f for f in fields}
+    keyed = [f.get("name") for f in fields if is_key_role(f.get("role"))]
 
     if not declared:
         if not keyed:
-            out.append(Finding(
-                "C8", path,
-                "a list has no key: declare `item_key`, or mark an item field "
-                "`role: key`. Without one an element's address is its position, "
-                "and a position moves when a neighbour is inserted"))
+            out.append(Finding("C8", path, no_key_msg))
         elif len(keyed) > 1:
             out.append(Finding(
                 "C8", path,
-                f"{len(keyed)} item fields carry `role: key` ({keyed}), so the key "
-                "is composite and its order is undefined: declare `item_key` "
+                f"{len(keyed)} fields carry `role: key` ({keyed}), so the key "
+                f"is composite and its order is undefined: declare `{key_member}` "
                 "explicitly"))
         return
 
@@ -521,21 +537,54 @@ def check_collection(node, path, out: list[Finding]) -> None:
         if key in seen:
             out.append(Finding(
                 "C8", path,
-                f"`{key}` is listed twice in item_key; a composite key's order is "
-                f"a sequence of distinct fields, and a repeat makes the key "
-                f"ambiguous rather than more specific"))
+                f"`{key}` is listed twice in {key_member}; a composite key's "
+                f"order is a sequence of distinct fields, and a repeat makes "
+                f"the key ambiguous rather than more specific"))
         seen.add(key)
         if key not in item_names:
             out.append(Finding(
-                "C8", path, f"item_key names `{key}`, which is not an item field"))
+                "C8", path, f"{key_member} names `{key}`, which is not a field "
+                "in this set"))
             continue
         krole = by_name[key].get("role")
         krole_name = krole if isinstance(krole, str) else (krole or {}).get("structural")
         if not is_key_role(krole):
             out.append(Finding(
                 "C8", path,
-                f"item field `{key}` is named in item_key but its role is "
+                f"field `{key}` is named in {key_member} but its role is "
                 f"`{krole_name}`, not key"))
+
+
+def check_collection(node, path, out: list[Finding]) -> None:
+    """C8 — every list has a key, and a composite key states its order.
+
+    item_choice (cic-primitives#8): a list may instead be a discriminated
+    union of item variants, each with its OWN key -- checked independently
+    per case, since one case's key field need not exist on another case at
+    all (that is the entire point: "ref" identifies a referenced entry,
+    "vlan_id" an inline one, and requiring both is the redundant-identity
+    bug this mechanism exists to avoid)."""
+    if node.get("collection_variant") != "list":
+        return
+
+    item_choice = node.get("item_choice")
+    if item_choice is not None:
+        for case in item_choice.get("cases") or []:
+            if not isinstance(case, dict):
+                continue
+            case_name = case.get("name", "?")
+            case_fields = [f for f in (case.get("fields") or []) if isinstance(f, dict)]
+            _check_keyed_fields(
+                case_fields, case.get("key"), f"{path}.item_choice<{case_name}>",
+                out, key_member="key",
+                no_key_msg=(
+                    f"item_choice case `{case_name}` has no key: declare `key`, "
+                    "or mark one of its fields `role: key`. Each case resolves "
+                    "to its own stable identity independently of the others"))
+        return
+
+    items = [f for f in (node.get("item_fields") or []) if isinstance(f, dict)]
+    _check_keyed_fields(items, node.get("item_key"), path, out)
 
 
 def check_address_key_fields(obj, path: str, out: list[Finding]) -> None:
@@ -804,6 +853,48 @@ MUST_REJECT_DOCS = {
                  "contract": [{"type": "enum",
                               "expression": ["hypervisor", "san", "cloud"]}]}]}
         ]}}},
+    "item_choice case with no key at all (cic-primitives#8)": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "vlans", "shape_type": "collection",
+             "collection_variant": "list", "role": "config",
+             "item_choice": {"cases": [
+                 {"name": "referenced", "key": ["ref"], "fields": [
+                     {"name": "ref", "shape_type": "scalar", "scalar_type": "string",
+                      "semantic_type": "cic-reference",
+                      "reference_target": "cic:network:Vlan",
+                      "role": "key", "mandatory": True}]},
+                 {"name": "inline", "fields": [
+                     {"name": "vlan_id", "shape_type": "scalar",
+                      "scalar_type": "integer", "role": "config",
+                      "mandatory": True}]},
+             ]}}]}}},
+    "item_fields and item_choice both present": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "collection",
+             "collection_variant": "list", "role": "config",
+             "item_fields": [
+                 {"name": "a", "shape_type": "scalar", "scalar_type": "string",
+                  "role": "key", "mandatory": True}],
+             "item_choice": {"cases": [
+                 {"name": "c1", "fields": [
+                     {"name": "b", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True}]},
+                 {"name": "c2", "fields": [
+                     {"name": "c", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True}]},
+             ]}}]}}},
+    "item_choice on a set variant": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "collection", "collection_variant": "set",
+             "role": "config", "item_scalar_type": "string",
+             "item_choice": {"cases": [
+                 {"name": "c1", "fields": [
+                     {"name": "b", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True}]},
+                 {"name": "c2", "fields": [
+                     {"name": "c", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True}]},
+             ]}}]}}},
 }
 
 MUST_ACCEPT_DOCS = {
@@ -822,6 +913,24 @@ MUST_ACCEPT_DOCS = {
                  "scalar_type": "string", "role": "key", "mandatory": True},
             ]}
         ]}}},
+    "the vlans ref-or-inline pattern (item_choice, cic-primitives#8)": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "vlans", "shape_type": "collection",
+             "collection_variant": "list", "role": "config", "optional": True,
+             "item_choice": {"cases": [
+                 {"name": "referenced", "key": ["ref"], "fields": [
+                     {"name": "ref", "shape_type": "scalar", "scalar_type": "string",
+                      "semantic_type": "cic-reference",
+                      "reference_target": "cic:network:Vlan",
+                      "role": "key", "mandatory": True}]},
+                 {"name": "inline", "key": ["vlan_id"], "fields": [
+                     {"name": "vlan_id", "shape_type": "scalar",
+                      "scalar_type": "integer", "role": "key", "mandatory": True},
+                     {"name": "vlan_mode", "shape_type": "scalar",
+                      "scalar_type": "string", "role": "config", "mandatory": True,
+                      "contract": [{"type": "enum",
+                                   "expression": ["access", "trunk"]}]}]},
+             ]}}]}}},
 }
 
 MUST_ACCEPT = {
