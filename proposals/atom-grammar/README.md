@@ -520,9 +520,55 @@ külön dokumentum marad ahelyett, hogy egy nyelv lenne.
 ebbe a táblázatba. Nem ez a szál pótolja őket; a C16-ot azért a valódi
 következő szabad szám alá vettem fel, nem C11 alá, hogy ne ütközzön velük.)
 
-### Amit szándékosan NEM zárok le
+### `derivation_chain` — lezárva: schema-provenance, nem domain-object szemantika (cic-primitives#6)
 
-**A `capability` mechanizmus — és amit a `conformance`-ról elárul.**
+Három `DomainComposition` séma (`cic-schema-registry` `storage-resource`,
+`compute-resource`, `network-interface`) hordoz egy `derivation_chain`
+blokkot, mindhárom UGYANAZZAL a hármas struktúrával: `yang` (a séma
+YANG-modul-alakja, `status: specification-only` — dokumentáció, nem
+futtatott), `restconf` (a kanonikus REST végpontok), `runtime` (a
+reconcile-loop szabad szöveges leírása). A kernel bundle-ben NINCS
+`derivation`/`provenance`-alakú atom — az egyetlen `provenance:` kulcs a
+bundle saját release-signing metaadata, más fogalom.
+
+**A kérdés:** ez a domain-object SÉMA RÉSZE-e (amit egy specializációnak
+explicit restate-elnie/szűkítenie kellene, mint bármelyik surface-öt), vagy
+a séma-provenance dokumentálása (hogyan realizálódik a séma más
+rétegekben) — ami inkább KOMPONÁLANDÓ (bázis realizáció + provider-
+specifikus realizáció), nem örökölt mezőlista.
+
+**Válasz: séma-provenance, nem domain-object szemantika.** Indoklás:
+
+1. Mindhárom előfordulás arról szól, HOGYAN van a séma LEKÉPEZVE egy
+   technológiai rétegre (YANG/RESTCONF/futásidejű viselkedés) — egyik
+   sem "amit egy kliens beállíthat", ellentétben a config_surface bármely
+   mezőjével.
+2. NEM univerzális minta: a session során létrehozott újabb domain-
+   objektumok (`kubernetes-cluster`, `dhcp-service`, `network-space`,
+   `subnet`, `dhcp-options`) egyike sem hordoz `derivation_chain`-t — ez
+   egy opcionális dokumentációs blokk a YANG-eredetű sémákon, nem egy
+   kötelező surface, amit minden domain-objektumnak explicit
+   restate-elnie kellene.
+3. `tools/registrylib/coverage.py`'s `_NODE_LIST_KEYS` (cic-schema-
+   registry) MÁR MOST nem ellenőrzi (`config_surface`/`state_surface`/
+   `operation_surface`/`notification_surface`-re korlátozódik) — ez a
+   viselkedés a fenti indoklás mellett HELYES, nem vakfolt, csak eddig
+   nem volt kimondva, hogy SZÁNDÉKOS.
+
+**Következmény:** `derivation_chain` marad KÍVÜL a Shape/Access primitíveken
+— nem erőltetjük bele a `config_surface`-stílusú explicit-restatement
+modellbe, nincs rá szükség formális Shape/Role/Contract tipizálásra.
+
+**Megfigyelés, NEM eldöntött kérdés:** a `StorageResourceOracleCloud`
+`spec.provider_resources` mezője (`[core.Volume, core.VolumeAttachment,
+monitoring.Metric]`) ugyanazt a kérdést válaszolja meg, mint
+`derivation_chain.restconf` — "milyen valós rendszer-objektumok ellen
+realizálódik ez" —, csak PROVIDER-SPECIFIKUS szinten, a kanonikus szint
+helyett. A két mező fogalmilag rokon, de ma szerkezetileg elkülönített és
+NINCS egyesítve — a pontos forma (közös struktúra, elnevezés, hova
+kerüljön egy specializáción) külön tervezést igényelne, ha valaha egy
+második provider-specializáció ezt ténylegesen indokolja. Nem ez a szál
+dönti el.
 
 A korpusz futtatása egy olyan mezőpárt talált, amit egyik atom sem ismer:
 
