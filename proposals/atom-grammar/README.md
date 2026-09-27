@@ -147,9 +147,22 @@ is jelen legyen, amikor `ref`-et használnak** — egy redundáns identitás-
 garancia nélkül. Részletek: `cic-schema-registry` `theads/thead10.txt`.
 
 A helyes megoldás **nem** a kulcs-mező optionallá tétele — az visszahozná a
-pozicionális identitás hibáját, amit a fenti szabály pont kizár. A helyes
-állítás: **minden elem pontosan egy stabil identitásra oldódik fel, de az,
-hogy MELYIK mező(k) alkotják ezt az identitást, elem-variánsonként eltérhet.**
+pozicionális identitás hibáját, amit a fenti szabály pont kizár. A cél:
+**minden elem pontosan egy stabil identitásra oldódjon fel, de az, hogy
+MELYIK mező(k) alkotják ezt az identitást, elem-variánsonként eltérhessen.**
+
+**Pontosítás egy külső review után:** ez a mondat CÉL, nem a mechanizmus
+által GARANTÁLT tulajdonság — `item_choice` séma-szinten (típusalgebra)
+ellenőriz, nem futásidejű adatpéldányokon. A "pontosan egy case illeszkedik"
+tényleges biztosítéka a séma-szerző felelőssége: a case-eket úgy kell
+megírni, hogy mezőik alapján kölcsönösen megkülönböztethetők legyenek. A
+grammatika ezt NEM bizonyítja általánosságban (ehhez explicit
+diszkriminátor kellene — lásd lent, miért nem azt választottam), de **C17**
+elkap egy konkrét, gyakori hibaosztályt: ha két case UGYANAZT a
+kulcs-mezőhalmazt oldja fel (pl. mindkettő kulcsa `id`), egy csak azokat a
+mezőket hordozó elem mindkettőre illeszkedne — ez most hiba. A `vlans`
+mintában ez nem probléma, mert a `referenced`/`inline` case kulcsa
+(`ref` vs. `vlan_id`) eleve különbözik.
 
 ```yaml
 item_choice:
@@ -211,15 +224,35 @@ használ explicit diszkriminátor-mezőt. Nem vezetek be új elvet csak erre a
 pozícióra: melyik `case` illik egy konkrét elemre, az a jelenlévő mezők
 halmazából derül ki, nem egy külön "melyik variáns" jelző mezőből.
 
-**Amit ez nem old meg** (tudott korlátozás, nem blokkoló): a case-ek
-kölcsönös megkülönböztethetőségét a grammatika statikusan nem ellenőrzi —
-ugyanez a korlátozás áll fenn a sima `choice`-nál is. Egy mező-szintű
-feltételes Contract (pl. egy `key_fields` elem érvényes értékkészlete egy
-szomszédos `key_fields` elem értékétől függ — lásd `cic-schema-registry`
-`theads/thead12.txt`, `StorageResourceOracleCloud` `binding_surface.
-addresses[].key_fields.provider`) **más** probléma: ott a mezőhalmaz fix,
-csak egy mező Contract-ja feltételes — `item_choice` erre nem alkalmazható,
-külön kérdés marad.
+**Amit ez MÉG mindig nem old meg** (tudott korlátozás, nem blokkoló, C17
+után is): a C17 csak a LEGGYAKORIBB, legközvetlenebb ütközést kapja el
+(azonos kulcs-mezőhalmaz két case közt) — nem bizonyítja általánosságban,
+hogy két case kölcsönösen kizárja egymást (pl. két eltérő nevű, de
+egyaránt opcionális mezőkészlet elméletileg átfedhet egy olyan elemen,
+ami egyik case egyetlen mandatory mezőjét sem tölti ki). Egy TELJES
+garanciához explicit diszkriminátor kellene:
+
+```yaml
+item_choice:
+  discriminator: kind
+  cases:
+    - name: referenced
+      when: "kind == referenced"
+      ...
+```
+
+Ezt SZÁNDÉKOSAN nem vezettem be: új nyelvi elem lenne, a `vlans`/`vxlans`
+motiváló esetben a mezőjelenlét már önmagában egyértelmű (nincs rá
+szükség), és a meglévő sima `choice` sem használ ilyet — konzisztencia
+mellett döntöttem az erősebb garancia helyett. Ha egy jövőbeli eset
+ténylegesen megköveteli az explicit diszkriminátort, az külön döntés.
+
+Egy mező-szintű feltételes Contract (pl. egy `key_fields` elem érvényes
+értékkészlete egy szomszédos `key_fields` elem értékétől függ — lásd
+`cic-schema-registry` `theads/thead12.txt`, `StorageResourceOracleCloud`
+`binding_surface.addresses[].key_fields.provider`) **más** probléma: ott a
+mezőhalmaz fix, csak egy mező Contract-ja feltételes — `item_choice` erre
+nem alkalmazható, külön kérdés marad.
 
 ### 2.4 `reference` — annotáció, nem típus
 
@@ -480,6 +513,7 @@ külön dokumentum marad ahelyett, hogy egy nyelv lenne.
 | **C9** | `semantic_type: cic-reference` ⇔ `reference_target` | egyik sem állhat a másik nélkül |
 | **C10** | `reference_target` MUST `{namespace}:{Kind}` alakú legyen, és a `{namespace}` MUST `cic:`-vel kezdődjön | §2.4 |
 | **C16** | Address `key_fields` minden eleme MUST `role: key`-t hordozzon explicit | §2.7 — nincs "levezetés", mert nincs nem-kulcs elem, amitől meg kéne különböztetni |
+| **C17** | `choice`/`item_choice` két case-e MUST NOT azonos nevű legyen; `item_choice` két case-e MUST NOT azonos kulcs-mezőhalmazra oldódjon fel | §2.3 — külső review találta: a `cases` nem `NODE_CONTAINER`, tehát C15 sosem nézett bele; a kulcs-ütközés ellenőrzés szükséges, de nem elégséges feltétele annak, hogy a case-ek kölcsönösen kizárják egymást (lásd §2.3 "Amit ez MÉG mindig nem old meg") |
 
 (C11–C15 a kódban léteznek — `check_role_algebra`/`check_default_against_role`/
 `check_role_against_surface`/`check_duplicate_names` — de sosem kerültek be

@@ -511,12 +511,17 @@ def _check_keyed_fields(fields: list[dict], declared, path, out: list[Finding],
                             "a list has no key: declare `item_key`, or mark an "
                             "item field `role: key`. Without one an element's "
                             "address is its position, and a position moves when "
-                            "a neighbour is inserted")) -> None:
+                            "a neighbour is inserted")) -> tuple[str, ...] | None:
     """Shared C8 logic: a set of fields (either a plain item_fields list, or
     one item_choice case's own fields) MUST resolve to exactly one key,
     declared or derived. Factored out because item_choice needs the exact
     same check applied independently per case (cic-primitives#8) -- each
-    case's key is local to that case, not a slice of one shared item_key."""
+    case's key is local to that case, not a slice of one shared item_key.
+
+    Returns the resolved key as a tuple (for check_collection's C17 cross-
+    case comparison), or None if no single key could be resolved -- a
+    finding was already recorded in that case, so the caller has nothing
+    further to compare."""
     item_names = {f.get("name") for f in fields}
     by_name = {f.get("name"): f for f in fields}
     keyed = [f.get("name") for f in fields if is_key_role(f.get("role"))]
@@ -524,15 +529,18 @@ def _check_keyed_fields(fields: list[dict], declared, path, out: list[Finding],
     if not declared:
         if not keyed:
             out.append(Finding("C8", path, no_key_msg))
+            return None
         elif len(keyed) > 1:
             out.append(Finding(
                 "C8", path,
                 f"{len(keyed)} fields carry `role: key` ({keyed}), so the key "
                 f"is composite and its order is undefined: declare `{key_member}` "
                 "explicitly"))
-        return
+            return None
+        return (keyed[0],)
 
     seen = set()
+    valid = True
     for key in declared:
         if key in seen:
             out.append(Finding(
@@ -540,11 +548,13 @@ def _check_keyed_fields(fields: list[dict], declared, path, out: list[Finding],
                 f"`{key}` is listed twice in {key_member}; a composite key's "
                 f"order is a sequence of distinct fields, and a repeat makes "
                 f"the key ambiguous rather than more specific"))
+            valid = False
         seen.add(key)
         if key not in item_names:
             out.append(Finding(
                 "C8", path, f"{key_member} names `{key}`, which is not a field "
                 "in this set"))
+            valid = False
             continue
         krole = by_name[key].get("role")
         krole_name = krole if isinstance(krole, str) else (krole or {}).get("structural")
@@ -553,6 +563,8 @@ def _check_keyed_fields(fields: list[dict], declared, path, out: list[Finding],
                 "C8", path,
                 f"field `{key}` is named in {key_member} but its role is "
                 f"`{krole_name}`, not key"))
+            valid = False
+    return tuple(declared) if valid else None
 
 
 def check_collection(node, path, out: list[Finding]) -> None:
@@ -569,22 +581,78 @@ def check_collection(node, path, out: list[Finding]) -> None:
 
     item_choice = node.get("item_choice")
     if item_choice is not None:
+        seen_names: set[str] = set()
+        seen_keys: dict[frozenset[str], str] = {}
         for case in item_choice.get("cases") or []:
             if not isinstance(case, dict):
                 continue
             case_name = case.get("name", "?")
+            case_path = f"{path}.item_choice<{case_name}>"
+
+            # C17a — two cases cannot share a name: a case name is which
+            # variant an element resolves to, and cannot mean two things.
+            if case_name in seen_names:
+                out.append(Finding(
+                    "C17", case_path,
+                    f"`{case_name}` is used by more than one case in this "
+                    "item_choice; a case name identifies which variant an "
+                    "element resolves to, and a repeat makes that ambiguous"))
+            seen_names.add(case_name)
+
             case_fields = [f for f in (case.get("fields") or []) if isinstance(f, dict)]
-            _check_keyed_fields(
-                case_fields, case.get("key"), f"{path}.item_choice<{case_name}>",
+            key = _check_keyed_fields(
+                case_fields, case.get("key"), case_path,
                 out, key_member="key",
                 no_key_msg=(
                     f"item_choice case `{case_name}` has no key: declare `key`, "
                     "or mark one of its fields `role: key`. Each case resolves "
                     "to its own stable identity independently of the others"))
+
+            # C17b — two cases cannot resolve to the same key field set: a
+            # runtime element carrying only those fields would then match
+            # more than one case, which defeats the discriminated union
+            # this mechanism exists to provide. This is a necessary, not
+            # sufficient, distinguishability check -- it catches the most
+            # direct collision (same key fields) but cannot prove two cases
+            # are mutually exclusive in general (see README §2.3).
+            if key is not None:
+                key_set = frozenset(key)
+                if key_set in seen_keys:
+                    out.append(Finding(
+                        "C17", case_path,
+                        f"this case's key {sorted(key_set)} is identical to "
+                        f"case `{seen_keys[key_set]}`'s key; an element "
+                        "carrying only those fields would match both cases"))
+                else:
+                    seen_keys[key_set] = case_name
         return
 
     items = [f for f in (node.get("item_fields") or []) if isinstance(f, dict)]
     _check_keyed_fields(items, node.get("item_key"), path, out)
+
+
+def check_choice_case_names(node, path, out: list[Finding]) -> None:
+    """C17c — a plain `choice` node's cases cannot share a name either.
+
+    The same gap item_choice's C17a closes existed here first: `cases` is
+    not a NODE_CONTAINER, so check_duplicate_names() (C15) never looks at
+    it, and nothing else did. Found while adding C17 for item_choice --
+    the plain `choice` shape_type has carried this gap unnoticed since it
+    was introduced (§2.1)."""
+    if node.get("shape_type") != "choice":
+        return
+    seen: set[str] = set()
+    for case in node.get("cases") or []:
+        if not isinstance(case, dict):
+            continue
+        name = case.get("name", "?")
+        if name in seen:
+            out.append(Finding(
+                "C17", f"{path}<{name}>",
+                f"`{name}` is used by more than one case in this choice; a "
+                "case name identifies which variant applies, and a repeat "
+                "makes that ambiguous"))
+        seen.add(name)
 
 
 def check_address_key_fields(obj, path: str, out: list[Finding]) -> None:
@@ -686,6 +754,7 @@ def check_document(doc, validator) -> list[Finding]:
             check_default_against_role(node, role, path, out)
         check_default_against_contracts(node, path, out)
         check_collection(node, path, out)
+        check_choice_case_names(node, path, out)
         check_reference_target(node, path, out)
     check_duplicate_names(doc, "$", out)
     check_shape_references(doc, out)
@@ -895,6 +964,42 @@ MUST_REJECT_DOCS = {
                      {"name": "c", "shape_type": "scalar", "scalar_type": "string",
                       "role": "key", "mandatory": True}]},
              ]}}]}}},
+    "two item_choice cases sharing a key field (cic-primitives#9 review)": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "collection", "collection_variant": "list",
+             "role": "config", "item_choice": {"cases": [
+                 {"name": "a", "fields": [
+                     {"name": "id", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True},
+                     {"name": "x", "shape_type": "scalar", "scalar_type": "string",
+                      "optional": True}]},
+                 {"name": "b", "fields": [
+                     {"name": "id", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True},
+                     {"name": "y", "shape_type": "scalar", "scalar_type": "string",
+                      "optional": True}]},
+             ]}}]}}},
+    "two item_choice cases with the same name": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "collection", "collection_variant": "list",
+             "role": "config", "item_choice": {"cases": [
+                 {"name": "a", "key": ["id"], "fields": [
+                     {"name": "id", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True}]},
+                 {"name": "a", "key": ["other"], "fields": [
+                     {"name": "other", "shape_type": "scalar", "scalar_type": "string",
+                      "role": "key", "mandatory": True}]},
+             ]}}]}}},
+    "two plain choice cases with the same name": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "x", "shape_type": "choice", "role": "config", "cases": [
+                {"name": "a", "fields": [
+                    {"name": "p", "shape_type": "scalar", "scalar_type": "string",
+                     "role": "config"}]},
+                {"name": "a", "fields": [
+                    {"name": "q", "shape_type": "scalar", "scalar_type": "string",
+                     "role": "config"}]},
+            ]}]}}},
 }
 
 MUST_ACCEPT_DOCS = {
