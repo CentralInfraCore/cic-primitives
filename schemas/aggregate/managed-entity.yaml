@@ -146,7 +146,14 @@ spec:
       atomic_ref: schemas/atomic/address.yaml
       description: >
         At least one Address atom is required — how this entity is reachable.
-        Address layers: schema_path, api_path, logical_id.
+        Address layers: schema_path, api_path, logical_id. The required
+        Address is not necessarily a provider binding: an Address carrying
+        only logical_id (no key_fields) already satisfies this requirement
+        — the pre-binding case, an entity declared before any provider-side
+        create/binding exists (D-016, ai/DECISIONS.md). "An entity may exist
+        without an address" (schemas/atomic/address.yaml's own description)
+        means without a provider-side address specifically, not without any
+        Address atom at all.
         A future BindingSurface aggregate will also wrap the adapter reference.
 
   semantic_mapping:

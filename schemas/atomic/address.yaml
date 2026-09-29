@@ -40,6 +40,12 @@ spec:
       description: >
         Logical identifier — human-friendly, system-independent name for the entity.
         Not necessarily globally unique — unique within its namespace.
+        MAY exist independently of key_fields (D-016): a pre-binding entity
+        — declared before any provider-side create/binding exists — has a
+        logical_id and no key_fields at all. A binding MAY later derive a
+        provider-specific address from key_fields, but logical_id is not
+        required to be derived from it, and a change of provider (a new
+        key_fields set) does not change logical_id.
       formats:
         uuid: "550e8400-e29b-41d4-a716-446655440000"
         name: "eth0 / default-ns / prod-cluster"
@@ -71,19 +77,27 @@ spec:
         optional: true
         description: >
           Ordered list of Shape-typed key components that together identify
-          an entity within this Address's namespace (the corpus convention
-          {backend}:{provider}:{location}:{id}, composed into logical_id as
-          cic:{namespace}:{backend}:{provider}:{location}:{id}). Every entry
-          MUST be a Shape (shape_type: scalar in every corpus occurrence —
-          nothing has needed a composite or collection key component yet)
-          with role: key, per proposals/atom-grammar/README.md §2.7. Formalized
-          here rather than left as a bare {name, type, values} corpus
+          an entity's provider-side binding within this Address's namespace
+          (the corpus convention {backend}:{provider}:{location}:{id}). This
+          set of components MAY be composed/derived into a logical_id as
+          cic:{namespace}:{backend}:{provider}:{location}:{id} — that is a
+          corpus convention some domains follow, not an invariant this atom
+          enforces (D-016): logical_id is not required to derive from
+          key_fields, and an entity MAY carry a logical_id with no
+          key_fields at all (the pre-binding case — declared, not yet
+          created/bound on any provider). Every entry MUST be a Shape
+          (shape_type: scalar in every corpus occurrence — nothing has
+          needed a composite or collection key component yet) with role:
+          key, per proposals/atom-grammar/README.md §2.7. Formalized here
+          rather than left as a bare {name, type, values} corpus
           convention, which carried no Shape/Contract typing and so could
           not be validated at all (cic-schema-registry cic-primitives#5).
 
           Order matters and is significant: it fixes the position of each
-          component in logical_id and in schema_path/api_path's key
-          expression, the same way a YANG list key's declared order does.
+          component in schema_path/api_path's key expression, and in
+          logical_id too for domains that follow the composed-logical_id
+          convention above — the same way a YANG list key's declared order
+          does.
 
           Distinct from a Shape-collection's own item_key (proposals/
           atom-grammar/README.md §2.3) despite the near-identical name in
