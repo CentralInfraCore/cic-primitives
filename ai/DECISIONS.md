@@ -425,8 +425,95 @@ esetén kimondja, hogy az aláírás négy tagot fed. Külső horgony:
 
 ---
 
-**Helyzet:**
-CIC objektumok közötti hivatkozások (pl. StorageResource → ComputeResource, KubernetesNode → KubernetesCluster)
+## D-016 — `Address.logical_id`: pre-binding CIC-instance-identitás, nem új atom (2026-09-29)
+
+**Döntés:** Nincs szükség új kernel-atomra ahhoz, hogy egy CIC-objektumnak
+legyen stabil, provider-független identitása MÉG a provider-oldali
+létrehozás/binding előtt. Ez a fogalom **már ma is kifejezhető** a meglévő
+`Address` atommal — a `logical_id` mezővel —, csak a `key_fields` mező
+leírása dokumentáció-szinten túl szorosan összekötötte a kettőt, és ez a
+kapcsolat semmilyen grammar-szabályban nincs kikényszerítve.
+
+**Az előzmény:** a `cic-module-oracle-cloud` egyik valós hibájának
+(`#31` — `Plan()` egy nem-létező erőforrásra tévesen `DeleteVcn`-t tervez)
+vizsgálata során felmerült egy nagyobb kérdés: hogyan különböztesse meg a
+rendszer "ez az objektum még nem létezik a providernél" (CREATE) esetét
+"ez az objektum létezik, driftel" (UPDATE/ACTION/REPLACE) esettől, ha az
+objektum azonosítása ma a provider-oldali ID-ből (`key_fields.id`) épül fel?
+Ha a CIC-objektum identitása maga is a provider ID-től függ, a kérdés
+körkörös: nincs identitás a binding létrejötte előtt.
+
+**A három fogalom, amit szét kell tartani:**
+
+```text
+Identity           — MI ez a típus? (kind/namespace/version/inheritance,
+                      schemas/atomic/identity.yaml — a saját doksija
+                      explicit "not instance identification")
+
+Address.logical_id — MELYIK CIC-instance ez? (human-friendly,
+                      system-independent, a schemas/atomic/address.yaml
+                      saját formátumpéldái — uuid / name / namespace:kind:name
+                      — egyike sem épít be backend/provider/location-t)
+
+Address.key_fields — HOL/HOGYAN van ez az instance provider-oldalon
+                      megcímezve/bekötve? (a #5 formalizáció, backend/
+                      provider/location/id)
+```
+
+**Miért nem kell új atom:** ellenőrizve a kernel forrásában, nem csak a
+dokumentációban:
+
+1. `schemas/atomic/address.yaml`: a `constraints.must` kizárólag azt kéri,
+   hogy `schema_path` VAGY `api_path` VAGY `logical_id` legyen jelen — nem
+   mindhárom, és `key_fields` a `fields`-listában `optional: true`. Egy
+   Address-bejegyzés, amiben KIZÁRÓLAG `logical_id` van kitöltve, `key_fields`
+   nélkül, MA IS érvényes a saját kontraktusa szerint.
+2. `proposals/atom-grammar/check_grammar.py`: a `key_fields`-re vonatkozó
+   EGYETLEN szabály (C16) azt ellenőrzi, hogy minden bejegyzés `role: key`-t
+   visel. Semmi nem ellenőrzi, hogy `logical_id` a `key_fields`-ből épül
+   fel — a "composed into logical_id as
+   `cic:{namespace}:{backend}:{provider}:{location}:{id}`" mondat a
+   `key_fields` mező saját leírásában van, és saját magát **"the corpus
+   convention"**-ként azonosítja, nem invariánsként.
+3. `schemas/aggregate/managed-entity.yaml`: a `binding_surface` `mode:
+   required` — "legalább egy Address atom szükséges" —, miközben az
+   `Address` saját `metadata.description`-je azt mondja, "An entity may
+   exist without an address". Ez a látszólagos ellentmondás feloldódik,
+   ha "address" alatt nem kizárólag "provider binding"-ot értünk: egy
+   `logical_id`-only Address MÁR kielégíti mindkét kontraktust.
+
+**Következmény — három dokumentáció-pontosítás** (nem séma-, nem
+grammar-változás, csak leírás-pontosítás, hogy a doksi ne sugalljon
+tévesen erősebb kapcsolatot, mint amit a kód kikényszerít):
+
+1. `schemas/atomic/address.yaml`, a `key_fields` mező leírásában: "composed
+   into logical_id as ..." → "MAY be composed/derived into a logical_id as
+   ... (a corpus convention, not an invariant — `logical_id` is not
+   required to derive from `key_fields`)".
+2. Ugyanott, a `layers.logical_id` leírásának kiegészítése egy explicit
+   mondattal: `logical_id` MAY exist independently of `key_fields` — a
+   pre-binding (create előtti) állapotban ez az egyetlen jelen lévő layer.
+3. `schemas/aggregate/managed-entity.yaml`, a `binding_surface` leírásában
+   pontosítás: a kötelező Address lehet pusztán logikai/runtime address
+   (`logical_id`) is, nem kötelező, hogy provider-bindinget hordozzon.
+
+**Motiváció, amiért ez most számít:** a `cic:network` → `cic:oracle:network`
+kétlépcsős validációs modellben (a domain-séma azt ellenőrzi, hogy az intent
+domain-szinten értelmes; a provider-specializáció azt, hogy realizálható
+az adott provideren — lásd a `Subnet`/`NetworkSpace`/`SubnetOracleCloud`/
+`NetworkSpaceOracleCloud` párokat, `cic-schema-registry#154`) a
+`logical_id`-nak a domain-szinten kell stabilnak maradnia, függetlenül
+attól, hogy melyik provideren (vagy egyáltalán van-e még) binding. Ez teszi
+lehetővé, hogy egy CIC-objektum providert válthasson (pl. OCI → Azure
+migráció) anélkül, hogy az identitása megváltozna — a binding cserélhető,
+az identitás nem.
+
+**Amit ez a döntés NEM csinál:** nem tervez Git-alapú intent/state
+reconciliation motort, nem dönt a `cic-module-oracle-cloud#31` konkrét
+kódjavításáról. Azok külön tételek, ez a döntés csak a primitívek szintjén
+tisztázza, hogy a szükséges építőelem már létezik.
+
+---
 jelenleg plain `string` típusú mezők. A `logical_id` formátum (`cic:{domain}:{...}`) dokumentált,
 de schema szinten nincs kényszerítve.
 
@@ -871,6 +958,99 @@ automatically.
 print "integrity OK". The output lists item by item what is proven and what is
 not, and under v1 states plainly that the signature covers four members. External
 anchor: `--trust-root <pem>`.
+
+---
+
+## D-016 — `Address.logical_id`: pre-binding CIC instance identity, not a new atom (2026-09-29)
+
+**Decision:** No new kernel atom is needed for a CIC object to have a stable,
+provider-independent identity *before* it is created/bound on any provider.
+This concept is **already expressible** with the existing `Address` atom —
+its `logical_id` field — the only problem was that the `key_fields` field's
+own description coupled it too tightly to `logical_id` at the documentation
+level, and that coupling is not enforced by any grammar rule.
+
+**Background:** investigating a real bug in `cic-module-oracle-cloud`
+(`#31` — `Plan()` mis-plans a `DeleteVcn` against a resource that does not
+exist yet) surfaced a bigger question: how should the system distinguish
+"this object does not exist at the provider yet" (CREATE) from "this object
+exists, and has drifted" (UPDATE/ACTION/REPLACE), if the object's own
+identity today is built from the provider-side ID (`key_fields.id`)? If a
+CIC object's identity itself depends on the provider ID, the question is
+circular — there is no identity before the binding exists.
+
+**The three concepts that need to stay apart:**
+
+```text
+Identity           — WHAT type is this? (kind/namespace/version/inheritance,
+                      schemas/atomic/identity.yaml — its own docstring says
+                      explicitly "not instance identification")
+
+Address.logical_id — WHICH CIC instance is this? (human-friendly,
+                      system-independent — the format examples in
+                      schemas/atomic/address.yaml — uuid / name /
+                      namespace:kind:name — none of which bake in
+                      backend/provider/location)
+
+Address.key_fields — WHERE/HOW is this instance addressed/bound on a
+                      provider? (the #5 formalization, backend/provider/
+                      location/id)
+```
+
+**Why no new atom is needed:** verified against the kernel's actual source,
+not just its documentation:
+
+1. `schemas/atomic/address.yaml`: `constraints.must` only requires
+   `schema_path` OR `api_path` OR `logical_id` — not all three — and
+   `key_fields` is `optional: true` in the `fields` list. An Address entry
+   carrying ONLY `logical_id`, with no `key_fields`, already satisfies its
+   own contract today.
+2. `proposals/atom-grammar/check_grammar.py`: the ONE rule about
+   `key_fields` (C16) checks that every entry carries `role: key`. Nothing
+   checks that `logical_id` is derived from `key_fields` — the sentence
+   "composed into logical_id as
+   `cic:{namespace}:{backend}:{provider}:{location}:{id}`" lives in the
+   `key_fields` field's own description and identifies itself as **"the
+   corpus convention"**, not as an invariant.
+3. `schemas/aggregate/managed-entity.yaml`: `binding_surface` is `mode:
+   required` — "at least one Address atom is required" — while `Address`'s
+   own `metadata.description` says "An entity may exist without an
+   address." This apparent contradiction resolves once "address" is not
+   read as exclusively "provider binding": a `logical_id`-only Address
+   already satisfies both contracts.
+
+**Consequence — three documentation clarifications** (not a schema or
+grammar change, just wording, so the docs stop implying a stronger coupling
+than the code actually enforces):
+
+1. `schemas/atomic/address.yaml`, in the `key_fields` field description:
+   "composed into logical_id as ..." → "MAY be composed/derived into a
+   logical_id as ... (a corpus convention, not an invariant — `logical_id`
+   is not required to derive from `key_fields`)".
+2. Same file, add an explicit sentence to the `layers.logical_id`
+   description: `logical_id` MAY exist independently of `key_fields` — in
+   the pre-binding (pre-creation) state, it is the only layer present.
+3. `schemas/aggregate/managed-entity.yaml`, in the `binding_surface`
+   description: clarify that the required Address may be a purely
+   logical/runtime address (`logical_id`), not necessarily a provider
+   binding.
+
+**Why this matters now:** in the two-tier `cic:network` → `cic:oracle:network`
+validation model (the domain schema checks that an intent makes sense at
+the domain level; the provider specialization checks that it is realizable
+on that specific provider — see the `Subnet`/`NetworkSpace`/
+`SubnetOracleCloud`/`NetworkSpaceOracleCloud` pairs,
+`cic-schema-registry#154`), `logical_id` needs to stay stable at the
+domain level regardless of which provider (or whether any) currently holds
+the binding. This is what lets a CIC object migrate providers (e.g. OCI →
+Azure) without its identity changing — the binding is replaceable, the
+identity is not.
+
+**What this decision does NOT do:** it does not design a Git-based
+intent/state reconciliation engine, and it does not decide the concrete
+code fix for `cic-module-oracle-cloud#31`. Those are separate items; this
+decision only clarifies, at the primitives level, that the building block
+they need already exists.
 
 ---
 
