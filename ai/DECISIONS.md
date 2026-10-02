@@ -152,6 +152,17 @@ tartalmaz futtatási logikát.
 2. `compiler.py` → primitive YAML fájlokat is validálja (nem csak `*.meta.yaml`)
 3. Semantic compatibility check domain repo specializációra → Phase 6 tooling
 
+**Kapcsolódó (2026-10-02):** a nyitva hagyott merge-policy kérdést a `cic-primitives#14`
+veszi át és formalizálja egy relation-alapú (monotonic derivation) modellként — nem
+párhuzamos fogalmi rendszerként, hanem e döntés folytatásaként. A lezárási feltétel —
+"az első domain repó ténylegesen override-ol egy slotot" — azóta teljesült:
+`providers/oracle-cloud/storage/storage-resource/storage-resource.yaml`
+(`StorageResourceOracleCloud`) `encryption_mode` mezője a `none`/`guest_managed`
+értékeket `conformance: not_implemented`-del szűkíti, a teljes enum-vokabulárium
+megtartása mellett (cic-schema-registry#137, thead07/thead08). Ez az első valós,
+corpus-ban bizonyított derivation reláció — a `#14` tervezett "contract.enum ordering"
+worked example-je erre épülhet, nem elméleti kiindulásra.
+
 ---
 
 ## D-009 — ExecutionSurface szándékosan hiányzik (2026-04-30)
@@ -682,6 +693,17 @@ contains no execution logic.
 1. `schemas/index.yaml` → primitive meta-schema (what is a valid atomic/aggregate YAML)
 2. `compiler.py` → also validates primitive YAML files (not only `*.meta.yaml`)
 3. Semantic compatibility check for domain repo specializations → Phase 6 tooling
+
+**Related (2026-10-02):** the open merge-policy question is picked up and formalized
+by `cic-primitives#14` as a relation-based (monotonic derivation) model — a
+continuation of this decision, not a parallel conceptual system. The closing
+condition — "the first domain repo actually overrides a slot" — has since been
+met: `providers/oracle-cloud/storage/storage-resource/storage-resource.yaml`'s
+(`StorageResourceOracleCloud`) `encryption_mode` field narrows the `none`/
+`guest_managed` values to `conformance: not_implemented` while keeping the full
+enum vocabulary intact (cic-schema-registry#137, thead07/thead08). This is the
+first real, corpus-proven derivation relation — `#14`'s planned `contract.enum`
+ordering worked example should build on it, not on a theoretical starting point.
 
 ---
 
