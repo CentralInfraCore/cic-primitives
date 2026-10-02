@@ -525,6 +525,73 @@ kódjavításáról. Azok külön tételek, ez a döntés csak a primitívek szi
 tisztázza, hogy a szükséges építőelem már létezik.
 
 ---
+
+## D-017 — Két bizonyított derivation reláció normatívvá tétele: `contract.enum` és `access` (2026-10-02)
+
+**Döntés:** a `cic-primitives#14` (monotonic derivation modell) Fázis 1-2
+munkája alapján — teljes corpus-mérés után (lásd az issue komment-naplóját)
+— két primitívforma derivation relációja normatívvá válik, mert mindkettőre
+van valós, bizonyított corpus-előfordulás:
+
+1. **`contract.enum`**: egy leszármazott bármely örökölt értéket
+   megjelölhet `{value: X, conformance: not_implemented}` vagy
+   `{value: X, conformance: deprecated}` formában — a TELJES
+   típus-szintű vokabulárium változatlan marad, egyetlen érték sem
+   távolítható el ténylegesen MAJOR bump nélkül.
+2. **`access`** (teljes mezőre vonatkozó conformance, nem csak enum-értékre):
+   egy leszármazott bármely örökölt mezőt megjelölhet
+   `access: {conformance: not_implemented}` vagy `deprecated`-del — a mező
+   maga nem tűnhet el (ami a meglévő "field disappeared" szabály alá esne,
+   aminek már most is van kivétele pontosan erre az esetre).
+
+**Fontos aszimmetria a két reláció között — ezt a döntés explicit rögzíti,
+nem mossa össze:**
+
+- A `contract.enum` reláció **ma is ténylegesen kikényszerített kódban**:
+  `tools/registrylib/coverage.py` `_SHAPE_KEYS`-e tartalmazza a
+  `contract`-ot, és `_normalize_contract()` conformance-blind módon
+  hasonlítja az értékkészletet — egy érték tényleges eltávolítása
+  (nem csak `not_implemented`-del jelölése) ÉSZLELT mutációként bukik,
+  MAJOR bump nélkül.
+- Az `access` reláció **ma NEM kikényszerített sehol**: az `access` kulcs
+  egyáltalán nincs benne a `_SHAPE_KEYS`-ben, tehát a `check_coverage()`
+  vak rá — egy leszármazott szó nélkül eltávolíthatna vagy hozzáadhatna
+  egy örökölt `access.conformance` jelölést, és ez ma semmilyen
+  ellenőrzésen nem bukna el. Ez ugyanaz a helyzet, mint a D-016
+  `inherit_policy` mezője: dokumentált, bizonyított szándék, de ma
+  kódszinten nem kikényszerített. A `coverage.py` tényleges bővítése,
+  hogy az `access.conformance` monoton szűkítését is ellenőrizze, KÜLÖN,
+  halasztott tétel — cic-schema-registry#160.
+
+**Bizonyíték (a corpus-mérésből, cic-primitives#14 komment, 2026-10-02):**
+pontosan 4 valós előfordulás, mindhárom létező provider-specializációban
+(`StorageResourceOracleCloud`, `SubnetOracleCloud`, `NetworkSpaceOracleCloud`
+— ez a teljes corpus, több domain-to-domain specializáció ma nem létezik):
+
+- `StorageResourceOracleCloud.encryption_mode` — `contract.enum`,
+  `none`/`guest_managed` → `not_implemented` (cic-schema-registry#137).
+- `StorageResourceOracleCloud.binding_surface.addresses[].key_fields.backend`
+  — `contract.enum`, `hypervisor`/`san` → `not_implemented` (#131/thead12).
+- `StorageResourceOracleCloud.filesystem` — `access`, teljes mező
+  `not_implemented` (string típusú mező).
+- `NetworkSpaceOracleCloud.dns_support_enabled` /
+  `dns_hostnames_enabled` — `access`, teljes mező `not_implemented`
+  (boolean típusú mezők — bizonyítja, hogy a mechanizmus nem
+  enum-specifikus).
+
+**Amit ez a döntés NEM tesz normatívvá:** `contract.range`, `contract.must`
+és multi-parent kompozíció — ezekre a corpus-mérés **nulla** valós
+előfordulást talált. Ezek a `#14`-ben candidate semantics / design
+hypothesis státuszban maradnak, ugyanazon elv szerint, mint
+`cic-primitives#11`/`#8`: ne tervezzünk szabályt egyetlen (vagy nulla)
+előfordulásból, várjunk valós második esetre.
+
+**Következmény:** `cic-primitives#14` normatív szekciója erre a két
+relációra szűkül v1-ben. Nyitva marad, külön issue-ként: a `coverage.py`
+bővítése, hogy az `access.conformance` reláció is ténylegesen
+kikényszerített legyen, parítást adva a `contract.enum`-mal.
+
+---
 jelenleg plain `string` típusú mezők. A `logical_id` formátum (`cic:{domain}:{...}`) dokumentált,
 de schema szinten nincs kényszerítve.
 
@@ -1073,6 +1140,70 @@ intent/state reconciliation engine, and it does not decide the concrete
 code fix for `cic-module-oracle-cloud#31`. Those are separate items; this
 decision only clarifies, at the primitives level, that the building block
 they need already exists.
+
+---
+
+## D-017 — Two proven derivation relations made normative: `contract.enum` and `access` (2026-10-02)
+
+**Decision:** based on `cic-primitives#14`'s (monotonic derivation model)
+Phase 1-2 work — after a full corpus measurement (see the issue's comment
+log) — two primitive-semantic-form derivation relations become normative,
+because both have real, proven corpus occurrences:
+
+1. **`contract.enum`**: a descendant may mark any inherited value as
+   `{value: X, conformance: not_implemented}` or `{value: X, conformance:
+   deprecated}` — the full type-level vocabulary stays unchanged; no value
+   may actually be removed without a MAJOR bump.
+2. **`access`** (whole-field conformance, not just an enum value): a
+   descendant may mark any inherited field with `access: {conformance:
+   not_implemented}` or `deprecated` — the field itself may not disappear
+   (which falls under the existing "field disappeared" rule, which already
+   carries exactly this exception).
+
+**An important asymmetry between the two relations — this decision states
+it explicitly, rather than blurring it:**
+
+- `contract.enum` is **mechanically enforced today**: `tools/registrylib/
+  coverage.py`'s `_SHAPE_KEYS` includes `contract`, and
+  `_normalize_contract()` compares the value set conformance-blind —
+  actually removing a value (not just marking it `not_implemented`) is
+  caught as a mutation, without a MAJOR bump.
+- `access` is **not enforced anywhere today**: the `access` key is not in
+  `_SHAPE_KEYS` at all, so `check_coverage()` is blind to it — a
+  descendant could silently remove or add an inherited `access.conformance`
+  annotation and nothing would catch it. This is the same situation as
+  D-016's `inherit_policy` field: a documented, proven intent, not yet
+  code-enforced. Actually extending `coverage.py` to check monotonic
+  `access.conformance` narrowing is a SEPARATE, deferred item — see the
+  linked issue.
+
+**Evidence** (from the corpus measurement, `cic-primitives#14` comment,
+2026-10-02): exactly 4 real occurrences, across all three existing
+provider specializations (`StorageResourceOracleCloud`,
+`SubnetOracleCloud`, `NetworkSpaceOracleCloud` — the entire corpus; no
+other domain-to-domain specialization exists today):
+
+- `StorageResourceOracleCloud.encryption_mode` — `contract.enum`,
+  `none`/`guest_managed` → `not_implemented` (cic-schema-registry#137).
+- `StorageResourceOracleCloud.binding_surface.addresses[].key_fields.backend`
+  — `contract.enum`, `hypervisor`/`san` → `not_implemented` (#131/thead12).
+- `StorageResourceOracleCloud.filesystem` — `access`, whole field
+  `not_implemented` (a string-typed field).
+- `NetworkSpaceOracleCloud.dns_support_enabled` /
+  `dns_hostnames_enabled` — `access`, whole field `not_implemented`
+  (boolean-typed fields — proving the mechanism isn't enum-specific).
+
+**What this decision does NOT make normative:** `contract.range`,
+`contract.must`, and multi-parent composition — the corpus measurement
+found **zero** real occurrences of any of these. They stay candidate
+semantics / design hypotheses in `#14`, on the same principle as
+`cic-primitives#11`/`#8`: don't design a rule from one (or zero)
+occurrences; wait for a real second case.
+
+**Consequence:** `cic-primitives#14`'s normative section narrows to these
+two relations for v1. Left open, as a separate issue: extending
+`coverage.py` so the `access.conformance` relation becomes actually
+enforced, reaching parity with `contract.enum` (cic-schema-registry#160).
 
 ---
 
