@@ -427,7 +427,7 @@ megmarad:
 role: config          # ⇔ role: { authority: config }
 role: state           # ⇔ role: { authority: state }
 role: operational     # ⇔ role: { authority: operational }
-role: key             # ⇔ role: { authority: config, structural: [key] }
+role: key             # ⇔ role: { authority: <az övező surface-é>, structural: [key] }
 role: derived         # ⇔ role: { authority: state, lifecycle: derived }
 role: volatile        # ⇔ role: { authority: state, lifecycle: volatile }
 ```
@@ -443,8 +443,9 @@ role:
 
 **A rövid alak feloldása kötött, nem ízlés kérdése:**
 
-- a `key` `authority`-ja `config`, mert a lista kulcsát a management plane adja
-  meg létrehozáskor;
+- a `key` **nem** rögzíti az `authority`-t: a `structural: [key]` tengelyt adja
+  hozzá, az `authority` az övező surface-ből öröklődik (`config_surface` alatt
+  `config`, `state_surface` alatt `operational`) — lásd a korrekciót lent;
 - a `derived` és a `volatile` `authority`-ja `state`, mert mindkettő kizárja a
   `config`-ot (tehát az alapértelmezés nem alkalmazható rájuk), a `role.yaml`
   mindkettőt `config false` / GET-only alakra képezi, és a korpuszban mindkettő
@@ -460,6 +461,18 @@ role:
 > `last_seen`). A grammatika első változata ezért elutasította volna egy létező,
 > helyes kompozíciót. A `reference`-re az állítás továbbra is áll: 0 előfordulás.
 
+> **Korrekció (a `key` `authority`-ja, cic-primitive-engine review útján
+> elkapva).** Ez a bekezdés korábban azt állította, hogy a `key` `authority`-ja
+> mindig `config`, "mert a lista kulcsát a management plane adja meg
+> létrehozáskor." A `check_grammar.py` saját, már korábban javított kódja (és
+> `check_role_algebra`'s "No authority constraint" kommentje) ennek az
+> ellenkezőjét mondja ki, és egy konkrét korpusz-hibát is megnevez okként:
+> `container_statuses[].name` egy olyan lista kulcsa, amit az adapter FIGYEL
+> MEG, nem a kérő ad meg — a kulcs a megfigyelés része, nem egy kívánt állapot.
+> Ha a `key` `authority`-ja mindig `config` lenne, ez a korpusz-eset
+> hibásan elutasításra kerülne. A kód ezt már korrigálta (surface-derivált
+> authority); ez a bekezdés csak most követi.
+
 ### 3.2 Az érvényes kombinációk
 
 | Szabály | Indok |
@@ -467,7 +480,7 @@ role:
 | `authority` pontosan egy — kihagyva `config` | egy mező vagy kívánt állapot, vagy megfigyelt, vagy számított; a három kizárja egymást |
 | `derived` **kizárja** a `config`-ot | számított értéket nem lehet kívánt állapotként beállítani |
 | `volatile` **kizárja** a `config`-ot | nem perzisztens értéknek nincs kívánt állapota |
-| `key` **megköveteli** a `config`-ot | a kulcsot a kérő adja meg |
+| `key`-re **nincs `authority`-megkötés** | a kulcs az övező surface authority-ját veszi fel (`check_role_algebra`: "No authority constraint") — egy `state_surface`-en megfigyelt lista kulcsa (pl. `container_statuses[].name`) is `key`, de nem `config` |
 | `key` **megköveteli** a `mandatory`-t | kulcs nem hiányozhat |
 | `key` **csak** `item_key`-ben megnevezett/egyetlen-kulcsos `item_fields` mezőn, VAGY egy Address `key_fields` elemén | máshol nincs mit azonosítania. (Ez a sor korábban `collection.key_fields`-et mondott — a §2.3 döntés, ami az `item_key` nevet választotta pont azért, hogy ne ütközzön a §2.7-ben formalizált Address `key_fields`-szel, itt nem lett átvezetve. Javítva, amikor a §2.7 megszületett.) |
 | `key` **kizárja** a `derived`-et és a `volatile`-t | a kulcs a létrehozás után nem változhat |
