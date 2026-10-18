@@ -35,12 +35,10 @@ korpuszbizonyíték**. Bármely döntés tervezési döntés, nem mért szabály
 | 9 | kiértékelési sorrend | — | — | mező-Access > `surface_rules` > `default_*` > szülő PolicySurface (ha `inherit_policy`) | — | rögzített, de csak P3-ban kiértékelt; a nyelvtan nem függ tőle |
 | 10 | `default_access` / `default_modify` | `CertPattern[]` | `open` / `owner` | `open`, `owner` literálok | `open`, `owner` | **új ellentmondás**: a deklarált típus lista, az alapérték szimbolikus szó — ugyanaz a minta, mint az 1. sorban; ugyanazzal a unióval kezelendő |
 
-## Új leletek a #17 szövegéhez képest
+## Findings beyond the #17 text
 
-- A 10. sor a #17-ben és az ADR-0004-ben még nem szerepel: `default_access: open` és `default_modify: owner` szintén szimbólum egy `CertPattern[]` típusú kulcsban.
-- A korpuszban a `surface_rules` bejegyzések `access`/`modify` listái sosem üresek és sosem szimbolikusak, tehát az `[]` ≠ `inherit` szabálynak ma nincs valós előfordulása.
-- SPEC §6.4 (archivált) a `read`/`modify` műveleteket külön `inherit`-tel látta el és a feloldást szándékosan nem definiálta (INV-037, három nyitott kérdés). Ez a hatmezős Access-szal **nem azonos** alak; nem átvehető.
-
-## Következő lépés
-
-A 3–4. sor `false` vs `0` megkülönböztetése és a verziózott YAML-leképezés (`true`→`inherit`, `false`→`no-inherit`, `0`→`reset`) kidolgozása.
+- **F1 — more type-foreign defaults.** `default_access: open` and `default_modify: owner` are symbols in `CertPattern[]`-typed slots, the same pattern as `access: inherit` in a `list<CertPattern>` key (row 10). Neither #17 nor ADR 0004 listed them. `surface_rules` default is the word `empty`, not a list.
+- **F2 — flow-list pattern split (security-relevant).** `modify: [OU=adapters, O=cic]` parses as two OR patterns (`['OU=adapters', 'O=cic']`), while `access.yaml` defines `"OU=adapters,O=cic"` as one AND pattern. Nine current `cic-schema-registry` schemas (34 occurrences with versioned ones) write the unquoted form, so any `O=cic` certificate would match the state-surface write rule. Covered by `resolution.pattern-or-across-list` and `resolution.pattern-and-within-pattern`.
+- **F3 — the corpus cannot ground `false` versus `0`.** No field-level `inherit` key and no `inherit_policy` other than `true` exists (33 versioned, 9 current). The semantics in the spec are a design, decided by vectors, not a measurement.
+- **F4 — contradictory open default.** `policy-surface.yaml` said "no PolicySurface: every field is accessible" while its own `default_modify` is `owner`. The spec narrows the sentence: read open (authenticated), write needs a trusted owner.
+- **Archived SPEC §6.4** uses a per-operation `read`/`modify` structure with its own `inherit`; it is not the six-field Access and its inheritance was explicitly left unresolved (INV-037). Not adopted.

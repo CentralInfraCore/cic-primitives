@@ -815,6 +815,15 @@ MUST_REJECT = {
         "name": "a", "shape_type": "scalar", "scalar_type": "string",
         "role": {"authority": "state", "lifecycle": "derived"},
         "access": {"modify": ["OU=adapters,O=cic"]}},
+    "access list holding the symbol inherit": {
+        "name": "a", "shape_type": "scalar", "scalar_type": "string",
+        "role": "config", "access": {"access": ["inherit"]}},
+    "access null instead of the symbol": {
+        "name": "a", "shape_type": "scalar", "scalar_type": "string",
+        "role": "config", "access": {"modify": None}},
+    "access with an unknown key": {
+        "name": "a", "shape_type": "scalar", "scalar_type": "string",
+        "role": "config", "access": {"read": ["O=acme"]}},
     "reference without a target": {
         "name": "a", "shape_type": "scalar", "scalar_type": "string",
         "semantic_type": "cic-reference"},
@@ -1039,6 +1048,9 @@ MUST_ACCEPT_DOCS = {
 }
 
 MUST_ACCEPT = {
+    "access with the symbol and an explicit empty list": {
+        "name": "a", "shape_type": "scalar", "scalar_type": "string",
+        "role": "config", "access": {"access": "inherit", "modify": []}},
     "a plain mandatory scalar": {
         "name": "cpu_cores", "shape_type": "scalar", "scalar_type": "integer",
         "role": "config", "mandatory": True,

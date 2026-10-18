@@ -59,6 +59,9 @@ grammar:
 GRAMMAR_COMPOSITIONS := $(wildcard schemas/examples/*.yaml) $(wildcard schemas/domain/*.yaml)
 
 grammar.local:
+	@echo "--- Access policy grammar: vectors, rules, schema sync, seeded faults ---"
+	@python3 proposals/atom-grammar/check_access_vectors.py
+	@python3 proposals/atom-grammar/check_access_vectors.py --self-test
 	@echo "--- Atom grammar: self-test ---"
 	@python3 proposals/atom-grammar/check_grammar.py --self-test
 	@echo "--- Atom grammar: live compositions ---"

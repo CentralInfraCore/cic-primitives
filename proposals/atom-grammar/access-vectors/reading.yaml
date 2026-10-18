@@ -1,0 +1,606 @@
+# Golden vectors for access-policy/1 (reading). Generated once, then maintained by hand.
+# Expectations were written from the rules in P0-4-ACCESS-GRAMMAR.md, not copied from the reference model's output.
+format: access-vectors/1
+suite: reading
+cases:
+- id: reading.mode-g1-true
+  kind: read_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: True read under grammar 1
+  input:
+    grammar: 1
+    value: true
+  expect:
+    mode: inherit
+- id: reading.mode-g1-false
+  kind: read_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: False read under grammar 1
+  input:
+    grammar: 1
+    value: false
+  expect:
+    mode: no-inherit
+- id: reading.mode-g1-zero
+  kind: read_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: 0 read under grammar 1
+  input:
+    grammar: 1
+    value: 0
+  expect:
+    mode: reset
+- id: reading.mode-g2-inherit
+  kind: read_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: '''inherit'' read under grammar 2'
+  input:
+    grammar: 2
+    value: inherit
+  expect:
+    mode: inherit
+- id: reading.mode-g2-no-inherit
+  kind: read_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: '''no-inherit'' read under grammar 2'
+  input:
+    grammar: 2
+    value: no-inherit
+  expect:
+    mode: no-inherit
+- id: reading.mode-g2-reset
+  kind: read_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: '''reset'' read under grammar 2'
+  input:
+    grammar: 2
+    value: reset
+  expect:
+    mode: reset
+- id: reading.mode-g1-one
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: 1 rejected under grammar 1
+  input:
+    grammar: 1
+    value: 1
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g1-string-true
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: '''true'' rejected under grammar 1'
+  input:
+    grammar: 1
+    value: 'true'
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g1-null
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: None rejected under grammar 1
+  input:
+    grammar: 1
+    value: null
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g1-float-zero
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: 0.0 rejected under grammar 1
+  input:
+    grammar: 1
+    value: 0.0
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g1-list
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: '[] rejected under grammar 1'
+  input:
+    grammar: 1
+    value: []
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g1-enum-spelling
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: '''reset'' rejected under grammar 1'
+  input:
+    grammar: 1
+    value: reset
+  expect:
+    error: INHERIT_ENUM_IN_GRAMMAR_1
+- id: reading.mode-g2-legacy-true
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: True rejected under grammar 2
+  input:
+    grammar: 2
+    value: true
+  expect:
+    error: LEGACY_INHERIT_IN_GRAMMAR_2
+- id: reading.mode-g2-legacy-false
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: False rejected under grammar 2
+  input:
+    grammar: 2
+    value: false
+  expect:
+    error: LEGACY_INHERIT_IN_GRAMMAR_2
+- id: reading.mode-g2-legacy-zero
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: 0 rejected under grammar 2
+  input:
+    grammar: 2
+    value: 0
+  expect:
+    error: LEGACY_INHERIT_IN_GRAMMAR_2
+- id: reading.mode-g2-capitalised
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: '''Inherit'' rejected under grammar 2'
+  input:
+    grammar: 2
+    value: Inherit
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g2-null
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: None rejected under grammar 2
+  input:
+    grammar: 2
+    value: null
+  expect:
+    error: INVALID_INHERIT
+- id: reading.mode-g3-unknown-grammar
+  kind: read_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: '''inherit'' rejected under grammar 3'
+  input:
+    grammar: 3
+    value: inherit
+  expect:
+    error: UNKNOWN_GRAMMAR_VERSION
+- id: reading.rule-empty-list
+  kind: read_rule
+  polarity: positive
+  adr: D-018
+  covers:
+  - empty-is-not-inherit
+  title: access/modify value []
+  input:
+    value: []
+  expect:
+    kind: list
+    patterns: []
+- id: reading.rule-pattern-list
+  kind: read_rule
+  polarity: positive
+  adr: D-018
+  covers: []
+  title: access/modify value ['O=acme']
+  input:
+    value:
+    - O=acme
+  expect:
+    kind: list
+    patterns:
+    - O=acme
+- id: reading.rule-pattern-two-pairs
+  kind: read_rule
+  polarity: positive
+  adr: D-018
+  covers: []
+  title: access/modify value ['OU=ops,O=acme']
+  input:
+    value:
+    - OU=ops,O=acme
+  expect:
+    kind: list
+    patterns:
+    - OU=ops,O=acme
+- id: reading.rule-wildcard-pattern
+  kind: read_rule
+  polarity: positive
+  adr: D-018
+  covers: []
+  title: access/modify value ['CN=*,O=partner-a']
+  input:
+    value:
+    - CN=*,O=partner-a
+  expect:
+    kind: list
+    patterns:
+    - CN=*,O=partner-a
+- id: reading.rule-symbol
+  kind: read_rule
+  polarity: positive
+  adr: D-018
+  covers:
+  - empty-is-not-inherit
+  title: access/modify value 'inherit'
+  input:
+    value: inherit
+  expect:
+    kind: symbol
+    symbol: inherit
+- id: reading.rule-flow-list-two-patterns
+  kind: read_rule
+  polarity: positive
+  adr: D-018
+  covers:
+  - pattern-comma-hazard
+  title: access/modify value ['OU=adapters', 'O=cic']
+  input:
+    value:
+    - OU=adapters
+    - O=cic
+  expect:
+    kind: list
+    patterns:
+    - OU=adapters
+    - O=cic
+- id: reading.rule-list-with-symbol-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers:
+  - symbol-in-list-invalid
+  title: access/modify value ['inherit'] rejected
+  input:
+    value:
+    - inherit
+  expect:
+    error: INVALID_CERT_PATTERN
+- id: reading.rule-null-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers:
+  - null-is-not-inherit
+  title: access/modify value None rejected
+  input:
+    value: null
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.rule-open-symbol-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: access/modify value 'open' rejected
+  input:
+    value: open
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.rule-empty-string-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: access/modify value '' rejected
+  input:
+    value: ''
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.rule-map-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: access/modify value {} rejected
+  input:
+    value: {}
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.rule-space-after-comma-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers:
+  - pattern-comma-hazard
+  title: access/modify value ['OU=ops, O=acme'] rejected
+  input:
+    value:
+    - OU=ops, O=acme
+  expect:
+    error: INVALID_CERT_PATTERN
+- id: reading.rule-non-string-pattern-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: access/modify value [1] rejected
+  input:
+    value:
+    - 1
+  expect:
+    error: INVALID_CERT_PATTERN
+- id: reading.rule-no-equals-rejected
+  kind: read_rule
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: access/modify value ['acme'] rejected
+  input:
+    value:
+    - acme
+  expect:
+    error: INVALID_CERT_PATTERN
+- id: reading.policy-defaults-typed
+  kind: read_policy
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: symbols open/owner and lists are the declared types
+  input:
+    grammar: 1
+    policy:
+      default_access: open
+      default_modify: owner
+      surface_rules: []
+      inherit_policy: true
+  expect:
+    ok: true
+    mode: inherit
+- id: reading.policy-lists
+  kind: read_policy
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: list defaults
+  input:
+    grammar: 1
+    policy:
+      default_access:
+      - O=a
+      default_modify: []
+  expect:
+    ok: true
+- id: reading.policy-owner-in-access
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy owner-in-access rejected
+  input:
+    grammar: 1
+    policy:
+      default_access: owner
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.policy-open-in-modify
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy open-in-modify rejected
+  input:
+    grammar: 1
+    policy:
+      default_modify: open
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.policy-null-default
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy null-default rejected
+  input:
+    grammar: 1
+    policy:
+      default_access: null
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: reading.policy-unknown-key
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy unknown-key rejected
+  input:
+    grammar: 1
+    policy:
+      default_read: open
+  expect:
+    error: UNKNOWN_POLICY_KEY
+- id: reading.policy-bad-inherit-policy
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy bad-inherit-policy rejected
+  input:
+    grammar: 1
+    policy:
+      inherit_policy: 1
+  expect:
+    error: INVALID_INHERIT
+- id: reading.policy-surface-rule-conflict
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy surface-rule-conflict rejected
+  input:
+    grammar: 1
+    policy:
+      surface_rules:
+      - surface: s
+        access:
+        - O=a
+      - surface: s
+        access:
+        - O=b
+  expect:
+    error: SURFACE_RULE_CONFLICT
+- id: reading.policy-surface-rule-no-surface
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy surface-rule-no-surface rejected
+  input:
+    grammar: 1
+    policy:
+      surface_rules:
+      - access:
+        - O=a
+  expect:
+    error: INVALID_SURFACE_RULE
+- id: reading.policy-surface-rule-extra-key
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy surface-rule-extra-key rejected
+  input:
+    grammar: 1
+    policy:
+      surface_rules:
+      - surface: s
+        read:
+        - O=a
+  expect:
+    error: INVALID_SURFACE_RULE
+- id: reading.policy-policy-not-a-map
+  kind: read_policy
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: policy policy-not-a-map rejected
+  input:
+    grammar: 1
+    policy:
+    - O=a
+  expect:
+    error: INVALID_POLICY
+- id: reading.policy-surface-rules-two-ops
+  kind: read_policy
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-surface-types
+  title: same surface, different operations are not a conflict
+  input:
+    grammar: 1
+    policy:
+      surface_rules:
+      - surface: s
+        access:
+        - O=a
+      - surface: s
+        modify:
+        - O=b
+  expect:
+    ok: true
+- id: reading.policy-inherit-policy-g1
+  kind: read_policy
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  title: inherit_policy uses the same InheritanceMode
+  input:
+    grammar: 1
+    policy:
+      inherit_policy: 0
+  expect:
+    ok: true
+    mode: reset
+- id: reading.policy-inherit-policy-g2
+  kind: read_policy
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  title: inherit_policy uses the same InheritanceMode
+  input:
+    grammar: 2
+    policy:
+      inherit_policy: reset
+  expect:
+    ok: true
+    mode: reset

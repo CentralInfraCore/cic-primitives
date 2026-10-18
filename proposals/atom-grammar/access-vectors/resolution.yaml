@@ -1,0 +1,1789 @@
+# Golden vectors for access-policy/1 (resolution). Generated once, then maintained by hand.
+# Expectations were written from the rules in P0-4-ACCESS-GRAMMAR.md, not copied from the reference model's output.
+format: access-vectors/1
+suite: resolution
+cases:
+- id: resolution.field-explicit-match
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: explicit field list that matches
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=acme
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.field-explicit-no-match
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - explicit-ban-terminal
+  title: an explicit list that does not match is terminal, the open default does not rescue
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=other
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: field
+    code: NO_PATTERN_MATCH
+- id: resolution.field-explicit-empty
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - explicit-ban-terminal
+  - conflict-explicit-ban-vs-inherited-allow
+  title: field [] is an explicit ban over a permissive parent
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access: []
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: field
+    code: EXPLICIT_EMPTY
+- id: resolution.field-beats-surface-rule
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: field level wins over a surface rule
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            surface_rules:
+            - surface: config_surface
+              access:
+              - O=other
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=acme
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.surface-rule-match
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: surface rule decides when the field has none
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            surface_rules:
+            - surface: config_surface
+              access:
+              - O=acme
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: surface_rules
+    code: null
+- id: resolution.surface-rule-other-surface
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: a rule for another surface is ignored, the default decides
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+            surface_rules:
+            - surface: state_surface
+              access:
+              - O=other
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.surface-rule-beats-default
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - priority-order
+  title: surface rule wins over the local default
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            default_access: open
+            surface_rules:
+            - surface: config_surface
+              access:
+              - O=other
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: surface_rules
+    code: NO_PATTERN_MATCH
+- id: resolution.surface-rule-empty
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - explicit-ban-terminal
+  - conflict-explicit-ban-vs-inherited-allow
+  title: surface rule [] is an explicit ban, the parent cannot rescue
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy:
+            surface_rules:
+            - surface: config_surface
+              access: []
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: surface_rules
+    code: EXPLICIT_EMPTY
+- id: resolution.local-default-list
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: local default list decides
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.local-default-open-explicit
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: an explicit open is a declared rule
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            default_access: open
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.local-default-empty-over-parent
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - explicit-ban-terminal
+  - conflict-explicit-ban-vs-inherited-allow
+  title: local default [] bans although the parent is permissive
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy:
+            default_access: []
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: default
+    code: EXPLICIT_EMPTY
+- id: resolution.inherited-parent-default
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  - explicit-local-vs-inherited
+  title: parent default decides when the child declares nothing and inherits by default
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        c:
+          parent: p
+          policy: {}
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.local-beats-inherited
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - explicit-local-vs-inherited
+  title: an explicit local rule wins over the inherited one
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            default_access:
+            - O=other
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: default
+    code: NO_PATTERN_MATCH
+- id: resolution.symbolic-default-does-not-shadow
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - symbolic-default-no-shadow
+  title: an empty declared policy does not hide the grandparent's declared rule
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        g:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        p:
+          parent: g
+          policy: {}
+        c:
+          parent: p
+          policy: {}
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.absent-policy-transparent
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - missing-policy-surface
+  title: an object without a PolicySurface is transparent to the chain
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        g:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        p:
+          parent: g
+          policy: absent
+        c:
+          parent: p
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.policy-no-inherit-cuts-chain
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  - noinherit-vs-reset
+  title: 'inherit_policy no-inherit: the parent policy is not consulted'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_modify:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            inherit_policy: false
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: bob
+        trust: untrusted
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_NOT_TRUSTED
+- id: resolution.policy-inherit-uses-chain
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  - noinherit-vs-reset
+  title: 'inherit_policy inherit (default): the parent policy is the fallback'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_modify:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            inherit_policy: true
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: bob
+        trust: untrusted
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.policy-reset-no-local-fails-closed
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  - reset-fail-closed
+  - noinherit-vs-reset
+  title: inherit_policy reset without a local rule fails closed, no system default
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_modify:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            inherit_policy: 0
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: alice
+        trust: trusted
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.policy-reset-with-local-rule
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - policy-inherit-three-states
+  - reset-fail-closed
+  title: inherit_policy reset with an explicit local base decides
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=other
+        c:
+          parent: p
+          policy:
+            inherit_policy: 0
+            default_access:
+            - O=acme
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.policy-reset-local-other-op
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - reset-fail-closed
+  title: 'reset: a local rule for the other operation is not a base for this one'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            inherit_policy: 0
+            default_modify:
+            - O=acme
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.policy-reset-descendant-stops-at-base
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - reset-fail-closed
+  title: a descendant under a reset base does not read past the base
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        g:
+          parent: null
+          policy:
+            default_access: open
+        p:
+          parent: g
+          policy:
+            inherit_policy: 0
+        c:
+          parent: p
+          policy: {}
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.system-open-read
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - missing-policy-surface
+  - historical-open-default
+  title: 'no policy anywhere: reading falls to the documented open default for authenticated requestors'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: system
+    code: null
+- id: resolution.system-open-unauthenticated
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - missing-policy-surface
+  - historical-open-default
+  title: open is never available to an unauthenticated requestor
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: false
+        subject: ''
+        identity: null
+  expect:
+    outcome: deny
+    layer: system
+    code: UNAUTHENTICATED
+- id: resolution.system-owner-trusted
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - owner-authority
+  title: default_modify owner needs a trusted owner identity that matches
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: alice
+        trust: trusted
+  expect:
+    outcome: allow
+    layer: system
+    code: null
+- id: resolution.system-owner-missing
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-authority
+  - missing-policy-surface
+  title: 'no owner context: no write permission'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_NOT_TRUSTED
+- id: resolution.system-owner-untrusted
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-authority
+  title: an untrusted owner claim grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: alice
+        trust: untrusted
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_NOT_TRUSTED
+- id: resolution.system-owner-mismatch
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-authority
+  title: a trusted owner other than the requestor grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: bob
+        trust: trusted
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_MISMATCH
+- id: resolution.explicit-owner-symbol-needs-trust
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-authority
+  title: an explicitly declared owner symbol obeys the same rule
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            default_modify: owner
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: alice
+        trust: untrusted
+  expect:
+    outcome: deny
+    layer: default
+    code: OWNER_NOT_TRUSTED
+- id: resolution.unknown-policy-reached
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  title: an unknown parent policy that the walk must read is an error, not a permission
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: unknown
+        c:
+          parent: p
+          policy: {}
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: error
+    layer: none
+    code: POLICY_CONTEXT_UNKNOWN
+- id: resolution.unknown-policy-not-reached
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  title: an unknown ancestor that a decided rule never reaches does not matter
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: unknown
+        c:
+          parent: p
+          policy:
+            default_access:
+            - O=acme
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.unknown-own-policy
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  title: the target object's own policy unknown is an error
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: unknown
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: error
+    layer: none
+    code: POLICY_CONTEXT_UNKNOWN
+- id: resolution.context-missing-parent
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  title: a parent that is not declared is an error
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: nowhere
+          policy: {}
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: error
+    layer: none
+    code: CONTEXT_INCOMPLETE
+- id: resolution.context-cycle
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  title: a parent cycle is an error
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        a:
+          parent: b
+          policy: {}
+        b:
+          parent: a
+          policy: {}
+    target:
+      object: a
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: error
+    layer: none
+    code: CONTEXT_INCOMPLETE
+- id: resolution.context-missing-target
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  title: an undeclared target object is an error
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: zzz
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: error
+    layer: none
+    code: CONTEXT_INCOMPLETE
+- id: resolution.unauthenticated-list
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-authority
+  title: a list needs an authenticated subject
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=acme
+    req:
+      op: access
+      requestor:
+        authenticated: false
+        subject: O=acme
+        identity: alice
+  expect:
+    outcome: deny
+    layer: field
+    code: UNAUTHENTICATED
+- id: resolution.pattern-and-within-pattern
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - pattern-comma-hazard
+  title: all pairs of one pattern must match
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - OU=adapters,O=cic
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=cic
+        identity: x
+  expect:
+    outcome: deny
+    layer: field
+    code: NO_PATTERN_MATCH
+- id: resolution.pattern-or-across-list
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - pattern-comma-hazard
+  title: 'the unquoted flow list [OU=adapters, O=cic] is two patterns, OR: any O=cic certificate matches'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - OU=adapters
+        - O=cic
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=cic
+        identity: x
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.pattern-wildcard
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - priority-order
+  title: wildcard value
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - CN=*,O=partner-a
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: CN=bob,O=partner-a,OU=x
+        identity: bob
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.carrier-passes-rule
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - field-level-inherit
+  - explicit-local-vs-inherited
+  title: mode inherit passes the parent field's explicit rule down
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field_inherited
+    code: null
+- id: resolution.carrier-no-inherit-stops-rule
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - field-level-inherit
+  - noinherit-vs-reset
+  title: 'mode no-inherit: the field rule is not passed down, the chain decides'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: false
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.carrier-symbol-passes-through
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - field-level-inherit
+  title: a carrier with the symbol passes the nearest explicit rule above it
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        g:
+          parent: null
+          policy: absent
+        p:
+          parent: g
+          policy: absent
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: true
+            access: inherit
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field_inherited
+    code: null
+- id: resolution.carrier-no-inherit-in-between
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - field-level-inherit
+  title: a no-inherit carrier in between stops the rule from above
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p0:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        g:
+          parent: p0
+          policy: absent
+        p:
+          parent: g
+          policy: absent
+          carrier:
+            inherit: true
+            access:
+            - O=other
+            modify: inherit
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: false
+            access: inherit
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.carrier-empty-rule-bans
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - explicit-ban-terminal
+  - conflict-explicit-ban-vs-inherited-allow
+  title: an inherited explicit [] is an explicit ban
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: true
+            access: []
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: field_inherited
+    code: EXPLICIT_EMPTY
+- id: resolution.carrier-reset-fails-closed
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - field-level-inherit
+  - reset-fail-closed
+  - noinherit-vs-reset
+  title: 'mode reset: the rule and the ancestors are cut, no local base'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: 0
+            access:
+            - O=acme
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.carrier-reset-local-base
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - field-level-inherit
+  - reset-fail-closed
+  title: mode reset with an explicit local base decides
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access: open
+        c:
+          parent: p
+          policy:
+            default_access:
+            - O=acme
+          carrier:
+            inherit: 0
+            access: inherit
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.own-field-beats-carrier
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - explicit-local-vs-inherited
+  - priority-order
+  title: the target field's own explicit rule wins over a passed-down one
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: true
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=acme
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.diff-field-inherit
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - noinherit-vs-reset
+  title: same parent/child pair, carrier mode inherit
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: true
+            access:
+            - O=partner
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: field_inherited
+    code: NO_PATTERN_MATCH
+- id: resolution.diff-field-no-inherit
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - noinherit-vs-reset
+  title: same parent/child pair, carrier mode no-inherit
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: false
+            access:
+            - O=partner
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.diff-field-reset
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - noinherit-vs-reset
+  title: same parent/child pair, carrier mode reset
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_access:
+            - O=acme
+        c:
+          parent: p
+          policy: absent
+          carrier:
+            inherit: 0
+            access:
+            - O=partner
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.diff-policy-g2-inherit
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - noinherit-vs-reset
+  - policy-inherit-three-states
+  - legacy-compat
+  title: same parent/child pair, inherit_policy inherit (grammar 2)
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_modify:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            inherit_policy: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: bob
+        trust: untrusted
+  expect:
+    outcome: allow
+    layer: policy_inherited
+    code: null
+- id: resolution.diff-policy-g2-no-inherit
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - noinherit-vs-reset
+  - policy-inherit-three-states
+  - legacy-compat
+  title: same parent/child pair, inherit_policy no-inherit (grammar 2)
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_modify:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            inherit_policy: no-inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: bob
+        trust: untrusted
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_NOT_TRUSTED
+- id: resolution.diff-policy-g2-reset
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - noinherit-vs-reset
+  - policy-inherit-three-states
+  - legacy-compat
+  title: same parent/child pair, inherit_policy reset (grammar 2)
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            default_modify:
+            - O=acme
+        c:
+          parent: p
+          policy:
+            inherit_policy: reset
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+      owner:
+        identity: bob
+        trust: untrusted
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE

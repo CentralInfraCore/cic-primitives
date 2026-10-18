@@ -4,9 +4,13 @@ metadata:
   version: v0.0.dev
   description: >
     Aggregate of object-level default access control rules.
-    The Access atom's field-level wrapper uses this as the default when inherit: true.
-    If a ManagedEntity has no PolicySurface, the runtime makes every field accessible
-    (backward compatible open default).
+    The Access atom's field-level wrapper falls back to this when it declares no rule.
+    Grammar: access-policy/1 (proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md, D-018).
+    If an object has no PolicySurface, the chain continues to its ancestors; when no declared
+    rule exists anywhere, the documented system default applies: reading is open to any
+    authenticated requestor, writing needs a TRUSTED owner identity that equals the
+    requestor's. This is the historical open default, narrowed: it never grants a write
+    without a trusted owner, and it is never used after a `reset`.
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -28,48 +32,77 @@ spec:
   slots:
     default_access:
       mode: defaulted
-      type: "CertPattern[]"
+      type: "list<CertPattern> | open"
       atomic_ref: schemas/atomic/access.yaml
       default: open
+      default_layer: system
       description: >
         Who may read any field on this object — unless the Access atom overrides
-        at field level. `open` = anyone may read (default).
+        at field level. A CertPattern list, or the symbol `open` (any authenticated
+        requestor). The default `open` belongs to the SYSTEM layer of the resolution: it is
+        never written into an instance by expansion and does not hide a rule declared by an
+        ancestor. Only an `open` the author wrote is a declared rule.
 
     default_modify:
       mode: defaulted
-      type: "CertPattern[]"
+      type: "list<CertPattern> | owner"
       atomic_ref: schemas/atomic/access.yaml
       default: owner
+      default_layer: system
       description: >
         Who may write any config field on this object — unless the Access atom overrides
-        at field level. `owner` = the object's owner may write.
+        at field level. A CertPattern list, or the symbol `owner`: the requestor whose
+        identity equals the object's owner identity, where that identity comes from a
+        TRUSTED context (not from the document being checked). A missing or untrusted owner
+        context grants nothing. Same system-layer rule as `default_access`.
 
     surface_rules:
       mode: defaulted
-      type: "SurfaceRule[]"
-      default: empty
+      type: "list<SurfaceRule>"
+      default: []
       description: >
         Surface-level rules — finer granularity than the whole-object default,
         coarser than field-level Access atom.
         E.g. different rules for config_surface vs state_surface.
-        Structure: {surface: config_surface|state_surface|..., access: [...], modify: [...]}
+        SurfaceRule: {surface: <name>, access?: list<CertPattern> | inherit,
+        modify?: list<CertPattern> | inherit}. A missing or `inherit` member declares no rule
+        for that operation. Two entries declaring the same (surface, operation) are a
+        SURFACE_RULE_CONFLICT.
 
     inherit_policy:
       mode: defaulted
-      type: boolean
-      default: true
+      type: InheritanceMode
+      default: inherit
       description: >
-        If true: sub-objects inherit this PolicySurface.
-        If false: sub-objects define their own PolicySurface.
-        If 0: full reset — sub-object's PolicySurface is built from scratch.
+        The same three-state type as Access.inherit (schemas/atomic/access.yaml,
+        `inheritance_mode`), at object scope.
+        inherit    after the local explicit rules, the ancestors' PolicySurface rules are used.
+        no-inherit the ancestors' PolicySurface is not read; local declared rules and the
+                   documented system default are used.
+        reset      ancestors and system default are cut; an explicit local rule for the
+                   operation is required, otherwise the operation is denied.
+        Spelling follows the grammar version (grammar 1: true | false | 0; grammar 2: the
+        enum names).
 
   semantic_mapping:
     runtime:
       evaluation_order: >
-        1. field-level Access atom (highest priority)
-        2. surface_rules (surface-level override)
-        3. default_access / default_modify (object-level default)
-        4. inherited PolicySurface from parent object (if inherit_policy: true)
+        Deterministic, first declared rule wins, an explicit [] is terminal (a ban):
+        1. field-level Access atom of the target field
+        2. surface_rules of the target object for the surface
+        3. default_access / default_modify declared on the target object
+        4. field-level rule passed down by carrier fields (mode inherit), then the
+           ancestors' PolicySurface chain (surface_rules, then declared defaults) where
+           inherit_policy and carrier modes permit it
+        5. documented system default (not after a reset)
+        Missing or unknown context is an error, never a permission.
       miss_behavior: >
-        If the object has no PolicySurface and none can be inherited from parent:
-        all fields are accessible (open default) — backward compatible.
+        If the object has no PolicySurface and none can be inherited from parent, the
+        documented system default applies: reading is open to any authenticated requestor
+        (the historical open default), writing needs a trusted owner identity equal to the
+        requestor's. Unknown or incomplete context is an error, never a permission.
+
+  resolution:
+    priority: [field, surface_rules, default, field_inherited, policy_inherited, system]
+    terminal_on_explicit_empty: true
+    fail_closed: [reset_without_local_rule, unknown_context, untrusted_owner, unauthenticated_requestor]
