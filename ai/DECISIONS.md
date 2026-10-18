@@ -1303,7 +1303,7 @@ If this is just a string, schema-driven tooling cannot resolve the dependency gr
 
 ## D-018 — Access instance grammar and PolicySurface resolution: `access-policy/1` (P0.4, `cic-primitives#17`)
 
-**Status: proposed in the P0.4 PR; becomes a decision when that PR is reviewed and merged.**
+**Status: decided.** Proposed in PR #19, reviewed, merged into `devel` as `aa0f8c8` (2026-10-18); the `gate` check is green on that merge commit. Evidence for `cic-primitives#17`: PR #19, `proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md`, `access-vectors/` (187 vectors), `check_access_vectors.py` (50/50 seeded faults).
 
 **Decision:** the six-field Access atom keeps its shape; `access`/`modify` are typed
 `list<CertPattern> | inherit`; `Access.inherit` and `PolicySurface.inherit_policy` share one
@@ -1342,6 +1342,8 @@ property of the pinned schema and the processing context, never a document key; 
 context is demanded typed and comes from the authenticated channel, not from the document. The
 D-011 example `modify: [OU=adapters,O=cic]` (and its English copy) has the same unquoted-flow-list
 hazard as the registry; the history text is left, the schema example in `access.yaml` is corrected.
+
+**Boundary of the reference model:** `read_document()` checks the pin version it is handed. A real processor must derive that version from the validated, pinned schema identity (ADR 0002 of `cic-primitive-forms`), not accept it as a caller's assertion.
 
 **Not decided:** runtime enforcement, the final home of `conformance`, how a trusted owner
 identity is attested, sub-objects of list elements and choice cases, multi-parent composition.
