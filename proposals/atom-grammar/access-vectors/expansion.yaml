@@ -1,0 +1,775 @@
+# Golden vectors for access-policy/1 (expansion). Generated once, then maintained by hand.
+# Expectations were written from the rules in P0-4-ACCESS-GRAMMAR.md, not copied from the reference model's output.
+format: access-vectors/1
+suite: expansion
+cases:
+- id: expansion.short-g1
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - short-to-long
+  - symbolic-defaults
+  title: short form gives symbolic defaults, not effective permissions
+  input:
+    node: 4
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: default
+- id: expansion.short-g2
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - short-to-long
+  - symbolic-defaults
+  - legacy-compat
+  title: short form under grammar 2 spells the default mode as enum
+  input:
+    node: 4
+    grammar: 2
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: inherit
+      default_injection: null
+      conformance: implemented
+    basis: default
+- id: expansion.short-list-value
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - short-to-long
+  title: a list value stays the value
+  input:
+    node:
+    - 1
+    - 2
+    grammar: 1
+    position: opaque
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value:
+      - 1
+      - 2
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: default
+- id: expansion.long-full
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - long-form-full
+  title: full long form with explicit lists
+  input:
+    node:
+      value: 4
+      access:
+      - O=a
+      modify:
+      - O=b
+      inherit: false
+      default_injection: 0
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access:
+      - O=a
+      modify:
+      - O=b
+      inherit: false
+      default_injection: 0
+      conformance: implemented
+    basis: authored_claim
+- id: expansion.long-empty-lists
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - empty-is-not-inherit
+  - long-form-full
+  title: '[] is preserved: explicit empty set, not inherit'
+  input:
+    node:
+      value: 4
+      access: []
+      modify: []
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: []
+      modify: []
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: authored_claim
+- id: expansion.long-symbols
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - long-form-full
+  title: symbol inherit is preserved as the symbol
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: authored_claim
+- id: expansion.long-false-stays-false
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: 'inherit: false is not turned into 0'
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: false
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: false
+      default_injection: null
+      conformance: implemented
+    basis: authored_claim
+- id: expansion.long-zero-stays-zero
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - no-implicit-spelling-change
+  title: 'inherit: 0 is not turned into false'
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: 0
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: 0
+      default_injection: null
+      conformance: implemented
+    basis: authored_claim
+- id: expansion.long-g2-enum
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  - legacy-compat
+  title: grammar 2 long form with enum
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: reset
+      default_injection: null
+      conformance: implemented
+    grammar: 2
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: reset
+      default_injection: null
+      conformance: implemented
+    basis: authored_claim
+- id: expansion.partial-map-opaque
+  kind: expand
+  polarity: positive
+  adr: D-018
+  covers:
+  - partial-long-form
+  title: a partial long form at an opaque position is data, never an override
+  input:
+    node:
+      value: 1
+      access:
+      - O=a
+    grammar: 1
+    position: opaque
+    origin: authored
+    attested: false
+  expect:
+    expanded:
+      value:
+        value: 1
+        access:
+        - O=a
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: default
+- id: expansion.partial-map-scalar
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - partial-long-form
+  title: a partial long form at a scalar position is an error
+  input:
+    node:
+      value: 1
+      access:
+      - O=a
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: MAP_AT_SCALAR_POSITION
+- id: expansion.extra-key
+  kind: expand
+  polarity: negative
+  adr: ADR-0001
+  covers:
+  - partial-long-form
+  title: all six keys plus another is never read as data
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+      extra: 1
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: EXPANDED_WITH_EXTRA_KEY
+- id: expansion.long-symbol-in-list
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - symbol-in-list-invalid
+  title: long form symbol-in-list rejected
+  input:
+    node:
+      value: 4
+      access:
+      - inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INVALID_CERT_PATTERN
+- id: expansion.long-null-access
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - null-is-not-inherit
+  title: long form null-access rejected
+  input:
+    node:
+      value: 4
+      access: null
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: expansion.long-null-modify
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - null-is-not-inherit
+  title: long form null-modify rejected
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: null
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INVALID_ACCESS_VALUE
+- id: expansion.long-bad-inherit
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - inheritance-three-states
+  title: long form bad-inherit rejected
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: 1
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INVALID_INHERIT
+- id: expansion.long-bad-conformance
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: long form bad-conformance rejected
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: Implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INVALID_CONFORMANCE_VALUE
+- id: expansion.long-bool-conformance
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers: []
+  title: long form bool-conformance rejected
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: true
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INVALID_CONFORMANCE_VALUE
+- id: expansion.g1-doc-with-enum
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - no-implicit-spelling-change
+  - legacy-compat
+  title: a grammar-1 document does not accept the enum spelling
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: reset
+      default_injection: null
+      conformance: implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: INHERIT_ENUM_IN_GRAMMAR_1
+- id: expansion.g2-doc-with-legacy
+  kind: expand
+  polarity: negative
+  adr: D-018
+  covers:
+  - no-implicit-spelling-change
+  - legacy-compat
+  title: a grammar-2 document does not accept legacy scalars
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    grammar: 2
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: LEGACY_INHERIT_IN_GRAMMAR_2
+- id: expansion.conformance-authored-not-implemented
+  kind: expand
+  polarity: negative
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: an author may not declare a device capability
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: not_implemented
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: CONFORMANCE_NOT_AUTHORABLE
+- id: expansion.conformance-authored-deprecated
+  kind: expand
+  polarity: negative
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: deprecated is a capability too
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: deprecated
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    error: CONFORMANCE_NOT_AUTHORABLE
+- id: expansion.conformance-materialized-attested
+  kind: expand
+  polarity: positive
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: binding-attested position may carry not_implemented
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: not_implemented
+    grammar: 1
+    position: scalar
+    origin: materialized
+    attested: true
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: not_implemented
+    basis: binding_attested
+- id: expansion.conformance-materialized-unattested
+  kind: expand
+  polarity: negative
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: an unattested materialized position may not carry a capability
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: deprecated
+    grammar: 1
+    position: scalar
+    origin: materialized
+    attested: false
+  expect:
+    error: CONFORMANCE_NOT_AUTHORABLE
+- id: expansion.conformance-materialized-unattested-default
+  kind: expand
+  polarity: positive
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: unattested short form is a default, not evidence
+  input:
+    node: 4
+    grammar: 1
+    position: scalar
+    origin: materialized
+    attested: false
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: default
+- id: expansion.conformance-attested-short
+  kind: expand
+  polarity: positive
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: a binding datum written short is still binding data
+  input:
+    node: 4
+    grammar: 1
+    position: scalar
+    origin: materialized
+    attested: true
+  expect:
+    expanded:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    basis: binding_attested
+- id: expansion.invalid-origin
+  kind: expand
+  polarity: negative
+  adr: ADR-0010
+  covers:
+  - conformance-authority
+  title: origin is authored or materialized, nothing else
+  input:
+    node: 4
+    grammar: 1
+    position: scalar
+    origin: imported
+    attested: false
+  expect:
+    error: INVALID_ORIGIN
+- id: expansion.collapse-default
+  kind: roundtrip
+  polarity: positive
+  adr: ADR-0001
+  covers:
+  - lossless-normalize
+  title: authored short collapses back to short
+  input:
+    node: 4
+    authored_expanded: false
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    form: short
+    equal: true
+- id: expansion.collapse-authored-expanded
+  kind: roundtrip
+  polarity: positive
+  adr: ADR-0001
+  covers:
+  - lossless-normalize
+  title: an authored expanded node stays expanded even equal to defaults
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    authored_expanded: true
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    form: expanded
+    equal: true
+- id: expansion.collapse-explicit-empty
+  kind: roundtrip
+  polarity: positive
+  adr: D-018
+  covers:
+  - lossless-normalize
+  - empty-is-not-inherit
+  title: an explicit [] is never dropped
+  input:
+    node:
+      value: 4
+      access: []
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    authored_expanded: true
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    form: expanded
+    equal: true
+- id: expansion.collapse-false-kept
+  kind: roundtrip
+  polarity: positive
+  adr: D-018
+  covers:
+  - lossless-normalize
+  title: a non-default mode is never dropped
+  input:
+    node:
+      value: 4
+      access: inherit
+      modify: inherit
+      inherit: false
+      default_injection: null
+      conformance: implemented
+    authored_expanded: true
+    grammar: 1
+    position: scalar
+    origin: authored
+    attested: false
+  expect:
+    form: expanded
+    equal: true
+- id: expansion.collapse-attested-never-short
+  kind: roundtrip
+  polarity: positive
+  adr: ADR-0010
+  covers:
+  - lossless-normalize
+  - conformance-authority
+  title: a binding-attested position is never shortened
+  input:
+    node: 4
+    authored_expanded: false
+    grammar: 1
+    position: scalar
+    origin: materialized
+    attested: true
+  expect:
+    form: expanded
+    equal: true
+- id: expansion.collapse-map-value-with-all-keys
+  kind: roundtrip
+  polarity: positive
+  adr: ADR-0001
+  covers:
+  - lossless-normalize
+  title: a value that looks like the expanded key set is not shortened
+  input:
+    node:
+      value:
+        value: 1
+        access: inherit
+        modify: inherit
+        inherit: true
+        default_injection: null
+        conformance: implemented
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    authored_expanded: false
+    grammar: 1
+    position: opaque
+    origin: authored
+    attested: false
+  expect:
+    form: expanded
+    equal: true

@@ -182,8 +182,31 @@ properties:
         error_message: {type: string}
         description: {type: string}
 
+  # Node-level access declaration (access-policy/1, P0-4-ACCESS-GRAMMAR.md).
+  # `access` / `modify`: a list of CertPattern strings, or the symbol `inherit`.
+  # `[inherit]` is a list with an invalid pattern and is rejected by the pattern.
+  # The three-state `inherit` key is deliberately not typed here: its legal
+  # spelling depends on the grammar version of the document, a cross-field rule
+  # that lives in access_policy.py / check_access_vectors.py.
   access:
     type: object
+    additionalProperties: false
+    properties:
+      access: {$ref: "#/$defs/rule"}
+      modify: {$ref: "#/$defs/rule"}
+      inherit: {}
+      default_injection: {}
+      conformance:
+        enum: [implemented, not_implemented, deprecated]
+
+$defs:
+  rule:
+    oneOf:
+      - const: inherit
+      - type: array
+        items:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9.-]*=[^=,\\s][^=,]*(,[A-Za-z][A-Za-z0-9.-]*=[^=,\\s][^=,]*)*$"
 
 allOf:
   # ── section 2.1 — required and forbidden companions, per type ───────────────

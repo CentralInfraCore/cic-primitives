@@ -1,0 +1,354 @@
+# Golden vectors for access-policy/1 (migration). Generated once, then maintained by hand.
+# Expectations were written from the rules in P0-4-ACCESS-GRAMMAR.md, not copied from the reference model's output.
+format: access-vectors/1
+suite: migration
+cases:
+- id: migration.mode-1-to-2-True
+  kind: migrate_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - legacy-compat
+  - migration-lossless
+  title: True migrates 1->2 without loss
+  input:
+    value: true
+    from: 1
+    to: 2
+  expect:
+    value: inherit
+- id: migration.mode-1-to-2-False
+  kind: migrate_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - legacy-compat
+  - migration-lossless
+  title: False migrates 1->2 without loss
+  input:
+    value: false
+    from: 1
+    to: 2
+  expect:
+    value: no-inherit
+- id: migration.mode-1-to-2-0
+  kind: migrate_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - legacy-compat
+  - migration-lossless
+  title: 0 migrates 1->2 without loss
+  input:
+    value: 0
+    from: 1
+    to: 2
+  expect:
+    value: reset
+- id: migration.mode-2-to-1-inherit
+  kind: migrate_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - legacy-compat
+  - migration-lossless
+  title: '''inherit'' migrates 2->1 without loss'
+  input:
+    value: inherit
+    from: 2
+    to: 1
+  expect:
+    value: true
+- id: migration.mode-2-to-1-no-inherit
+  kind: migrate_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - legacy-compat
+  - migration-lossless
+  title: '''no-inherit'' migrates 2->1 without loss'
+  input:
+    value: no-inherit
+    from: 2
+    to: 1
+  expect:
+    value: false
+- id: migration.mode-2-to-1-reset
+  kind: migrate_mode
+  polarity: positive
+  adr: D-018
+  covers:
+  - legacy-compat
+  - migration-lossless
+  title: '''reset'' migrates 2->1 without loss'
+  input:
+    value: reset
+    from: 2
+    to: 1
+  expect:
+    value: 0
+- id: migration.no-implicit-reading-of-enum-in-1
+  kind: migrate_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - no-implicit-spelling-change
+  title: an enum spelling is not a grammar-1 value
+  input:
+    value: reset
+    from: 1
+    to: 2
+  expect:
+    error: INHERIT_ENUM_IN_GRAMMAR_1
+- id: migration.no-implicit-reading-of-legacy-in-2
+  kind: migrate_mode
+  polarity: negative
+  adr: D-018
+  covers:
+  - no-implicit-spelling-change
+  title: a legacy scalar is not a grammar-2 value
+  input:
+    value: 0
+    from: 2
+    to: 1
+  expect:
+    error: LEGACY_INHERIT_IN_GRAMMAR_2
+- id: migration.bind-1-1
+  kind: bind_grammar
+  polarity: positive
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context 1, pinned schema 1
+  input:
+    context: 1
+    pin: 1
+  expect:
+    grammar: 1
+- id: migration.bind-2-2
+  kind: bind_grammar
+  polarity: positive
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context 2, pinned schema 2
+  input:
+    context: 2
+    pin: 2
+  expect:
+    grammar: 2
+- id: migration.bind-context-missing
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context None, pinned schema 1
+  input:
+    context: null
+    pin: 1
+  expect:
+    error: GRAMMAR_VERSION_MISSING
+- id: migration.bind-pin-missing
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context 1, pinned schema None
+  input:
+    context: 1
+    pin: null
+  expect:
+    error: GRAMMAR_VERSION_MISSING
+- id: migration.bind-conflict-1-2
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context 1, pinned schema 2
+  input:
+    context: 1
+    pin: 2
+  expect:
+    error: GRAMMAR_VERSION_CONFLICT
+- id: migration.bind-conflict-2-1
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context 2, pinned schema 1
+  input:
+    context: 2
+    pin: 1
+  expect:
+    error: GRAMMAR_VERSION_CONFLICT
+- id: migration.bind-unknown-3
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context 3, pinned schema 3
+  input:
+    context: 3
+    pin: 3
+  expect:
+    error: UNKNOWN_GRAMMAR_VERSION
+- id: migration.bind-string-version
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context '1', pinned schema 1
+  input:
+    context: '1'
+    pin: 1
+  expect:
+    error: UNKNOWN_GRAMMAR_VERSION
+- id: migration.bind-bool-version
+  kind: bind_grammar
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  title: context True, pinned schema 1
+  input:
+    context: true
+    pin: 1
+  expect:
+    error: UNKNOWN_GRAMMAR_VERSION
+- id: migration.document-consistent-g1
+  kind: read_document
+  polarity: positive
+  adr: D-018
+  covers:
+  - grammar-binding
+  - no-implicit-spelling-change
+  title: document of 3 nodes under context 1, pin 1
+  input:
+    nodes:
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: 0
+      default_injection: null
+      conformance: implemented
+    - 4
+    position: scalar
+    context: 1
+    pin: 1
+  expect:
+    count: 3
+- id: migration.document-consistent-g2
+  kind: read_document
+  polarity: positive
+  adr: D-018
+  covers:
+  - grammar-binding
+  - no-implicit-spelling-change
+  title: document of 3 nodes under context 2, pin 2
+  input:
+    nodes:
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: inherit
+      default_injection: null
+      conformance: implemented
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: reset
+      default_injection: null
+      conformance: implemented
+    - 4
+    position: scalar
+    context: 2
+    pin: 2
+  expect:
+    count: 3
+- id: migration.document-mixed-in-g1
+  kind: read_document
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  - no-implicit-spelling-change
+  title: document of 2 nodes under context 1, pin 1
+  input:
+    nodes:
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: reset
+      default_injection: null
+      conformance: implemented
+    position: scalar
+    context: 1
+    pin: 1
+  expect:
+    error: INHERIT_ENUM_IN_GRAMMAR_1
+- id: migration.document-mixed-in-g2
+  kind: read_document
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  - no-implicit-spelling-change
+  title: document of 2 nodes under context 2, pin 2
+  input:
+    nodes:
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: inherit
+      default_injection: null
+      conformance: implemented
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: false
+      default_injection: null
+      conformance: implemented
+    position: scalar
+    context: 2
+    pin: 2
+  expect:
+    error: LEGACY_INHERIT_IN_GRAMMAR_2
+- id: migration.document-conflicting-binding
+  kind: read_document
+  polarity: negative
+  adr: D-018
+  covers:
+  - grammar-binding
+  - no-implicit-spelling-change
+  title: document of 1 nodes under context 2, pin 1
+  input:
+    nodes:
+    - value: 1
+      access: inherit
+      modify: inherit
+      inherit: true
+      default_injection: null
+      conformance: implemented
+    position: scalar
+    context: 2
+    pin: 1
+  expect:
+    error: GRAMMAR_VERSION_CONFLICT

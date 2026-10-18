@@ -6,9 +6,14 @@ metadata:
     Atomic primitive wrapping every Shape value with access control.
     Two syntactically equivalent representations:
       key: value
-      key: {value: value, access: [...], modify: [...], inherit: true, default_injection: null}
-    The compiler normalizes the short form to the long form by filling in inherited rules.
+      key: {value: value, access: [...], modify: [...], inherit: true, default_injection: null, conformance: implemented}
+    The compiler normalizes the short form to the long form by filling in SYMBOLIC defaults
+    (`inherit`, `inherit`, the inherit mode `inherit`, null, `implemented`). Expansion never
+    computes an effective permission; resolving one is the job of the PolicySurface
+    resolution (proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md, D-018).
     The runtime always evaluates the expanded form.
+    Grammar: access-policy/1. Read that specification for the version rules of the
+    `inherit` spelling (legacy `true|false|0`, grammar 1; enum, grammar 2).
   owner: Gabor Zoltan Sinko
   tags:
     - primitive
@@ -32,29 +37,36 @@ spec:
           Short form: `key: value` is equivalent to `key: {value: value, ...}`.
 
       access:
-        type: list<CertPattern>
+        type: list<CertPattern> | inherit
         default: inherit
         description: >
           Who may read this value — CertPattern list, OR semantics.
-          Empty list: nobody may read (only default_injection is visible).
-          default = inherited from the parent object's PolicySurface rules.
+          The symbol `inherit` (the default) means: no field-level rule, resolve from the
+          PolicySurface. It is not a CertPattern: `[inherit]` is invalid.
+          Empty list `[]`: an explicit empty set, nobody may read (only default_injection is
+          visible); resolution never falls back to a more permissive layer.
+          Absent key (short form), `null`, `[]` and `inherit` are four different things;
+          `null` is invalid.
 
       modify:
-        type: list<CertPattern>
+        type: list<CertPattern> | inherit
         default: inherit
         description: >
           Who may write this value — CertPattern list, OR semantics.
+          Same value rules as `access`.
           Empty list: nobody may modify (read-only for all requestors).
           Adapter cert appears here for state/operational fields.
 
       inherit:
-        type: boolean | 0
-        default: true
+        type: InheritanceMode
+        default: inherit
         description: >
-          Whether sub-objects inherit this rule for this field.
-          true  = inherits (default)
-          false = does not inherit; sub-object gets its own default rules
-          0     = full reset — sub-object recomputes from its PolicySurface
+          Whether sub-objects inherit this field's rule (the field acts as the carrier of the
+          sub-object). Values are the three InheritanceMode states, see `inheritance_mode`
+          below. Spelling depends on the grammar version of the document: grammar 1 writes
+          `true | false | 0` (the historical spelling, a different YAML type each),
+          grammar 2 writes `inherit | no-inherit | reset`. The two spellings are never mixed
+          and never coerced into each other.
 
       default_injection:
         type: any
@@ -87,6 +99,40 @@ spec:
             not_implemented → HARD REJECT (the device cannot handle it)
           The requestor receives a distinct error — the two cases are not interchangeable.
 
+  access_grammar:
+    version: 1
+    description: >
+      The access-policy grammar version this schema pin reads (the spelling of
+      InheritanceMode, see `inheritance_mode`). It is a property of the pinned schema, not a
+      key of any document: a document never declares it, the six-key Access representation
+      gets no seventh key. The processing context supplies its version and it must equal this
+      one (GRAMMAR_VERSION_CONFLICT otherwise; missing is GRAMMAR_VERSION_MISSING, unknown is
+      UNKNOWN_GRAMMAR_VERSION). Moving a schema pin from 1 to 2 is a new schema version and a
+      new grammar identity downstream (cic-primitive-forms ADR 0002), together with the
+      migration of every document, never a silent change.
+    supported: [1, 2]
+
+  inheritance_mode:
+    description: >
+      The type behind `Access.inherit` and `PolicySurface.inherit_policy`. Scope differs:
+      Access.inherit governs what a FIELD passes to the sub-object it carries;
+      inherit_policy governs what an OBJECT takes from its ancestors' PolicySurface.
+    values: [inherit, no-inherit, reset]
+    spelling:
+      grammar_1: {inherit: true, no-inherit: false, reset: 0}
+      grammar_2: {inherit: inherit, no-inherit: no-inherit, reset: reset}
+    semantics: >
+      inherit    the sub-object may take the parent's rule (field-level: the carrier field's
+                 explicit access/modify; object-level: the ancestors' PolicySurface rules).
+      no-inherit the carrier field's own rule is not passed down; the sub-object's effective
+                 PolicySurface rules (including the ancestors' chain and the documented system
+                 default) still apply. Object-level: the ancestors' PolicySurface is not read,
+                 local declared rules and the documented system default are used.
+      reset      neither the field-level rule nor any ancestor PolicySurface rule nor the
+                 system default is used: the sub-object needs an explicit local base for the
+                 operation, otherwise resolution denies (fail closed).
+      Normative text and vectors: proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md.
+
   cert_pattern:
     description: >
       X.509 certificate-based identity pattern. Evaluated against the requestor's mTLS cert.
@@ -94,6 +140,11 @@ spec:
       implementation detail; the cert PEM is the anchor.
     syntax:
       format: '"field=value" pairs, wildcard (*) supported'
+      element: >
+        One list element is ONE pattern; the pairs of one pattern are AND-ed, list elements are
+        OR-ed. A pattern is a single string without spaces after the commas:
+        `"OU=adapters,O=cic"`. The unquoted flow list `[OU=adapters, O=cic]` is two elements
+        (two patterns, OR), not one pattern with two pairs.
       combinator: "list = OR — any matching pattern grants access"
     examples:
       - pattern: "O=acme-corp"
@@ -110,7 +161,9 @@ spec:
       Access atom is orthogonal to Role atom.
       Role = what the field means (config/state/operational).
       Access = who may reach it.
-      Combined: role: state + modify: [OU=adapters,O=cic] → adapter writes, user reads.
+      Combined: role: state + modify: ["OU=adapters,O=cic"] → adapter writes, user reads.
+      The pattern is quoted on purpose: unquoted, YAML splits [OU=adapters,O=cic] into two
+      list elements (two patterns, OR) instead of one pattern with two pairs (AND).
     compiler:
       short_form: "key: value → key: {value: value, ...inherited rules}"
       normalization: compiler fills in inherited PolicySurface rules

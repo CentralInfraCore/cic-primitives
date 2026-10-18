@@ -1298,3 +1298,53 @@ but is not enforced at the schema level.
 
 **Recommended:** option 1 — the value of the CIC model depends in part on the typed reference chain.
 If this is just a string, schema-driven tooling cannot resolve the dependency graph.
+
+---
+
+## D-018 — Access instance grammar and PolicySurface resolution: `access-policy/1` (P0.4, `cic-primitives#17`)
+
+**Status: proposed in the P0.4 PR; becomes a decision when that PR is reviewed and merged.**
+
+**Decision:** the six-field Access atom keeps its shape; `access`/`modify` are typed
+`list<CertPattern> | inherit`; `Access.inherit` and `PolicySurface.inherit_policy` share one
+type, `InheritanceMode = inherit | no-inherit | reset`, spelled `true | false | 0` in grammar 1
+(the existing grammar, unchanged) and by name in grammar 2; resolution of an effective
+permission is a fixed priority list that is fail-closed on `reset`, an unknown context, an
+untrusted owner and an unauthenticated requestor. Normative text:
+`proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md`; migration: `P0-4-MIGRATION.md`; vectors and
+gate: `access-vectors/`, `check_access_vectors.py`.
+
+**Amendments to earlier decisions (nothing is rewritten; D-010/D-011/D-012 text stays):**
+
+- **D-010 / D-011**, `inherit: true | false | 0`. Kept as the grammar-1 spelling. Their prose
+  for `false` ("sub-object gets its default rules") and `0` ("full reset, recompute") is made
+  precise: `no-inherit` stops the carrier field's rule but leaves the PolicySurface chain on;
+  `reset` cuts rule, chain and system default and needs an explicit local base, otherwise it
+  denies. This is a **design decision made here**: the corpus has no field-level `inherit` and no
+  `inherit_policy` other than `true`, and the earlier sources describe `false` and `0` without
+  separating them. It is not a restatement of an accepted rule.
+- **D-010**, "the compiler fills in inherited rules". Narrowed: expansion fills symbolic
+  defaults only; it never computes an effective permission.
+- **PolicySurface default** ("no PolicySurface: every field accessible"). Narrowed: read stays
+  open for authenticated requestors; write needs a trusted owner identity. No runtime exists yet
+  that relied on the old sentence.
+- **D-012**. Unchanged. `conformance` stays in the six fields; its authority boundary follows
+  `cic-primitive-forms` ADR 0010. Moving it is a separate versioned decision.
+
+**Evidence and limits:** 187 vectors and 50 seeded faults (`make grammar.local`); the
+`no-inherit`/`reset` difference is demonstrated on one parent/child pair and is a gate rule.
+Model and vectors have one author. The corpus measurement (matrix F2) found a real defect:
+nine registry schemas write `modify: [OU=adapters, O=cic]`, two OR patterns instead of one.
+
+**Review fixes (PR #19):** `owner` needs two valid, equal identities (`None == None` no longer
+matches); an object-level `reset` is applied before any carrier rule; the grammar version is a
+property of the pinned schema and the processing context, never a document key; the request
+context is demanded typed and comes from the authenticated channel, not from the document. The
+D-011 example `modify: [OU=adapters,O=cic]` (and its English copy) has the same unquoted-flow-list
+hazard as the registry; the history text is left, the schema example in `access.yaml` is corrected.
+
+**Not decided:** runtime enforcement, the final home of `conformance`, how a trusted owner
+identity is attested, sub-objects of list elements and choice cases, multi-parent composition.
+
+**Downstream:** `cic-primitive-forms` pins an immutable grammar identity; adopting this needs a
+new pin, manifest, corpus and ADR compatibility check. It does not propagate by itself.

@@ -630,6 +630,11 @@ Accessből. Egyetértek — de az, hogy hova tartozik (BindingSurface?
 CapabilitySurface? önálló atom?), **döntés, nem levezetés**. Amíg nincs
 eldöntve, a grammatika nem érinti.
 
+> **P0.4 javaslat (D-018, cic-primitives#17):** az `access` belső nyelvtana és az
+> `inherit` enum a `P0-4-ACCESS-GRAMMAR.md`-ben van, vektorokkal és kapuval
+> (`access-vectors/`, `check_access_vectors.py`). Állapot: javaslat, a P0.4 PR
+> review-jáig nem normatív. Az alábbi szöveg a P0.4 előtti állapot.
+
 **Az `access` belső nyelvtana (P0.4).** Az `inherit` háromállapotúsága
 (`true` / `false` / `0`) booleanként nem stabil típus — a review-nak igaza van,
 és az archivált objektummodell sem javította, szó szerint átvette. Valódi enum
@@ -650,6 +655,9 @@ döntése, nem az atomoké.
 proposals/atom-grammar/
   instance-grammar.schema.yaml   ← JSON Schema: §2 szerkezeti szabályok
   check_grammar.py               ← séma + a §3/§4 keresztszabályok (amit JSON Schema nem tud)
+  access_policy.py               ← P0.4: az Access/PolicySurface referencia-modell
+  check_access_vectors.py        ← P0.4: golden vektorok, szabályok, séma-szinkron, beültetett hibák
+  access-vectors/                ← P0.4: pozitív és negatív vektorok
 ```
 
 **Kapuként** (ez fut a `make validate` előtt):
