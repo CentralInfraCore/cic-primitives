@@ -39,10 +39,12 @@ accept legacy scalars, so a half-migrated document fails loudly.
    then the library keeps reading grammar 1.
 2. `cic-primitive-engine` needs the same pin change; its Normalize stage can use the symbolic
    defaults of section 1 unchanged.
-3. **`cic-schema-registry` has a real defect this work exposed** (matrix F2): nine current
-   schemas (33 files with the line, one occurrence each: the nine current plus 24 frozen released versions) write `modify: [OU=adapters, O=cic]`, which
-   YAML parses as two patterns in OR. Any certificate with `O=cic` would match, not only
-   adapters. The intended value is the single pattern `"OU=adapters,O=cic"`. That repository
-   is outside this PR; it needs its own fix.
+3. **`cic-schema-registry` had a real defect this work exposed** (matrix F2). Originally 33
+   files (one occurrence each: the nine current schemas and 24 frozen released versions) wrote
+   `modify: [OU=adapters, O=cic]`, which YAML parses as two patterns in OR, so any certificate
+   with `O=cic` would match, not only adapters. The intended value is the single pattern
+   `"OU=adapters,O=cic"`. The nine current schemas are fixed since cic-schema-registry#162, which
+   also adds a lint for ambiguous CertPattern flow lists; the 24 frozen released versions are
+   unchanged (a correction needs a new release, decided separately).
 4. No `PolicySurface` runtime exists in `cic-relay` today; the resolution here is the contract
    for it, not a change to it.
