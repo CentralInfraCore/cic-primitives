@@ -40,7 +40,7 @@ accept legacy scalars, so a half-migrated document fails loudly.
 2. `cic-primitive-engine` needs the same pin change; its Normalize stage can use the symbolic
    defaults of section 1 unchanged.
 3. **`cic-schema-registry` has a real defect this work exposed** (matrix F2): nine current
-   schemas (34 occurrences including versioned ones) write `modify: [OU=adapters, O=cic]`, which
+   schemas (33 files with the line, one occurrence each: the nine current plus 24 frozen released versions) write `modify: [OU=adapters, O=cic]`, which
    YAML parses as two patterns in OR. Any certificate with `O=cic` would match, not only
    adapters. The intended value is the single pattern `"OU=adapters,O=cic"`. That repository
    is outside this PR; it needs its own fix.
