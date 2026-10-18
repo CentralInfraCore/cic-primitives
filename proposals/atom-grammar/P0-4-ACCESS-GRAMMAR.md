@@ -66,16 +66,34 @@ value is a wildcard. A bare `inherit` is not a pattern. Note the YAML hazard
 | 1 (the existing grammar) | `true` | `false` | `0` |
 | 2 | `inherit` | `no-inherit` | `reset` |
 
-- A document declares the grammar version; absent means 1. **Existing documents are grammar 1
-  and are read exactly as before.**
-- Within one version there is exactly one spelling set. The other is an error:
-  `INHERIT_ENUM_IN_GRAMMAR_1`, `LEGACY_INHERIT_IN_GRAMMAR_2`. Nothing is coerced.
+- The grammar version is bound as described in "Grammar version binding" below. **Existing
+  documents are grammar 1 and are read exactly as before.**
+- Within one bound version there is exactly one spelling set, for the whole document. The
+  other is an error: `INHERIT_ENUM_IN_GRAMMAR_1`, `LEGACY_INHERIT_IN_GRAMMAR_2`. Nothing is
+  coerced, and the first node of the wrong spelling fails the document.
 - The grammar-1 spellings are told apart by YAML scalar type: boolean `true`, boolean
   `false`, integer `0`. Integer `1`, `0.0`, the strings `"true"`/`"0"`, `null` are
   `INVALID_INHERIT`. `false` and `0` are never equal.
 - A round trip keeps the spelling (the mapping is a bijection per version).
 - Moving a document from grammar 1 to 2 is an explicit, lossless migration (`migrate_mode`);
   see `P0-4-MIGRATION.md`.
+
+### Grammar version binding
+
+- The version is a property of the **pinned schema** (`schemas/atomic/access.yaml`,
+  `spec.access_grammar.version`) and of the **processing context**. It is **not** a key of any
+  document: the six-key Access representation and ADR 0001's recognition rule get no seventh key.
+- The context supplies the version it expects; it must equal the pin's version
+  (`bind_grammar`). Both are required: a missing one is `GRAMMAR_VERSION_MISSING` (there is no
+  default to 1), a value that is not one of the supported integers `1`, `2` is
+  `UNKNOWN_GRAMMAR_VERSION` (`"1"`, `true`, `3` are all unknown), a difference is
+  `GRAMMAR_VERSION_CONFLICT`.
+- The pin is what ties the version to the grammar identity downstream: the pinned commit and its
+  manifest fix the schema file, so they fix the version. Changing the version is a new schema
+  version and a new grammar identity (ADR 0002 of `cic-primitive-forms`), plus migration of every
+  document, never a silent change.
+- One context binds one version for the whole document (`read_document`), so a document cannot
+  mix the two spellings. This schema pin declares **1**.
 
 ### Semantics (**design decision**, see D-018 for the conflict analysis)
 
@@ -86,7 +104,12 @@ value is a wildcard. A bare `inherit` is not a pattern. Note the YAML hazard
 | `reset` | the carrier's rule **and** the ancestors' PolicySurface rules **and** the system default are cut; the sub-object needs an explicit local rule for the operation | the same cut at object scope |
 
 `reset` never yields an implicit allow: without an explicit local rule for the operation,
-resolution denies (`RESET_NO_LOCAL_RULE`, fail closed).
+resolution denies (`RESET_NO_LOCAL_RULE`, fail closed). The order matters: an object-level
+`reset` is applied **before** any carrier rule is used, so a rule passed down from above cannot
+be turned into a decision by an object that declared `reset` (vectors
+`resolution.object-reset-cuts-carrier-rule-g1/g2`). A carrier rule declared on the field of the
+reset object itself still reaches that field's sub-object, and the target field's own explicit
+rule (layer 1) and the object's own local rules (layers 2-3) are never cut.
 
 The difference between `no-inherit` and `reset` is proven by vectors on one parent/child
 pair (`resolution.diff-field-*`, `resolution.diff-policy-g2-*`): the carrier's rule `[O=partner]`,
@@ -148,12 +171,28 @@ Rules:
   deny. There is no fallback to a more permissive layer.
 - An explicit `[]` is terminal: `EXPLICIT_EMPTY`. A parent's `open` cannot rescue it.
 - An unauthenticated requestor is denied everywhere (`UNAUTHENTICATED`).
+- `owner` needs **two valid identities**: a non-empty string without surrounding whitespace for
+  the trusted owner (`OWNER_IDENTITY_INVALID`) and for the requestor
+  (`REQUESTOR_IDENTITY_INVALID`), and they must be equal (`OWNER_MISMATCH`). Missing, `null`,
+  empty or non-string identities never match each other.
 - A `policy: absent` object is transparent; a `policy: {}` (declared, empty) is too, and
   neither hides an ancestor's declared rule.
 - Missing object, parent cycle, or an `unknown` policy the walk must read yields outcome
   `error` (`CONTEXT_INCOMPLETE`, `POLICY_CONTEXT_UNKNOWN`). The resolver never invents a
   permission. An unknown ancestor that a decided rule never reaches does not matter.
 - Output: `{outcome: allow|deny|error, layer, code}`. Same input, same output; no clock, no I/O.
+
+### Authority of the request context
+
+`requestor.authenticated`, `requestor.subject`, `requestor.identity` and the `owner` record
+(`trust`, `identity`) are **inputs from the processing context**: the authenticated channel (the
+mTLS handshake result) and a trusted ownership binding. They are never read from the document
+being resolved. A document cannot make itself authenticated, cannot produce trusted X.509
+attributes and cannot mark its own owner data trusted. The resolver demands the shapes
+(`authenticated` is a boolean; an authenticated `subject` is a concrete DN without wildcards;
+`owner.trust` is `trusted` or `untrusted`; `op` is `access` or `modify`) and returns the outcome
+`error`, code `INVALID_REQUEST_CONTEXT`, otherwise. Verifying the channel and the ownership
+binding is Relay work; the contract that the resolver must be given them already is this one.
 
 ## 5. Compatibility
 
@@ -185,7 +224,7 @@ is untouched.
 
 ## 7. What the vectors prove
 
-`make grammar.local` runs 139 cases and 40 seeded faults: every model fault, every structural
+`make grammar.local` runs the golden vectors and the seeded faults: every model fault, every structural
 rule and every schema-sync rule has a fault that turns the gate red, and the `no-inherit`
 versus `reset` outcome difference is itself a gate rule. Properties checked across all
 vectors: expansion is idempotent and deterministic; moving any resolve case between grammar 1

@@ -99,6 +99,19 @@ spec:
             not_implemented → HARD REJECT (the device cannot handle it)
           The requestor receives a distinct error — the two cases are not interchangeable.
 
+  access_grammar:
+    version: 1
+    description: >
+      The access-policy grammar version this schema pin reads (the spelling of
+      InheritanceMode, see `inheritance_mode`). It is a property of the pinned schema, not a
+      key of any document: a document never declares it, the six-key Access representation
+      gets no seventh key. The processing context supplies its version and it must equal this
+      one (GRAMMAR_VERSION_CONFLICT otherwise; missing is GRAMMAR_VERSION_MISSING, unknown is
+      UNKNOWN_GRAMMAR_VERSION). Moving a schema pin from 1 to 2 is a new schema version and a
+      new grammar identity downstream (cic-primitive-forms ADR 0002), together with the
+      migration of every document, never a silent change.
+    supported: [1, 2]
+
   inheritance_mode:
     description: >
       The type behind `Access.inherit` and `PolicySurface.inherit_policy`. Scope differs:
@@ -148,7 +161,9 @@ spec:
       Access atom is orthogonal to Role atom.
       Role = what the field means (config/state/operational).
       Access = who may reach it.
-      Combined: role: state + modify: [OU=adapters,O=cic] → adapter writes, user reads.
+      Combined: role: state + modify: ["OU=adapters,O=cic"] → adapter writes, user reads.
+      The pattern is quoted on purpose: unquoted, YAML splits [OU=adapters,O=cic] into two
+      list elements (two patterns, OR) instead of one pattern with two pairs (AND).
     compiler:
       short_form: "key: value → key: {value: value, ...inherited rules}"
       normalization: compiler fills in inherited PolicySurface rules

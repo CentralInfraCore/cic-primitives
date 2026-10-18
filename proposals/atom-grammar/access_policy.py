@@ -38,6 +38,32 @@ class PolicyError(Exception):
         self.detail = detail
 
 
+# ── Grammar version binding ──────────────────────────────────────────────────
+
+SUPPORTED_GRAMMARS = (1, 2)
+
+
+def bind_grammar(context_version, pin_version) -> int:
+    """The grammar version is a property of the processing context, checked against
+    the version the pinned schema declares. A document never carries it, and one
+    context binds exactly one version for the whole document."""
+    for v in (context_version, pin_version):
+        if v is None:
+            raise PolicyError("GRAMMAR_VERSION_MISSING")
+    for v in (context_version, pin_version):
+        if type(v) is not int or v not in SUPPORTED_GRAMMARS:
+            raise PolicyError("UNKNOWN_GRAMMAR_VERSION", repr(v))
+    if context_version != pin_version:
+        raise PolicyError("GRAMMAR_VERSION_CONFLICT", f"context {context_version}, pinned schema {pin_version}")
+    return context_version
+
+
+def read_document(nodes, position: str, context_version, pin_version, origin: str = "authored"):
+    """Expand every Access node of one document under ONE bound grammar."""
+    g = bind_grammar(context_version, pin_version)
+    return [expand(n, position, g, origin, False) for n in nodes]
+
+
 # ── InheritanceMode ──────────────────────────────────────────────────────────
 
 def read_mode(value, grammar: int) -> str:
@@ -232,6 +258,27 @@ def _decide_list(patterns, layer, req):
     return {"outcome": "deny", "code": "NO_PATTERN_MATCH", "layer": layer}
 
 
+def _valid_identity(x) -> bool:
+    """An identity is a non-empty string without surrounding whitespace. None, "",
+    numbers and lists are never an identity, so two missing identities never match."""
+    return isinstance(x, str) and x != "" and x == x.strip()
+
+
+def check_request(req) -> None:
+    """The request context comes from the authenticated channel and from a trusted
+    owner binding, never from the document. The resolver demands it typed."""
+    r = req.get("requestor") if isinstance(req, dict) else None
+    if req.get("op") not in OPS or not isinstance(r, dict) or type(r.get("authenticated")) is not bool:
+        raise PolicyError("INVALID_REQUEST_CONTEXT", "op / requestor / authenticated")
+    if r["authenticated"]:
+        subj = r.get("subject")
+        if not (isinstance(subj, str) and PATTERN_RE.match(subj) and "*" not in subj):
+            raise PolicyError("INVALID_REQUEST_CONTEXT", "subject")
+    owner = req.get("owner")
+    if owner is not None and (not isinstance(owner, dict) or owner.get("trust") not in ("trusted", "untrusted")):
+        raise PolicyError("INVALID_REQUEST_CONTEXT", "owner.trust")
+
+
 def _decide_symbol(symbol, layer, req):
     r = req["requestor"]
     if not r["authenticated"]:
@@ -241,6 +288,10 @@ def _decide_symbol(symbol, layer, req):
     owner = req.get("owner")
     if not owner or owner.get("trust") != "trusted":  # fault-site: owner-trust
         return {"outcome": "deny", "code": "OWNER_NOT_TRUSTED", "layer": layer}
+    if not _valid_identity(owner.get("identity")):  # fault-site: owner-identity
+        return {"outcome": "deny", "code": "OWNER_IDENTITY_INVALID", "layer": layer}
+    if not _valid_identity(r.get("identity")):  # fault-site: requestor-identity
+        return {"outcome": "deny", "code": "REQUESTOR_IDENTITY_INVALID", "layer": layer}
     if owner.get("identity") != r.get("identity"):
         return {"outcome": "deny", "code": "OWNER_MISMATCH", "layer": layer}
     return {"outcome": "allow", "code": None, "layer": layer}
@@ -268,6 +319,10 @@ def resolve(ctx: dict, target: dict, req: dict, grammar: int) -> dict:
 
     Every input is declared. A missing object, a cycle or an unknown policy that
     the walk has to read yields outcome `error`, never an invented permission."""
+    try:
+        check_request(req)
+    except PolicyError as ex:
+        return {"outcome": "error", "code": ex.code, "layer": "none"}
     op = req["op"]
     objs = {}
     for oid, o in ctx["objects"].items():
@@ -302,7 +357,15 @@ def resolve(ctx: dict, target: dict, req: dict, grammar: int) -> dict:
     field_open = True
     seen = {target["object"]}
     o = cur
-    while o["carrier"] is not None:
+    while True:
+        # An object-level reset cuts what this object takes from above, carrier rule included.
+        if isinstance(o["policy"], dict) and o["policy"]["mode"] == "reset":  # fault-site: object-reset-first
+            reset_barrier = True
+            break
+        if o["carrier"] is None:
+            break
+        if o["policy"] == "unknown" and o is not cur:
+            return {"outcome": "error", "code": "POLICY_CONTEXT_UNKNOWN", "layer": "none"}
         mode = o["carrier"]["mode"]
         if mode == "reset":
             reset_barrier = True

@@ -1787,3 +1787,1146 @@ cases:
     outcome: deny
     layer: none
     code: RESET_NO_LOCAL_RULE
+- id: resolution.owner-both-identities-missing
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: 'trusted owner without an identity and a requestor without an identity: no match of None with None'
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+      owner:
+        trust: trusted
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-identity-null
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: trusted owner with identity None grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity: null
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-identity-empty
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: trusted owner with identity '' grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity: ''
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-identity-int
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: trusted owner with identity 1 grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity: 1
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-identity-whitespace
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: trusted owner with identity ' alice' grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity: ' alice'
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-identity-list
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: trusted owner with identity ['alice'] grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity:
+        - alice
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.requestor-identity-missing
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: requestor identity absent grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+      owner:
+        trust: trusted
+        identity: alice
+  expect:
+    outcome: deny
+    layer: system
+    code: REQUESTOR_IDENTITY_INVALID
+- id: resolution.requestor-identity-null
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: requestor identity None grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: null
+      owner:
+        trust: trusted
+        identity: alice
+  expect:
+    outcome: deny
+    layer: system
+    code: REQUESTOR_IDENTITY_INVALID
+- id: resolution.requestor-identity-empty
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: requestor identity '' grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: ''
+      owner:
+        trust: trusted
+        identity: alice
+  expect:
+    outcome: deny
+    layer: system
+    code: REQUESTOR_IDENTITY_INVALID
+- id: resolution.requestor-identity-int
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: requestor identity 1 grants nothing
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: 1
+      owner:
+        trust: trusted
+        identity: alice
+  expect:
+    outcome: deny
+    layer: system
+    code: REQUESTOR_IDENTITY_INVALID
+- id: resolution.owner-identity-same-int-not-an-identity
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  title: two equal numbers are not two equal identities
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: 1
+      owner:
+        trust: trusted
+        identity: 1
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-explicit-symbol-no-identities
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  title: an explicit owner symbol obeys the identity rule too
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy:
+            default_modify: owner
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+      owner:
+        trust: trusted
+  expect:
+    outcome: deny
+    layer: default
+    code: OWNER_IDENTITY_INVALID
+- id: resolution.owner-identity-equal-valid
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - owner-identity-required
+  - owner-authority
+  title: two valid, equal identities allow
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity: alice
+  expect:
+    outcome: allow
+    layer: system
+    code: null
+- id: resolution.owner-identity-different-valid
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - owner-identity-required
+  title: two valid, different identities deny
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: alice
+      owner:
+        trust: trusted
+        identity: bob
+  expect:
+    outcome: deny
+    layer: system
+    code: OWNER_MISMATCH
+- id: resolution.request-authenticated-string
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context authenticated-string is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: 'yes'
+        subject: O=acme
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-authenticated-missing
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context authenticated-missing is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        subject: O=acme
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-subject-null
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context subject-null is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: null
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-subject-wildcard
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context subject-wildcard is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=*
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-subject-not-a-dn
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context subject-not-a-dn is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: acme
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-owner-trust-spelling
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context owner-trust-spelling is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: modify
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: a
+      owner:
+        trust: TRUSTED
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-op-unknown
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context op-unknown is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: write
+      requestor:
+        authenticated: true
+        subject: O=acme
+        identity: a
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.request-requestor-missing
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - request-context-authority
+  title: request context requestor-missing is an error, not a decision
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        c:
+          parent: null
+          policy: absent
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+  expect:
+    outcome: error
+    layer: none
+    code: INVALID_REQUEST_CONTEXT
+- id: resolution.object-reset-cuts-carrier-rule-g1
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  - reset-fail-closed
+  - noinherit-vs-reset
+  title: inherit_policy reset cuts the carrier rule passed from above; no local rule means deny
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: 0
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.object-reset-local-rule-wins-g1
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  - reset-fail-closed
+  title: inherit_policy reset with an explicit local base decides, the carrier rule does not matter
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: 0
+            default_access:
+            - O=acme
+          carrier:
+            inherit: true
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.object-reset-own-field-rule-wins-g1
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  title: the target field's own explicit rule is layer 1 and is unaffected by the reset
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: 0
+          carrier:
+            inherit: true
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=acme
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.object-reset-surface-rule-wins-g1
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  title: an explicit local surface rule is a local base
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: 0
+            surface_rules:
+            - surface: config_surface
+              access:
+              - O=acme
+          carrier:
+            inherit: true
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: surface_rules
+    code: null
+- id: resolution.object-reset-cuts-carrier-rule-g2
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  - reset-fail-closed
+  - noinherit-vs-reset
+  title: inherit_policy reset cuts the carrier rule passed from above; no local rule means deny
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: reset
+          carrier:
+            inherit: inherit
+            access:
+            - O=acme
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.object-reset-local-rule-wins-g2
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  - reset-fail-closed
+  title: inherit_policy reset with an explicit local base decides, the carrier rule does not matter
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: reset
+            default_access:
+            - O=acme
+          carrier:
+            inherit: inherit
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: default
+    code: null
+- id: resolution.object-reset-own-field-rule-wins-g2
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  title: the target field's own explicit rule is layer 1 and is unaffected by the reset
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: reset
+          carrier:
+            inherit: inherit
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field:
+        access:
+        - O=acme
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field
+    code: null
+- id: resolution.object-reset-surface-rule-wins-g2
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  title: an explicit local surface rule is a local base
+  input:
+    grammar: 2
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: reset
+            surface_rules:
+            - surface: config_surface
+              access:
+              - O=acme
+          carrier:
+            inherit: inherit
+            access:
+            - O=other
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: surface_rules
+    code: null
+- id: resolution.object-reset-above-cuts-higher-carrier
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  - reset-fail-closed
+  title: a reset on an intermediate object cuts the carrier rule above it
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        g:
+          parent: null
+          policy: absent
+        p:
+          parent: g
+          policy:
+            inherit_policy: 0
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+        c:
+          parent: p
+          policy: {}
+          carrier:
+            inherit: true
+            access: inherit
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: deny
+    layer: none
+    code: RESET_NO_LOCAL_RULE
+- id: resolution.object-reset-above-keeps-lower-carrier
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  title: the carrier rule declared on the field of the reset object itself still reaches its sub-object
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy:
+            inherit_policy: 0
+        c:
+          parent: p
+          policy: {}
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field_inherited
+    code: null
+- id: resolution.object-no-inherit-keeps-carrier-rule
+  kind: resolve
+  polarity: positive
+  adr: D-018
+  covers:
+  - object-reset-cuts-carrier
+  - noinherit-vs-reset
+  title: object-level no-inherit does not touch the field-level pass-down
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: absent
+        c:
+          parent: p
+          policy:
+            inherit_policy: false
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: allow
+    layer: field_inherited
+    code: null
+- id: resolution.unknown-policy-above-carrier
+  kind: resolve
+  polarity: negative
+  adr: D-018
+  covers:
+  - unknown-context-no-invention
+  - object-reset-cuts-carrier
+  title: an unknown policy on an object whose carrier rule would be read is an error
+  input:
+    grammar: 1
+    ctx:
+      objects:
+        p:
+          parent: null
+          policy: unknown
+          carrier:
+            inherit: true
+            access:
+            - O=acme
+            modify: inherit
+        c:
+          parent: p
+          policy: {}
+          carrier:
+            inherit: true
+            access: inherit
+            modify: inherit
+    target:
+      object: c
+      surface: config_surface
+      field: {}
+    req:
+      op: access
+      requestor:
+        authenticated: true
+        subject: O=acme,OU=ops
+        identity: alice
+  expect:
+    outcome: error
+    layer: none
+    code: POLICY_CONTEXT_UNKNOWN

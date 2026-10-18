@@ -19,9 +19,12 @@ Companion to `P0-4-ACCESS-GRAMMAR.md` and D-018.
 
 ## Version rule
 
-A document declares `access-grammar: 1|2` (absent = 1). The migration 1 → 2 maps
+The grammar version is not a document key. It is a property of the pinned schema
+(`access.yaml`, `spec.access_grammar.version`, currently 1) and of the processing context, which
+must agree (`GRAMMAR_VERSION_CONFLICT`); neither may be missing or unknown. See the binding rule in
+`P0-4-ACCESS-GRAMMAR.md`. The migration 1 → 2 maps
 `true→inherit`, `false→no-inherit`, `0→reset` for every `Access.inherit` and
-`PolicySurface.inherit_policy`, and changes the declared version in the same step. The inverse
+`PolicySurface.inherit_policy`, and moves the schema pin to the new version in the same step (a new schema version and a new grammar identity downstream). The inverse
 exists. The mapping is a bijection and is covered by `migration.*` vectors and by the gate
 property that no resolve case changes its result across the two grammars. There is no
 automatic upgrade: a grammar-1 reader does not accept enum names, a grammar-2 reader does not

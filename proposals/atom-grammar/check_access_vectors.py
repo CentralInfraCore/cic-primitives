@@ -31,7 +31,7 @@ ACCESS_SCHEMA = ROOT / "schemas" / "atomic" / "access.yaml"
 POLICY_SCHEMA = ROOT / "schemas" / "aggregate" / "policy-surface.yaml"
 
 SUITES = ("reading", "expansion", "resolution", "migration")
-KINDS = {"read_mode", "read_rule", "read_policy", "migrate_mode", "expand", "roundtrip", "resolve"}
+KINDS = {"read_mode", "read_rule", "read_policy", "migrate_mode", "expand", "roundtrip", "resolve", "bind_grammar", "read_document"}
 
 # Every scenario the P0.4 acceptance names must be covered by at least one case.
 REQUIRED_COVERAGE = {
@@ -43,6 +43,7 @@ REQUIRED_COVERAGE = {
     "missing-policy-surface", "owner-authority", "reset-fail-closed", "historical-open-default",
     "unknown-context-no-invention", "conformance-authority", "lossless-normalize", "priority-order",
     "symbolic-default-no-shadow", "pattern-comma-hazard",
+    "owner-identity-required", "object-reset-cuts-carrier", "grammar-binding", "request-context-authority",
 }
 
 # Groups of cases that are one parent/child pair differing in the mode only.
@@ -118,6 +119,10 @@ def run_case(m, case) -> dict:
             return {"form": form, "equal": m.canonical(back) == m.canonical(e)}
         if k == "resolve":
             return m.resolve(i["ctx"], i["target"], i["req"], i["grammar"])
+        if k == "bind_grammar":
+            return {"grammar": m.bind_grammar(i["context"], i["pin"])}
+        if k == "read_document":
+            return {"count": len(m.read_document(i["nodes"], i["position"], i["context"], i["pin"]))}
     except m.PolicyError as ex:
         return {"error": ex.code}
     raise Finding(f"UNKNOWN_KIND: {k}")
@@ -245,6 +250,8 @@ def check_schema_sync(m, access=None, policy=None) -> list[str]:
         bad.append("SCHEMA_CONFORMANCE_VALUES")
     if tuple(a["spec"]["inheritance_mode"]["values"]) != m.MODES:
         bad.append("SCHEMA_MODES")
+    if a["spec"]["access_grammar"]["version"] not in m.SUPPORTED_GRAMMARS:
+        bad.append("SCHEMA_GRAMMAR_VERSION")
     slots = p["spec"]["slots"]
     if slots["default_access"]["type"] != "list<CertPattern> | open":
         bad.append("SCHEMA_DEFAULT_ACCESS_TYPE")
@@ -294,6 +301,17 @@ MODEL_FAULTS = [
     ("default-before-surface-rule", 'hit = pol["rules"].get((surface, op))', 'hit = None if op in pol["declared"] else pol["rules"].get((surface, op))'),
     ("unknown-own-policy-ignored", '    if cur["policy"] == "unknown":', "    if False:"),
     ("unknown-ancestor-ignored", '        if o["policy"] == "unknown":', "        if False:"),
+    ("owner-none-equals-none",
+     '    if not _valid_identity(owner.get("identity")):  # fault-site: owner-identity\n        return {"outcome": "deny", "code": "OWNER_IDENTITY_INVALID", "layer": layer}\n    if not _valid_identity(r.get("identity")):  # fault-site: requestor-identity\n        return {"outcome": "deny", "code": "REQUESTOR_IDENTITY_INVALID", "layer": layer}\n    if owner.get("identity") != r.get("identity"):',
+     '    if owner.get("identity") != r.get("identity"):'),
+    ("owner-identity-unchecked", 'if not _valid_identity(owner.get("identity")):  # fault-site: owner-identity', "if False:"),
+    ("requestor-identity-unchecked", 'if not _valid_identity(r.get("identity")):  # fault-site: requestor-identity', "if False:"),
+    ("identity-allows-empty", 'return isinstance(x, str) and x != "" and x == x.strip()', "return isinstance(x, str)"),
+    ("request-context-unchecked", "        check_request(req)\n    except", "        pass\n    except"),
+    ("object-reset-after-carrier", 'if isinstance(o["policy"], dict) and o["policy"]["mode"] == "reset":  # fault-site: object-reset-first', "if False:"),
+    ("unknown-above-carrier-ignored", 'if o["policy"] == "unknown" and o is not cur:', "if False:"),
+    ("grammar-binding-ignores-pin", "    if context_version != pin_version:", "    if False:"),
+    ("grammar-binding-defaults-to-1", '        if v is None:\n            raise PolicyError("GRAMMAR_VERSION_MISSING")', "        if v is None:\n            return 1"),
     ("owner-without-trust", 'if not owner or owner.get("trust") != "trusted":  # fault-site: owner-trust', "if not owner:"),
 ]
 
@@ -311,7 +329,7 @@ def vector_faults(cases):
     yield "wrong-expectation", "VECTOR", mut(lambda c: first(c, "resolution.field-explicit-match")["expect"].__setitem__("outcome", "deny"))
     yield "false-is-zero-expectation", "VECTOR", mut(lambda c: first(c, "expansion.long-false-stays-false")["expect"]["expanded"].__setitem__("inherit", 0))
     yield "uncovered-scenario", "UNCOVERED_SCENARIO", mut(lambda c: [x["covers"].clear() for x in c if "noinherit-vs-reset" in x["covers"]])
-    yield "unexercised-code", "UNEXERCISED_CODE", mut(lambda c: first(c, "resolution.system-owner-mismatch")["expect"].__setitem__("code", "NO_PATTERN_MATCH"))
+    yield "unexercised-code", "UNEXERCISED_CODE", mut(lambda c: first(c, "expansion.invalid-origin")["expect"].__setitem__("error", "INVALID_ACCESS_VALUE"))
     yield "unknown-tag", "UNKNOWN_SCENARIO_TAG", mut(lambda c: c[0]["covers"].append("invented-scenario"))
     yield "differential-collapsed", "MODES_NOT_DISTINGUISHED", mut(lambda c: first(c, "resolution.diff-field-reset").__setitem__("input", copy.deepcopy(first(c, "resolution.diff-field-no-inherit")["input"])) or first(c, "resolution.diff-field-reset").__setitem__("expect", copy.deepcopy(first(c, "resolution.diff-field-no-inherit")["expect"])))
     yield "differential-other-pair", "DIFFERENTIAL_NOT_SAME_PAIR", mut(lambda c: first(c, "resolution.diff-field-reset")["input"]["req"]["requestor"].__setitem__("subject", "O=zzz"))
@@ -331,6 +349,7 @@ def schema_faults():
     yield "schema-default-access", p_mut(lambda y: y["spec"]["slots"]["default_access"].__setitem__("type", "CertPattern[]"))
     yield "schema-surface-rules-empty-word", p_mut(lambda y: y["spec"]["slots"]["surface_rules"].__setitem__("default", "empty"))
     yield "schema-inherit-policy-boolean", p_mut(lambda y: y["spec"]["slots"]["inherit_policy"].__setitem__("type", "boolean"))
+    yield "schema-grammar-version", a_mut(lambda x: x["spec"]["access_grammar"].__setitem__("version", 3))
     yield "schema-priority", p_mut(lambda y: y["spec"]["resolution"]["priority"].reverse())
 
 
@@ -350,7 +369,10 @@ def self_test(cases) -> int:
         src = base.replace(old, new)
         mm = load_model(src)
         mm._SOURCE = src
-        res = run_all(mm, cases)
+        try:
+            res = run_all(mm, cases)
+        except Exception as ex:  # a fault that crashes the model is detected, too
+            res = [f"CRASH {type(ex).__name__}: {ex}"]
         print(f"  fault {name:34} -> {'RED' if res else 'GREEN (NOT DETECTED)'}" + (f"  [{res[0][:60]}]" if res else ""))
         failed += 0 if res else 1
     for name, rule, mutated in vector_faults(cases):

@@ -1331,10 +1331,17 @@ gate: `access-vectors/`, `check_access_vectors.py`.
 - **D-012**. Unchanged. `conformance` stays in the six fields; its authority boundary follows
   `cic-primitive-forms` ADR 0010. Moving it is a separate versioned decision.
 
-**Evidence and limits:** 139 vectors and 40 seeded faults (`make grammar.local`); the
+**Evidence and limits:** 187 vectors and 50 seeded faults (`make grammar.local`); the
 `no-inherit`/`reset` difference is demonstrated on one parent/child pair and is a gate rule.
 Model and vectors have one author. The corpus measurement (matrix F2) found a real defect:
 nine registry schemas write `modify: [OU=adapters, O=cic]`, two OR patterns instead of one.
+
+**Review fixes (PR #19):** `owner` needs two valid, equal identities (`None == None` no longer
+matches); an object-level `reset` is applied before any carrier rule; the grammar version is a
+property of the pinned schema and the processing context, never a document key; the request
+context is demanded typed and comes from the authenticated channel, not from the document. The
+D-011 example `modify: [OU=adapters,O=cic]` (and its English copy) has the same unquoted-flow-list
+hazard as the registry; the history text is left, the schema example in `access.yaml` is corrected.
 
 **Not decided:** runtime enforcement, the final home of `conformance`, how a trusted owner
 identity is attested, sub-objects of list elements and choice cases, multi-parent composition.
