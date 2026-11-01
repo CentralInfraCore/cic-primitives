@@ -25,7 +25,7 @@ Out of scope, kept as separate, later work (the trust gates): the external trust
 
 ## 4. Envelope 3
 
-`provenance.envelope` and `release.envelope` are `3`. What `build_hash` covers is the rule of envelope 2: the whole bundle except `release.sign`, `release.build_hash` and `cic_countersign`. The new members below are therefore covered by the existing signature without any change to it; **the new version number is what lets a verifier tell a record that meets this contract from one that does not.**
+`provenance.envelope` and `release.envelope` are `3`. What `build_hash` covers is the rule of envelope 2: the whole bundle except `release.sign`, `release.build_hash` and `cic_countersign`. The new members below are therefore covered by the existing signature without any change to it; **the new version number is what lets a verifier tell a record that meets this contract from one that does not.** This coverage is a claim that section 12 requires to be shown with golden vectors on the real canonicalization, `build_hash` computation and signature verification; until those vectors exist it is a requirement, not a proven property.
 
 ```yaml
 provenance:
@@ -48,16 +48,20 @@ artifacts:                                 # REQUIRED
 * The compiler MUST refuse to create the release when it cannot determine it. Writing `null` or omitting it (what envelope 2 allows) is non-conforming in envelope 3.
 * It identifies and retrieves the source state. It is a git SHA-1 object identifier and MUST NOT be treated as evidence of the artifacts' bytes; the digests are.
 
-## 6. The artifact set
+## 6. The artifact set (explicit paths)
 
-* Declared by the producer in `project.yaml`: `compiler_settings.release_artifacts` with `include` (a non-empty list of path patterns) and optional `exclude`. The declared set is the producer's published surface; the compiler MUST NOT derive it from anything a consumer supplies.
-* The compiler resolves the patterns against the **tree of the source commit** (`git ls-tree -r`), never against the working directory, so the digests are of what the commit holds.
-* Every selected entry MUST be a regular file (mode 100644 or 100755). A symbolic link, a submodule or any other entry in the selected set is an error, not a skip. An empty set is an error.
-* The pattern dialect (shell-style globs, `**` for directories) MUST be fixed in the implementation change and covered by golden vectors; it is not part of the record.
+The first version of the contract supports **explicit file paths only**. There is no glob, no `include` and no `exclude`; a pattern language may be added later as a separately versioned extension of the contract, never as a change to this version.
 
+* Declared by the producer in `project.yaml` as `compiler_settings.release_artifacts.paths`: a non-empty list of strings, each a path relative to the repository root, in the form of section 7. The key names `include` and `exclude` are not part of this version and the compiler MUST refuse them (`declaration_unknown_key`), as it MUST refuse any other key under `release_artifacts`.
+* The declared set is the producer's published surface. The compiler MUST NOT derive it from anything a consumer supplies, and MUST NOT read a consumer's pin manifest.
+* Each declared path is resolved **only** against the tree of the source commit (`git ls-tree`), never against the working directory, an index or a checkout, so the digests are of what the commit holds.
+* Each declared path MUST name a **blob** with mode 100644 or 100755. A path that names a tree (a directory), a symbolic link (mode 120000), a submodule (mode 160000) or anything else is refused; it is not skipped and not followed.
+* The compiler refuses to create the release, with the reason named, when: the declaration or `paths` is absent (`declaration_missing`) or empty (`declaration_empty`); a path breaks section 7, an absolute path and a path with a `..` segment included (`declaration_path_form`); a path is repeated (`declaration_path_duplicate`); a path is not in the tree of the source commit (`declared_path_absent`); a path is not a regular blob (`declared_path_not_regular`, which names directory, link or submodule). The declared list is sorted by the compiler for output only (section 8); the same declared set in any input order gives the same record, and a repeated path is never merged silently.
 ## 7. Paths
 
-A path MUST be a UTF-8 string that is exactly the path in the git tree, `/`-separated, relative, with no empty, `.` or `..` segment, no leading or trailing `/`, no backslash and no NUL. Paths are compared byte by byte; no Unicode normalization and no case folding is applied. `artifacts.files[].path` MUST be unique. `specs[].source_path` MUST be unique as well; a verifier MUST reject a duplicate and MUST NOT let a later entry overwrite an earlier one.
+A path MUST be a UTF-8 string that is exactly the path of a git tree entry: `/`-separated, relative to the repository root, with no empty, `.` or `..` segment, no leading or trailing `/` (so no absolute path and no directory spelling), no backslash and no NUL. A path is never resolved through a link: if a component of the path is a symbolic link or lies inside a submodule, the path is not found in the tree and is refused. Paths are compared byte by byte; no Unicode normalization and no case folding is applied (`a.txt` and `A.txt` are two paths). A file and a directory are different entries: a path names a file, and a directory name is refused (section 6), never expanded.
+
+`artifacts.files[].path` MUST be unique. `specs[].source_path` MUST be unique as well; a verifier MUST reject a duplicate and MUST NOT let a later entry overwrite an earlier one.
 
 ## 8. Order and the manifest digest
 
@@ -77,8 +81,9 @@ manifest digest `sha256:39e022575a650d2c2cf04a4d65ae8744e04d0ccb3699fb417db9c4c1
 
 ## 9. Old records
 
-* Envelope 1 and 2 records stay verifiable for what they are (integrity, signature, countersignature). They MUST NOT be rewritten, re-signed or "upgraded".
+* Envelope 1 and 2 records stay verifiable **under their own rules** (integrity, signature, countersignature) by the verifier of those envelopes, unchanged by this contract. They MUST NOT be rewritten, re-signed, migrated or "upgraded", automatically or by hand.
 * A verifier that is asked for conformance to this contract MUST refuse envelope 1 and 2 with the reason `envelope_too_old`. `primitives/@v0.2.0` therefore stays what it is: a valid envelope 2 record that does not contain the pinned grammar, and it stays a negative case for the pre-check.
+* Ending the verification of envelope 2 is not decided here; it would be a separate, versioned decision.
 * Nothing in this contract makes an earlier release retroactively valid.
 
 ## 10. How a consumer uses the record (informative)
@@ -101,20 +106,39 @@ A verifier of this contract MUST check, and refuse with the reason named, in thi
 | `artifact_digest_form` | a digest is not `sha256:` and 64 lowercase hexadecimal digits (an unknown algorithm included) |
 | `artifact_manifest_mismatch` | `manifest_digest` is not the recomputed one |
 | `spec_source_path_duplicate` | two `specs` entries share a `source_path` |
+| `build_hash_mismatch` | `release.build_hash` is not the recomputed hash of the canonical bundle (section 4 coverage rule) |
+| `signature_invalid` | `release.sign` does not verify over `release.build_hash` |
+| `countersign_invalid` | `cic_countersign` does not verify over `release.build_hash` |
 
-and, when the source commit is available to it, additionally: `artifact_absent` (a listed path is not in the commit), `artifact_digest_mismatch` (the digest is not the SHA-256 of the blob bytes), `artifact_not_regular` (the entry is a link or submodule). Availability of the commit is an addition to the record's own evidence, not a condition of it: a verifier without the commit still performs every record-only check and reports that the blob checks were not made.
+The last three are the checks of envelope 2, run unchanged; they are listed so that the coverage of the new members is part of the contract (section 12). They say nothing about the authority of the signer (section 2).
+
+When the source commit is available to the verifier it additionally refuses with `artifact_absent` (a listed path is not in the commit), `artifact_digest_mismatch` (the digest is not the SHA-256 of the blob bytes) and `artifact_not_regular` (the entry is a directory, link or submodule). Availability of the commit is an addition to the record's own evidence, not a condition of it: a verifier without the commit still performs every record-only check and reports that the blob checks were not made.
+
+The compiler-side refusals of section 6 (`declaration_*`, `declared_path_*`) are a separate list: they stop the creation of a record and never appear in one.
 
 ## 12. Conformance vectors (to exist before the compiler changes)
 
-Golden: the worked example above (digests and manifest digest); a record built from it with a fixed bundle whose canonical bytes and `build_hash` are fixed in the vector; the same bundle with the artifacts listed in a different input order producing the same output order.
+The requirements below are fixed by this contract; the vectors themselves are a separate step.
 
-Negative, one defect each, reading the reason and not only the exit status: a v2 record (`envelope_too_old`), a v3 record with `source_commit` null, absent, uppercase, short, or non-hex; `artifacts` absent and empty; a path with `..`, `.`, an empty segment, a leading `/`, a backslash, a NUL; a repeated path; an unsorted list; a digest without the prefix, in uppercase, 63 digits long, and with another algorithm name; a wrong manifest digest; two `specs` with one `source_path`; a listed path absent from the commit; a digest of a normalized (CRLF) copy instead of the blob bytes; a symbolic link in the selected set; an empty selected set. And a **record-level swap**: an artifact digest replaced by that of another file with the same `build_hash` field left unchanged is refused by the signature check, not by this contract (stated, so that nobody expects this contract to detect it).
+**Golden.** The worked example above (digests and manifest digest); a record built from it with a fixed bundle whose canonical bytes, `build_hash` and test signature are fixed in the vector and which passes every check of section 11; the same declared set in a different input order producing the same output order; the same bundle producing byte-identical canonical bytes on repeated runs.
+
+**Coverage of the existing signature (positive and negative).** The claim of section 4 (the `artifacts` block and `source_commit` are inside what `build_hash` covers) is shown, not asserted, on the real canonicalization, `build_hash` computation and signature verification of envelope 2, with no new signing mechanism. From the golden record, one defect at a time is applied to the **signed record**, with `release.build_hash` and `release.sign` left as they were:
+
+* an artifact path changed (kept well-formed, unique and in order);
+* an artifact digest changed (kept well-formed);
+* an entry added, and an entry removed (the count changed; `manifest_digest` left as it was);
+* two entries exchanged (the order changed);
+* `provenance.source_commit` changed (kept well-formed).
+
+Required result for each: the integrity check alone (recomputation of `build_hash`) reports `build_hash_mismatch`, and no mutated record passes the integrity and signature checks. A second series applies the same defects and then **recomputes `build_hash` without re-signing**; it MUST be refused with `signature_invalid` (and `countersign_invalid` for the countersignature). Together they show that changing the record without re-authentication is detected at the existing checks, which is the whole claim; it is not a claim about who signed. Each vector is run on the full verifier too, and the reason is read, not only the exit status; where a contract check (for example `artifact_order`) fires earlier in the order of section 11, the integrity-only run is what carries the coverage proof.
+
+**Negative, one defect each, reading the reason and not only the exit status:** a v1 and a v2 record (`envelope_too_old`); a v3 record with `source_commit` null, absent, uppercase, short, or non-hex; `artifacts` absent and empty; a path with `..`, `.`, an empty segment, a leading `/` (absolute), a trailing `/` (directory spelling), a backslash, a NUL; a repeated path; an unsorted list; a digest without the prefix, in uppercase, 63 digits long, and with another algorithm name; a wrong manifest digest; two `specs` with one `source_path`; a listed path absent from the commit; a digest of a normalized (CRLF) copy instead of the blob bytes; a listed path that is a directory, a symbolic link, a submodule, or that lies below a symbolic link. For the compiler (section 6): a declaration missing, empty, with `include` or `exclude`, with an absolute path, with `..`, with a repeated path, naming a path not in the commit, naming a directory, a link, a submodule.
 
 Each negative vector MUST be shown to be refused by a planted-defect run of the verifier (the vector turns green when the check is removed), as for the other contracts of this ecosystem.
 
 ## 13. Not decided here
 
-The glob dialect (section 6); the exact `project.yaml` key names beyond `release_artifacts.include` and `exclude`; whether the producer's declared set may be larger than a consumer's need (it may); how long envelope 2 verification is kept; and every trust gate listed in section 2. The base64 representation of the legacy fields is not changed.
+Glob or other pattern support (a later, separately versioned extension, section 6); how long envelope 2 verification is kept (section 9); and every trust gate listed in section 2. Whether the producer's declared set may be larger than a consumer's need is decided: it may. The base64 representation of the legacy fields is not changed.
 
 ## 14. Sequence
 
