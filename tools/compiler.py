@@ -79,7 +79,7 @@ def _inject_version(obj, version_str):
     return obj
 
 
-RELEASE_ENVELOPE_VERSION = 2
+RELEASE_ENVELOPE_VERSION = 3
 
 
 def _release_hash_payload(bundle, envelope_version):
@@ -96,8 +96,15 @@ def _release_hash_payload(bundle, envelope_version):
          how v1 went wrong; excluding two and covering the rest cannot leave
          a new field accidentally unsigned.
 
-    v1 stays supported because release/cic-primitives-v0.1.5.yaml was signed
-    under it and must keep verifying. New releases are written as v2.
+    v3 — the same rule as v2. What v3 adds is not in the signature mechanism but
+         in the bundle: `artifacts` (a digest of every released file) and a
+         mandatory `provenance.source_commit` are members of the bundle, so the
+         v2 rule already covers them. The new number tells a verifier that the
+         record means to meet docs/en/RELEASE-RECORD-CONTRACT.md.
+
+    v1 and v2 stay supported because release/cic-primitives-v0.1.5.yaml (v1) and
+    release/cic-primitives-v0.2.0.yaml (v2) were signed under them and must keep
+    verifying. New releases are written as v3.
     """
     if envelope_version == 1:
         return {
@@ -106,7 +113,7 @@ def _release_hash_payload(bundle, envelope_version):
             'specs': bundle.get('specs'),
             'validity': bundle.get('validity'),
         }
-    if envelope_version == 2:
+    if envelope_version in (2, 3):
         payload = json.loads(json.dumps(bundle, sort_keys=True, default=str))
         payload.pop('cic_countersign', None)
         release_block = payload.get('release')
@@ -117,15 +124,34 @@ def _release_hash_payload(bundle, envelope_version):
     return None
 
 
-def _collect_provenance():
-    """Facts about WHERE this build came from, so the signature can cover them."""
-    provenance = {'envelope': RELEASE_ENVELOPE_VERSION}
+SOURCE_COMMIT_RE = re.compile(r'^[0-9a-f]{40}$')
+REGULAR_FILE_MODES = ('100644', '100755')
+
+
+def _source_commit():
+    """The commit the release is made from: `git rev-parse HEAD`, 40 lowercase hex digits.
+
+    Envelope 3 does not allow a release without one (the contract, section 5): the
+    envelope 2 habit of recording `null` when git said nothing is gone. The commit
+    identifies the source state; it is not evidence of the artifacts' bytes, the
+    digests are.
+    """
     try:
-        provenance['source_commit'] = subprocess.run(
-            ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True,
-            check=True).stdout.strip()
-    except Exception:
-        provenance['source_commit'] = None
+        commit = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True,
+                                check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        commit = ''
+    if not SOURCE_COMMIT_RE.match(commit):
+        print("\033[91m✗ ERROR: cannot name the source commit (git rev-parse HEAD gave no "
+              "40 lowercase hexadecimal digits). An envelope 3 release does not exist without one.\033[0m")
+        sys.exit(1)
+    return commit
+
+
+def _collect_provenance(commit=None):
+    """Facts about WHERE this build came from, so the signature can cover them."""
+    provenance = {'envelope': RELEASE_ENVELOPE_VERSION,
+                  'source_commit': commit or _source_commit()}
     for label, path in (('dependency_lock', 'dependency.yaml'),
                         ('grammar', 'proposals/atom-grammar/check_grammar.py'),
                         ('grammar_schema', 'proposals/atom-grammar/instance-grammar.schema.yaml')):
@@ -135,6 +161,140 @@ def _collect_provenance():
         except OSError:
             provenance[f'{label}_sha256'] = None
     return provenance
+
+
+# --- Release artifacts (docs/en/RELEASE-RECORD-CONTRACT.md, sections 6 to 8) ---
+#
+# The producer declares the files a release publishes, as explicit paths in
+# project.yaml (compiler_settings.release_artifacts.paths). They are resolved
+# against the git tree of the source commit and nothing else: not the working
+# directory, not a checkout with its line-end filters, not a consumer's pin
+# manifest. The declaration itself is read from that same commit.
+
+def _git_tree(commit):
+    """{path: (mode, type, oid)} of the whole tree of `commit`, directories included."""
+    listing = subprocess.run(['git', 'ls-tree', '-r', '-t', '-z', '--full-tree', commit],
+                             capture_output=True)
+    if listing.returncode != 0:
+        print(f"\033[91m✗ ERROR: cannot list the tree of {commit}: "
+              f"{listing.stderr.decode('utf-8', 'replace').strip()}\033[0m")
+        sys.exit(1)
+    tree = {}
+    for record in listing.stdout.split(b'\0'):
+        if not record:
+            continue
+        meta, _tab, name = record.partition(b'\t')
+        mode, kind, oid = meta.decode('ascii').split(' ')
+        tree[name.decode('utf-8', 'surrogateescape')] = (mode, kind, oid)
+    return tree
+
+
+def _git_blob(oid):
+    """The bytes of a blob exactly as stored: `cat-file blob` applies no filter."""
+    blob = subprocess.run(['git', 'cat-file', 'blob', oid], capture_output=True)
+    if blob.returncode != 0:
+        print(f"\033[91m✗ ERROR: cannot read blob {oid}\033[0m")
+        sys.exit(1)
+    return blob.stdout
+
+
+def _release_artifact_path_problem(path):
+    """None when `path` is a path of the contract (section 7); otherwise what is wrong."""
+    if not isinstance(path, str) or path == '':
+        return 'not a non-empty string'
+    try:
+        path.encode('utf-8')
+    except UnicodeEncodeError:
+        return 'not UTF-8'
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in path):
+        return 'control character'
+    if '\\' in path:
+        return 'backslash'
+    if path.startswith('/'):
+        return 'absolute'
+    if path.endswith('/'):
+        return 'trailing slash'
+    for segment in path.split('/'):
+        if segment == '':
+            return 'empty segment'
+        if segment in ('.', '..'):
+            return f"'{segment}' segment"
+    return None
+
+
+def _validate_release_artifact_declaration(project, tree):
+    """(reason, detail) when the declaration in a parsed project.yaml is refused (section 6), else None."""
+    settings = project.get('compiler_settings') if isinstance(project, dict) else None
+    declaration = settings.get('release_artifacts') if isinstance(settings, dict) else None
+    if not isinstance(declaration, dict):
+        return 'declaration_missing', 'compiler_settings.release_artifacts is absent'
+    unknown = sorted(str(key) for key in declaration if key != 'paths')
+    if unknown:
+        return 'declaration_unknown_key', 'not part of this version: ' + ', '.join(unknown)
+    paths = declaration.get('paths')
+    if not isinstance(paths, list):
+        return 'declaration_missing', 'release_artifacts.paths is absent or not a list'
+    if not paths:
+        return 'declaration_empty', 'release_artifacts.paths is empty'
+    for path in paths:
+        problem = _release_artifact_path_problem(path)
+        if problem:
+            return 'declaration_path_form', f'{path!r}: {problem}'
+    if len(set(paths)) != len(paths):
+        repeated = next(p for p in paths if paths.count(p) > 1)
+        return 'declaration_path_duplicate', repr(repeated)
+    for path in paths:
+        if path not in tree:
+            return 'declared_path_absent', f'{path!r} is not in the tree of the source commit'
+    for path in paths:
+        mode, kind, _oid = tree[path]
+        if kind != 'blob' or mode not in REGULAR_FILE_MODES:
+            return 'declared_path_not_regular', f'{path!r} is mode {mode}, type {kind}'
+    return None
+
+
+def _declaration_from_commit(tree):
+    """The parsed project.yaml as the SOURCE COMMIT holds it ({} when it holds none, or none that reads)."""
+    entry = tree.get('project.yaml')
+    if entry is None or entry[1] != 'blob' or entry[0] not in REGULAR_FILE_MODES:
+        return {}
+    try:
+        project = yaml.safe_load(_git_blob(entry[2]))
+    except yaml.YAMLError:
+        return {}
+    return project if isinstance(project, dict) else {}
+
+
+def _build_release_artifacts(paths, tree):
+    """The `artifacts` block: `sha256:` + hex of each blob's bytes, sorted by the UTF-8 bytes of the path, and the digest of the sha256sum-format manifest."""
+    files = []
+    for path in sorted(paths, key=lambda p: p.encode('utf-8')):
+        digest = 'sha256:' + get_sha256_hex(_git_blob(tree[path][2]))
+        files.append({'path': path, 'digest': digest})
+    manifest = ''.join(f"{entry['digest'][len('sha256:'):]}  {entry['path']}\n" for entry in files)
+    return {'manifest_digest': 'sha256:' + get_sha256_hex(manifest.encode('utf-8')), 'files': files}
+
+
+def _resolve_release_artifacts(commit):
+    """Declaration -> refusal or the `artifacts` block, from the git tree of `commit` only."""
+    tree = _git_tree(commit)
+    project = _declaration_from_commit(tree)
+    refusal = _validate_release_artifact_declaration(project, tree)
+    if refusal:
+        print(f"\033[91m✗ ERROR: release_artifacts: {refusal[0]}: {refusal[1]}\033[0m")
+        sys.exit(1)
+    return _build_release_artifacts(project['compiler_settings']['release_artifacts']['paths'], tree)
+
+
+def _check_unique_source_paths(specs):
+    """Two `specs` entries must not share a `source_path` (section 7): a later one never overwrites an earlier one."""
+    seen = set()
+    for entry in specs:
+        path = entry.get('source_path')
+        if path in seen:
+            print(f"\033[91m✗ ERROR: spec_source_path_duplicate: {path!r}\033[0m")
+            sys.exit(1)
+        seen.add(path)
 
 
 def get_reproducible_repo_hash(tree_id):
@@ -698,6 +858,14 @@ def run_release():
     release_version, component_name = validate_release_prerequisites()
     run_grammar_gate()
 
+    # The artifacts are fixed before anything is asked of Vault: a declaration that is
+    # refused must not cost a signature, and the commit that names them is the one the
+    # record will carry.
+    source_commit = _source_commit()
+    artifacts = _resolve_release_artifacts(source_commit)
+    print(f"  \033[92m✓ {len(artifacts['files'])} release artifacts digested from the tree of "
+          f"{source_commit[:12]}\033[0m")
+
     vault_addr = os.getenv('VAULT_ADDR')
     vault_token = os.getenv('VAULT_TOKEN')
     vault_cacert = os.getenv('VAULT_CACERT')
@@ -772,6 +940,8 @@ def run_release():
         })
         print(f"  - {schema_file}: {meta_hash[:16]}...")
 
+    _check_unique_source_paths(specs)
+
     # 6. Build hash: {createdBy (developer), release.createdBy (issuer), specs, validity}
     #    Both certificates are cryptographically bound before Vault signs.
     #    Future: this will become a Merkle tree root over CI artifact layers.
@@ -786,7 +956,8 @@ def run_release():
         'validity': validity,
         'createdBy': created_by,
         'specs': specs,
-        'provenance': _collect_provenance(),
+        'provenance': _collect_provenance(source_commit),
+        'artifacts': artifacts,
         'release': {
             'envelope': RELEASE_ENVELOPE_VERSION,
             'createdBy': release_created_by,
@@ -1002,7 +1173,7 @@ def run_verify_release(artifact_path, strict=False, trust_root=None):
     recorded_hash = release_block.get('build_hash', '')
 
     envelope_version = release_block.get('envelope', 1)
-    if envelope_version not in (1, 2):
+    if envelope_version not in (1, 2, 3):
         print(f"  \033[91m✗ unknown release envelope version: {envelope_version}\033[0m")
         sys.exit(1)
     hash_payload = _release_hash_payload(bundle, envelope_version)
@@ -1250,6 +1421,11 @@ def run_verify_release(artifact_path, strict=False, trust_root=None):
         if not (bundle.get('provenance') or {}).get('source_commit'):
             unproven.append("no source_commit recorded, so the artifact cannot be tied "
                             "back to a tree")
+        if envelope_version == 3:
+            unproven.append("the artifact list is not checked here (its digests, order, paths "
+                            "and the git tree of source_commit): that is "
+                            "tools/release_record_conformance.py, the reference check of "
+                            "docs/en/RELEASE-RECORD-CONTRACT.md")
 
     print(f"\n--- What this proves ---")
     for claim in proven:
