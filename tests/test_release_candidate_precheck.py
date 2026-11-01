@@ -213,24 +213,52 @@ def test_the_first_release_may_have_any_version(world):
 
 # ── record ───────────────────────────────────────────────────────────────────────────────────────
 
+def full_specs():
+    """A record that digests every pinned file that is not one of the two provenance files."""
+    return [{"id": p, "source_path": p, "meta_hash": b64(FILES[p])} for p in FILES if p not in rcp.PROVENANCE_FILES.values()]
+
+
 def make_record(world, source, specs=None, prov_extra=None):
     prov = {"source_commit": source, "grammar_sha256": b64(FILES["proposals/atom-grammar/check_grammar.py"]),
             "grammar_schema_sha256": b64(FILES["proposals/atom-grammar/instance-grammar.schema.yaml"])}
     prov.update(prov_extra or {})
     rec = {"kind": "PrimitiveRelease", "version": "0.9.0", "provenance": prov,
-           "specs": specs if specs is not None else [{"id": "role", "source_path": "schemas/atomic/role.yaml", "meta_hash": b64(FILES["schemas/atomic/role.yaml"])}]}
+           "specs": specs if specs is not None else full_specs()}
     p = world["tmp"] / "record.yaml"
     p.write_text(yaml.safe_dump(rec), encoding="utf-8")
     return p
 
 
-def test_a_record_whose_source_commit_holds_the_pin_passes_and_classifies_the_files(world):
+def test_a_record_with_the_pin_and_all_digests_passes_but_leaves_the_gates_open(world):
     rc, out = run(world, "record", record=make_record(world, world["pinned"]))
     assert rc == 0, out
     assert "PASS  source_commit: all 5 files are byte-identical" in out
-    assert "files the record digests itself (3 of 5)" in out
-    assert "files that rest on the source commit alone (2): LICENSE.md; é.yaml" in out
-    assert "OPEN  source commit as the carrier" in out
+    assert "files the record digests itself (5 of 5)" in out
+    assert "PASS  record digest coverage: all 5 pinned files have a digest of their own in the record" in out
+    for gate in ("trust anchor", "signer authority", "certificate validity", "digest encoding", "signing and publishing"):
+        assert f"OPEN  {gate}" in out
+    assert "INFO  scope: PASS lines prove byte-identity" in out and "do not prove the signer's authority" in out
+
+
+def test_a_record_that_digests_only_some_files_fails_even_when_the_commit_holds_all_of_them(world):
+    only_role = [{"id": "role", "source_path": "schemas/atomic/role.yaml", "meta_hash": b64(FILES["schemas/atomic/role.yaml"])}]
+    rc, out = run(world, "record", record=make_record(world, world["pinned"], specs=only_role))
+    assert rc == 1
+    assert "PASS  source_commit: all 5 files are byte-identical" in out
+    assert "FAIL  record digest coverage: 3 of 5: 2 pinned files have no digest of their own in the record and rest on the source commit alone: LICENSE.md; \u00e9.yaml" in out
+
+
+def test_all_digests_do_not_replace_the_source_commit(world):
+    # the source commit stays mandatory: full digests with no commit is still a failure
+    rc, out = run(world, "record", record=make_record(world, world["pinned"], prov_extra={"source_commit": None}))
+    assert rc == 1 and "FAIL  source_commit: the record carries none" in out
+
+
+def test_a_candidate_keeps_the_record_coverage_requirement_open(world):
+    rc, out = run(world, release_head=world["pinned"])
+    assert rc == 0
+    assert "OPEN  record digest coverage: the record has to carry its own digest of all 12 pinned files" in out
+    assert "INFO  scope: PASS lines prove byte-identity" in out and "do not prove the signer's authority" in out
 
 
 def test_a_record_whose_source_commit_lacks_the_pin_fails(world):
@@ -292,3 +320,36 @@ def test_an_unknown_pin_name_stops(world):
     world["pin_override"] = "nope"
     with pytest.raises(SystemExit):
         run(world)
+
+
+# ── the negative evidence on release v0.2.0 (frozen, reproducible, never fixed away) ──────────────
+
+REPO = pathlib.Path(__file__).resolve().parents[1]
+V020_SOURCE = "9c67ea4478d3a7ebe74d31a00ec02db589ac9e32"
+V020_PIN = "cic-primitives-73ae469-6a188078"
+
+
+def has_commit(commit):
+    return subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"{commit}^{{commit}}"], capture_output=True).returncode == 0
+
+
+@pytest.mark.skipif(not has_commit(V020_SOURCE), reason="the history of release v0.2.0 is not in this clone (a shallow checkout); run with the full history")
+def test_release_v020_does_not_hold_the_pinned_grammar(tmp_path):
+    # the v0.2.0 record lives on the tag, not on devel
+    tag = subprocess.run(["git", "-C", str(REPO), "show", "primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml"], capture_output=True)
+    assert tag.returncode == 0, "the tag primitives/@v0.2.0 is needed (git fetch --tags)"
+    record_path = tmp_path / "cic-primitives-v0.2.0.yaml"
+    record_path.write_bytes(tag.stdout)
+    out = io.StringIO()
+    with redirect_stdout(out):
+        rc = rcp.main(["record", "--repo", str(REPO), "--manifest", str(REPO / "tests/fixtures/forms-pin-73ae469.yaml"), "--pin", V020_PIN, "--record", str(record_path)])
+    text = out.getvalue()
+    assert rc == 1
+    # 4 pinned files are absent from the source commit, 5 are there with other bytes, 3 are identical
+    assert text.count("absent at the commit") == 4
+    assert text.count("source_commit: ") - text.count("absent at the commit") == 5
+    # the record's own digests of four pinned files are not the pinned files
+    assert text.count("FAIL  record digest of ") == 4
+    # and only 2 of the 12 are digested by the record AND equal
+    assert "files the record digests itself (2 of 12)" in text
+    assert "FAIL  record digest coverage: 2 of 12" in text

@@ -13,7 +13,7 @@ release_candidate_precheck.py record    --manifest PINS --pin NAME --record rele
 
 **candidate** (before the release). The pinned commit exists and is on `devel`; the twelve files at it are byte-identical to the manifest; the manifest digest and the pin name recompute; the commit the release will actually run on (`--release-head`: the release branch head, or the merge commit on `main`) holds the same twelve files; the version is a valid next increment (the rule of `compiler.py`); the files in which `devel` has moved on since the pin are listed.
 
-**record** (after the release). The record's `provenance.source_commit` holds the twelve files byte-identical to the manifest; and the record says which of them it digests itself (the schema sources in `specs`, and the two files of `provenance.grammar_*`) and which rest on the source commit alone.
+**record** (after the release). The record's `provenance.source_commit` holds the twelve files byte-identical to the manifest, **and** the record carries its own digest of every one of the twelve. The second is a release requirement (decision of 2026-11-01): `source_commit` identifies and retrieves the source state and stays mandatory, but it does not replace the file digests; the record has to carry the digest values and their algorithm itself, so that verifying the twelve files does not depend on a git object being reachable later. Where the record keeps them is the record contract, which is not decided here; the tool reads the places that exist (the schema sources in `specs`, the two files of `provenance.grammar_*`) and invents no field.
 
 Exit status 1 when a hard check fails. `OPEN` lines are gates the tool does not and cannot close; they never turn into a pass.
 
@@ -22,10 +22,22 @@ Exit status 1 when a hard check fails. `OPEN` lines are gates the tool does not 
 * `candidate` on `73ae469` with `--release-head 73ae469`: all checks pass, 12 of 12 files byte-identical. `devel` (`d27173f`) **has moved on in `proposals/atom-grammar/P0-4-MIGRATION.md`**, a pinned file: **a release cut from the head of `devel` is not the pin.** The release has to run on a branch cut from `73ae469`, or the pin has to move.
 * `candidate` with `--release-head` set to the head of `devel`: FAIL on that file.
 * `record` on `release/cic-primitives-v0.2.0.yaml`: FAIL. Its `source_commit` (`9c67ea4`) lacks 4 of the 12 files and holds 5 others with different bytes; the record's own digests of `check_grammar.py`, `instance-grammar.schema.yaml`, `policy-surface.yaml` and `access.yaml` do not equal the pinned files. This is the refutation of `v0.2.0` as the release of the pin, now by a repeatable tool.
-* In `v0.2.0` the record digests 2 of the 12 files itself (`role.yaml`, `shape.yaml`); 4 more are digested by name but with other bytes; 6 rest on the signed `source_commit` alone. For a new release the same split applies: **6 of 12 pinned files have no digest of their own in the record**, and are bound by the signed `source_commit` (a git SHA-1 object id) only. Whether that is enough, or the record should digest all twelve, is for the owner.
+* In `v0.2.0` the record digests 2 of the 12 files itself and equal (`role.yaml`, `shape.yaml`); 4 more are digested by name but with other bytes; 6 have no digest in it. With the present compiler a record can digest **at most 6 of the 12 by construction** (the schema sources and the two grammar files), so a new release cannot meet the 12-of-12 requirement until the record contract changes. That is why `candidate` keeps `record digest coverage` as an OPEN gate and `record` fails a record below 12 of 12.
+* The negative evidence on `v0.2.0` is frozen and reproducible: `tests/fixtures/forms-pin-73ae469.yaml` is a copy of the consumer's pin, and `test_release_v020_does_not_hold_the_pinned_grammar` asserts the 4 absent files, the 5 files with other bytes, the 4 wrong record digests and the 2-of-12 coverage (it needs the full history and the tag `primitives/@v0.2.0`; in a shallow checkout it is skipped, not passed). Nothing about `v0.2.0` is corrected or hidden by this tool.
+
+## What a PASS means, and what it does not
+
+The tool proves, from git objects and the record: the pinned commit exists and is on `devel`; the twelve files are byte-identical to the manifest at the commit the release runs on; the manifest digest and the pin name recompute; the version is a valid increment; and (record mode) the record carries its own digest of each of the twelve and they equal the pinned bytes.
+
+A `12/12 PASS` is **not** a statement that a release is genuine. It does not show who may sign, that the countersignature authorizes a release, that the certificates are trusted or valid on the release day, or that the digest encoding is the receipt's. Those are the open gates below; they are printed as `OPEN` on every run and cannot be turned into a pass by this tool. Every run also ends with a `scope` line saying so.
+
+## The candidate `73ae469` is not the head of `devel`
+
+The candidate is the pinned commit `73ae469`. `devel` has moved on since (`d27173f`, and `P0-4-MIGRATION.md`, a pinned file, differs there). A pull request that targets `devel`, such as the one that adds this tool, gives no authority to cut the release from the current head of `devel`: a release cut there is not the pin, and `candidate --release-head <that head>` fails on the changed file. The release runs on a branch cut from `73ae469`, or the pin moves; the former is the owner's chosen direction.
 
 ## Open gates (not checked by this tool)
 
+0. **Record digest coverage:** the record carries its own digest of all 12 pinned files and the algorithm (see above); open until the record contract meets it.
 1. A CIC root pinned **outside** the record (`verify-release --trust-root`).
 2. Signer authority: the release issuer certificate is not chained to anything in the record; whether the countersignature alone authorizes a release is not decided.
 3. Certificate validity at the release date (the certificates of `v0.2.0` expire 2026-12-31).

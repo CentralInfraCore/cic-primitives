@@ -7,7 +7,7 @@ A fogyasztó (`cic-primitive-forms`, `corpus/pins.yaml`) egy commitot és pontos
 ## Módok
 
 * `candidate` (release előtt): a pinelt commit létezik és a `devel`-en van; a tizenkét fájl bájtra azonos a manifesttel; a manifest-digest és a pin neve újraszámolható; az a commit, amelyen a release ténylegesen fut (`--release-head`), ugyanazt a tizenkét fájlt tartalmazza; a verzió érvényes következő növelés; ki van listázva, mely fájlokban haladt tovább a `devel` a pin óta.
-* `record` (release után): a rekord `provenance.source_commit`-ja bájtra azonos módon tartalmazza a tizenkét fájlt; és a rekord megmondja, melyeket digesteli maga (a `specs` forrásai és a két `provenance.grammar_*` fájl), és melyek csak a source commitra támaszkodnak.
+* `record` (release után): a rekord `provenance.source_commit`-ja bájtra azonos módon tartalmazza a tizenkét fájlt; **és** a rekord mind a tizenkét fájlról hordozza a saját digestjét. Ez release-követelmény (2026-11-01 döntés): a `source_commit` a forrásállapot azonosítására szolgál és kötelező marad, de nem helyettesíti a fájlszintű digesteket; a rekordnak a digestértékeket és az algoritmust is hordoznia kell, hogy a tizenkét fájl ellenőrzése ne függjön egy git-objektum későbbi elérhetőségétől. Hogy a rekord hol tárolja, az a rekord-szerződés dolga, itt nem dől el; az eszköz a meglévő helyeket olvassa, mezőt nem talál ki.
 
 Az 1-es kilépési kód kemény hibát jelent. Az `OPEN` sorok olyan kapuk, amelyeket az eszköz nem zár le, és sosem válnak PASS-szá.
 
@@ -15,7 +15,9 @@ Az 1-es kilépési kód kemény hibát jelent. Az `OPEN` sorok olyan kapuk, amel
 
 * `candidate` a `73ae469`-en: minden ellenőrzés zöld, 12/12 fájl azonos. A `devel` (`d27173f`) **továbbhaladt a `P0-4-MIGRATION.md`-ben**, ami pinelt fájl: **a `devel` fejéről vágott release nem a pin.** A release-nek a `73ae469`-ből vágott ágon kell futnia, vagy a pint kell mozgatni.
 * `record` a `v0.2.0` rekordon: FAIL (4 fájl hiányzik, 5 eltér a source commitban; a rekord négy saját digestje sem egyezik a pinelttel).
-* 6 a 12 pinelt fájlból egy új release rekordjában sem kap saját digestet: csak az aláírt `source_commit` (git SHA-1 objektumazonosító) köti. Hogy ez elég-e, vagy a rekord mind a tizenkettőt digestelje, a tulajdonos döntése.
+* A mostani compilerrel a rekord **legfeljebb 6 fájlt digesteltethet a 12-ből** (a séma-források és a két grammar-fájl), ezért új release sem teljesítheti a 12/12 követelményt a rekord-szerződés változása nélkül. A `candidate` ezt nyitott kapuként tartja, a `record` 12/12 alatt hibát jelez. A `v0.2.0` negatív bizonyítéka befagyasztott fixture-rel reprodukálható, az eszköz semmit nem javít ki és nem fed el.
+* A `12/12 PASS` **nem** állítja, hogy a release hiteles: az aláíró jogosultságát, a trust anchort és a tanúsítvány-érvényességet nem bizonyítja (`OPEN` sorok, minden futás `scope` sorral zár).
+* A `73ae469` jelölt nem a `devel` jelenlegi feje. Egy `devel`-re célzó PR (mint ez) nem ad felhatalmazást a release `devel` fejéből való vágására.
 
 ## Nyitott kapuk (az eszköz nem ellenőrzi)
 

@@ -12,8 +12,9 @@ questions (cryptographic origin, and whether the signed claim covers the pinned 
 `candidate`  before the release: the pinned commit exists and is on devel; the twelve files at it are byte-identical to the manifest; the manifest digest and the
              pin name recompute; the commit that the release will actually be cut from (--release-head: the release branch head, or the merge commit on main) holds
              the same twelve files; the version is a valid next increment; the files in which devel has moved on are listed.
-`record`     after the release: the record's `provenance.source_commit` holds the twelve files byte-identical to the manifest, and the record says which of them it
-             digests itself (the spec sources and the two grammar files) and which rest on the source commit alone.
+`record`     after the release: the record's `provenance.source_commit` holds the twelve files byte-identical to the manifest, AND the record carries its own digest of
+             every one of the twelve (the owner's requirement: source_commit stays mandatory and does not stand in for the file digests). Where the record keeps them is
+             the record contract; the places read here are the spec sources and the two grammar files, nothing is invented.
 
 Exit status 1 when a hard check fails. `OPEN` lines are gates this tool does not and cannot close (a trust anchor pinned outside the record, certificate validity at
 the release date, the digest-encoding contract, the signing itself); they never turn into a pass.
@@ -180,7 +181,10 @@ def candidate(args, report):
     gates(report, args.release_date)
 
 
-def gates(report, release_date):
+def gates(report, release_date, record_mode=False):
+    if not record_mode:
+        report.add(OPEN, "record digest coverage", "the record has to carry its own digest of all 12 pinned files and the algorithm; the present compiler digests the schema sources and two "
+                   "grammar files, so at most 6 of the 12 by construction. A record contract change, not decided or made here; until then no candidate is complete")
     report.add(OPEN, "trust anchor", "a CIC root pinned OUTSIDE the record (verify-release --trust-root) is not supplied by this tool")
     report.add(OPEN, "signer authority", "the release issuer certificate is not chained to anything in the record; whether the countersignature alone authorizes a release is not decided")
     if release_date:
@@ -233,9 +237,13 @@ def record(args, report):
         else:
             report.add(FAIL, f"record digest of {path}", f"{where} does not equal the pinned file")
     report.add(INFO, f"files the record digests itself ({len(covered)} of {len(by_path)})", "; ".join(covered) or "none")
-    report.add(INFO, f"files that rest on the source commit alone ({len(alone)})", "; ".join(alone) or "none")
-    report.add(OPEN, "source commit as the carrier", "the files without a digest of their own are bound by the signed source_commit (a git SHA-1 object id) only")
-    gates(report, None)
+    # the owner's requirement: the record carries its own digest of EVERY pinned file; source_commit stays mandatory and does not stand in for them
+    if alone:
+        report.add(FAIL, f"record digest coverage: {len(covered)} of {len(by_path)}",
+                   f"{len(alone)} pinned files have no digest of their own in the record and rest on the source commit alone: " + "; ".join(alone))
+    else:
+        report.add(PASS, f"record digest coverage: all {len(by_path)} pinned files have a digest of their own in the record")
+    gates(report, None, record_mode=True)
 
 
 def main(argv=None):
@@ -261,6 +269,8 @@ def main(argv=None):
             record(args, report)
     except RuntimeError as e:
         report.add(FAIL, "git", str(e))
+    report.add(INFO, "scope", "PASS lines prove byte-identity and consistency of the named files only; they do not prove the signer's authority, the release's authenticity "
+               "or the trust anchor (the OPEN lines), and a 12 of 12 PASS is not a statement that a release is genuine")
     print(report.render())
     return 1 if report.failed() else 0
 
