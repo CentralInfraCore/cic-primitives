@@ -117,8 +117,10 @@ def test_run_release_writes_an_envelope_3_record_that_meets_the_contract(tmp_pat
     assert bundle["release"]["envelope"] == bundle["provenance"]["envelope"] == 3
     assert bundle["provenance"]["source_commit"] == commit
     # the artifacts block equals the independently recomputed one (sha256sum of the worked example), not the output of another run of the compiler
-    expected = fx.load_expected()
-    assert bundle["artifacts"] == {"manifest_digest": expected["manifest_digest"], "files": expected["files"]}
+    assert bundle["artifacts"] == sup.expected_artifacts(sup.sandbox_paths())
+    # the three golden files in it are the worked example of the contract, digest for digest
+    golden = {f["path"]: f["digest"] for f in fx.load_expected()["files"]}
+    assert {f["path"]: f["digest"] for f in bundle["artifacts"]["files"] if f["path"] in golden} == golden
     report = V.verify(sup.countersign(bundle), str(root))
     assert report["record"].status == "PASS", (report["record"].reason, report["record"].detail)
     assert report["blobs"].status == "PASS", report["blobs"].failures
@@ -148,16 +150,16 @@ def test_the_digest_is_of_the_blob_bytes_not_of_the_working_directory(tmp_path, 
     (root / (fx.E_ACUTE + ".txt")).unlink()
     run_release_in(root, monkeypatch)
     bundle = sup.written_record(root, version)
-    assert bundle["artifacts"]["files"] == fx.load_expected()["files"]
+    assert bundle["artifacts"] == sup.expected_artifacts(sup.sandbox_paths())
 
 
 def test_a_filter_in_the_checkout_does_not_reach_the_digest(tmp_path, monkeypatch):
     attributes = ("100644", b"*.txt text eol=crlf\n")
-    files = sup.commit_files(sup.golden_paths()) + [(".gitattributes", attributes[1], attributes[0])]
+    files = sup.commit_files(sup.sandbox_paths()) + [(".gitattributes", attributes[1], attributes[0])]
     root, version, _commit, _calls = sup.release_sandbox(C, tmp_path, monkeypatch, files=files)
     fx._git(root, "config", "core.autocrlf", "true")
     run_release_in(root, monkeypatch)
-    assert sup.written_record(root, version)["artifacts"]["files"] == fx.load_expected()["files"]
+    assert sup.written_record(root, version)["artifacts"] == sup.expected_artifacts(sup.sandbox_paths())
 
 
 def test_the_declaration_comes_from_the_commit_not_from_the_working_directory(tmp_path, monkeypatch):
@@ -165,7 +167,7 @@ def test_the_declaration_comes_from_the_commit_not_from_the_working_directory(tm
     # the working copy of project.yaml declares something else entirely; the commit's declaration is the one that is read
     (root / "project.yaml").write_text(sup.project_yaml(["a.txt"]))
     project = C._declaration_from_commit(C._git_tree(commit))
-    assert project["compiler_settings"]["release_artifacts"]["paths"] == sup.golden_paths()
+    assert project["compiler_settings"]["release_artifacts"]["paths"] == sup.sandbox_paths()
 
 
 def test_a_working_directory_that_declares_something_else_stops_the_release(tmp_path, monkeypatch, capsys):
@@ -191,7 +193,7 @@ def test_a_declaration_in_the_working_directory_only_is_no_declaration(tmp_path,
 
 def test_the_working_directory_does_not_stand_in_for_the_commit_on_the_paths_either(tmp_path, monkeypatch, capsys):
     # a file that is only in the working directory, not in the commit, is not an artifact
-    root, version, _commit, calls = sup.release_sandbox(C, tmp_path, monkeypatch, paths=sup.golden_paths() + ["untracked.txt"])
+    root, version, _commit, calls = sup.release_sandbox(C, tmp_path, monkeypatch, paths=sup.sandbox_paths() + ["untracked.txt"])
     (root / "untracked.txt").write_text("only here\n")
     with pytest.raises(SystemExit) as stop:
         run_release_in(root, monkeypatch)
@@ -395,10 +397,57 @@ def test_a_provenance_input_that_the_commit_holds_and_the_working_directory_lack
 
 
 def test_an_ignored_commitment_file_that_the_commit_does_not_hold_is_refused(tmp_path, monkeypatch, capsys):
-    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[(".gitignore", b"commitment.yaml\n", "100644")])
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, without=("commitment.yaml",), extra_files=[(".gitignore", b"commitment.yaml\n", "100644")])
     (root / "commitment.yaml").write_text("kind: DeveloperCommitment\n")
     assert sup.porcelain(root) == ""
     refused_for(root, monkeypatch, capsys, calls, "commitment.yaml", "not in the source commit")
+
+
+WHO_NAMES_IT = {
+    # the step that stops the release for a required input that exists on neither side; the check of this module names commitment.yaml itself
+    "commitment.yaml": "a required input of the release",
+    "project.yaml": "declaration_missing",
+    "proposals/atom-grammar/check_grammar.py": "not found",
+    "proposals/atom-grammar/instance-grammar.schema.yaml": "cannot load the atom grammar",
+}
+
+
+@pytest.mark.parametrize("path", sorted(WHO_NAMES_IT))
+def test_a_required_input_that_is_absent_on_both_sides_stops_the_release_end_to_end(path, tmp_path, monkeypatch, capsys):
+    # with the REAL commitment loader: the input exists neither in the working directory nor in the source commit
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, without=(path,), real_commitment=True,
+                                              files=[f for f in sup.commit_files(sup.sandbox_paths()) if f[0] != path])
+    assert not (root / path).exists()
+    with pytest.raises(SystemExit) as stop:
+        run_release_in(root, monkeypatch)
+    out = capsys.readouterr().out
+    assert stop.value.code == 1 and WHO_NAMES_IT[path] in out, out
+    assert calls["vault"] == 0 and not (root / "release").exists()
+
+
+def test_the_real_commitment_loader_would_stop_on_a_missing_commitment_too(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit):
+        C._load_valid_commitment()
+    assert "commitment.yaml not found" in capsys.readouterr().out
+
+
+def test_the_check_names_every_required_input_absent_on_both_sides_itself(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit):
+        C._check_release_inputs_match_commit({}, [])
+    out = capsys.readouterr().out
+    # the requirement is written here, not read from the constant it checks
+    for path in ("project.yaml", "commitment.yaml", "proposals/atom-grammar/check_grammar.py", "proposals/atom-grammar/instance-grammar.schema.yaml"):
+        assert path in out, path
+    assert "dependency.yaml" not in out
+
+
+def test_dependency_yaml_is_the_one_optional_input(tmp_path, monkeypatch):
+    # absent on both sides: the legacy digest is null, as it always was, and the release goes on
+    root, version, _c, _calls = sup.release_sandbox(C, tmp_path, monkeypatch, without=("dependency.yaml",))
+    run_release_in(root, monkeypatch)
+    assert sup.written_record(root, version)["provenance"]["dependency_lock_sha256"] is None
 
 
 def test_a_symbolic_link_for_a_schema_file_is_refused(tmp_path, monkeypatch, capsys):
@@ -419,6 +468,80 @@ def test_the_tree_selection_of_schema_files_is_the_glob_selection(tmp_path, monk
     from_tree = C._release_schema_files_in_tree(C._git_tree(commit))
     assert from_tree == C._release_schema_files()
     assert "schemas/atomic/nested/deep.yaml" in from_tree and "schemas/atomic/.hidden.yaml" not in from_tree and "schemas/atomic/empty.yaml" not in from_tree
+
+
+# ---------------------------------------------------------------- every published schema is among the artifacts
+
+def test_a_schema_the_record_publishes_but_the_declaration_does_not_list_stops_the_release(tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, paths=sup.golden_paths())
+    with pytest.raises(SystemExit) as stop:
+        run_release_in(root, monkeypatch)
+    out = capsys.readouterr().out
+    assert stop.value.code == 1 and "spec_not_in_artifacts" in out and "schemas/atomic/shape.yaml" in out
+    assert calls["vault"] == 0 and not (root / "release").exists()
+
+
+def test_a_nested_schema_that_is_missing_from_the_declaration_is_named(tmp_path, monkeypatch, capsys):
+    import test_compiler as tc
+    deep = (tc._META.format(name="Deep", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n").encode()
+    extra = [("schemas/atomic/nested/deep.yaml", deep, "100644")]
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, paths=sup.sandbox_paths(), extra_files=extra)
+    with pytest.raises(SystemExit):
+        run_release_in(root, monkeypatch)
+    out = capsys.readouterr().out
+    assert "spec_not_in_artifacts" in out and "schemas/atomic/nested/deep.yaml" in out and "schemas/atomic/shape.yaml" not in out
+    assert calls["vault"] == 0
+
+
+def test_every_spec_source_path_of_the_written_record_is_among_its_artifacts(tmp_path, monkeypatch):
+    root, version, _c, _calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    run_release_in(root, monkeypatch)
+    bundle = sup.written_record(root, version)
+    listed = {f["path"] for f in bundle["artifacts"]["files"]}
+    assert bundle["specs"] and all(spec["source_path"] in listed for spec in bundle["specs"])
+
+
+def test_the_spec_check_compares_forward_slash_paths():
+    artifacts = {"files": [{"path": "schemas/atomic/a.yaml", "digest": "sha256:" + "0" * 64}]}
+    C._check_specs_in_artifacts(["schemas/atomic/a.yaml"], artifacts)
+    with pytest.raises(SystemExit):
+        C._check_specs_in_artifacts(["schemas/atomic/b.yaml"], artifacts)
+
+
+# ---------------------------------------------------------------- the boundary that remains: the validation gates read the working directory
+
+def test_a_composition_only_in_the_commit_is_not_judged_by_the_gate_the_boundary(tmp_path, monkeypatch, capsys):
+    """CHARACTERIZATION, not a wish. The grammar gate reads `schemas/examples/*.yaml` from the WORKING DIRECTORY. The consistency check compares what enters the record
+    (the schemas, the provenance inputs, project.yaml, commitment.yaml), and an example is not part of the record, so a composition that the commit holds and the
+    grammar rejects can be left out of the working directory (sparse checkout, skip-worktree) while `git status` stays clean: the gate passes and the release is cut.
+    The gate's verdict is then about the working directory, not about the commit. If this behaviour is ever closed, this test is to be changed on purpose."""
+    import test_compiler as tc
+    bad = ("schemas/examples/bad.yaml", (tc._META.format(name="Bad", version="v0.1.dev") + tc._BAD_COMPOSITION.lstrip("\n")).encode(), "100644")
+    root, version, commit, _calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[bad])
+    fx._git(root, "update-index", "--skip-worktree", bad[0])
+    (root / bad[0]).unlink()
+    assert sup.porcelain(root) == ""
+    run_release_in(root, monkeypatch)                       # the release is cut
+    assert sup.written_record(root, version)["provenance"]["source_commit"] == commit
+    # ... although the commit it is cut from holds a composition the same gate rejects once it is given that file
+    (root / bad[0]).write_bytes(bad[1])
+    capsys.readouterr()
+    with pytest.raises(SystemExit) as stop:
+        C.run_grammar_gate()
+    assert stop.value.code == 1
+    assert "grammar finding" in capsys.readouterr().out
+
+
+def test_a_composition_only_in_the_working_directory_decides_the_gate_the_other_direction(tmp_path, monkeypatch, capsys):
+    """The same boundary the other way: an ignored bad example that the commit does not hold stops a release of a commit that is fine."""
+    import test_compiler as tc
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[(".gitignore", b"schemas/examples/ignored-bad.yaml\n", "100644")])
+    (root / "schemas" / "examples" / "ignored-bad.yaml").write_text(tc._META.format(name="Bad", version="v0.1.dev") + tc._BAD_COMPOSITION.lstrip("\n"))
+    assert sup.porcelain(root) == ""
+    with pytest.raises(SystemExit) as stop:
+        run_release_in(root, monkeypatch)
+    assert stop.value.code == 1 and "grammar finding" in capsys.readouterr().out
+    assert calls["vault"] == 0
 
 
 # ---------------------------------------------------------------- the signature covers what the compiler wrote

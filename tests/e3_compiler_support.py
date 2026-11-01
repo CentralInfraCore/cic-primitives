@@ -69,7 +69,7 @@ def commit_files(paths):
     return list(fx.GOLDEN_FILES) + [("project.yaml", project_yaml(paths).encode("utf-8"), "100644")]
 
 
-def sandbox_files(extra=()):
+def sandbox_files(extra=(), without=()):
     """What run_release() reads from the working directory besides the artifacts: the schema files, project.yaml (added by the caller), dependency.yaml, the two
     grammar files of the provenance digests. They are COMMITTED, because the compiler stops when the working directory and the source commit disagree."""
     import test_compiler as tc
@@ -80,21 +80,44 @@ def sandbox_files(extra=()):
         ("schemas/index.yaml", (repo / "schemas" / "index.yaml").read_bytes(), "100644"),
         ("md.meta.schema.yaml", (repo / "md.meta.schema.yaml").read_bytes(), "100644"),
         ("dependency.yaml", b"schema_version: '1'\n", "100644"),
+        ("commitment.yaml", b"kind: DeveloperCommitment\n", "100644"),     # a placeholder: the signed pledge is replaced by the test, but the file is a required input
         ("proposals/atom-grammar/check_grammar.py", (repo / "proposals/atom-grammar/check_grammar.py").read_bytes(), "100644"),
         ("proposals/atom-grammar/instance-grammar.schema.yaml", (repo / "proposals/atom-grammar/instance-grammar.schema.yaml").read_bytes(), "100644"),
     ]
-    return files + list(extra)
+    return [f for f in files if f[0] not in without] + list(extra)
 
 
-def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths=None, extra_files=()):
+def spec_paths(extra=()):
+    """The schema files the sandbox's release carries as `specs` (the selection of the compiler: under schemas/, not an example, not the index, not hidden, not empty)."""
+    paths = ["schemas/atomic/shape.yaml"]
+    for name, content, _mode in extra:
+        parts = name.split("/")
+        if name.startswith("schemas/") and name.endswith(".yaml") and "examples" not in parts and parts[-1] != "index.yaml" and not any(p.startswith(".") for p in parts) and content:
+            paths.append(name)
+    return paths
+
+
+def sandbox_paths(extra=()):
+    """The default declaration of the sandbox: the golden files and every schema the record publishes (a spec that is not listed is refused)."""
+    return golden_paths() + spec_paths(extra)
+
+
+def expected_artifacts(paths, extra=()):
+    """The artifacts block of `paths`, computed here from the committed bytes with the independent implementation (sha256 of the bytes, sha256sum-format manifest)."""
+    content = {name: data for name, data, _m in list(fx.GOLDEN_FILES) + sandbox_files(extra)}
+    files = [{"path": p, "digest": "sha256:" + fx.sha256_hex(content[p])} for p in sorted(paths, key=lambda p: p.encode("utf-8"))]
+    return {"manifest_digest": fx.independent_manifest_digest(files), "files": files}
+
+
+def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths=None, extra_files=(), without=(), real_commitment=False):
     """What tests/test_compiler.py::_release_sandbox did, as a real git checkout: run_release() resolves the artifacts from the git tree of HEAD, so the sandbox has one.
 
     Vault and the developer commitment are replaced; the issuer is the test issuer of the frozen fixtures, so a record this compiler writes can be re-authenticated by the
     same test keys as the golden record. Returns (directory, version, source_commit, calls) where `calls` counts the Vault calls.
     """
     import test_compiler as tc
-    paths = golden_paths() if paths is None else paths
-    files = (commit_files(paths) if files is None else list(files)) + sandbox_files(extra_files)
+    paths = sandbox_paths(extra_files) if paths is None else paths
+    files = (commit_files(paths) if files is None else list(files)) + sandbox_files(extra_files, without)
     commit = checkout(tmp_path, files)
     monkeypatch.chdir(tmp_path)
 
@@ -117,7 +140,8 @@ def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths
     monkeypatch.setenv("VAULT_ADDR", "https://vault")
     monkeypatch.setenv("VAULT_TOKEN", "token")
     monkeypatch.setattr(C, "validate_release_prerequisites", lambda: (version, "primitives/"))
-    monkeypatch.setattr(C, "_load_valid_commitment", lambda require_signature=True: commitment)
+    if not real_commitment:
+        monkeypatch.setattr(C, "_load_valid_commitment", lambda require_signature=True: commitment)
     monkeypatch.setattr(C, "_vault_get_cert", vault_cert)
     monkeypatch.setattr(C, "_vault_sign", vault_sign)
     monkeypatch.setattr(C, "load_project_config", lambda full_config=False: (

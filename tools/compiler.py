@@ -321,6 +321,14 @@ def _release_schema_files_in_tree(tree):
     return sorted(selected)
 
 
+# Inputs the release path cannot do without. Absent from the working directory AND from the source commit is not consistency, it is a missing input: the check says
+# so itself instead of leaving it to whichever later step happens to notice (commitment.yaml: _load_valid_commitment; the grammar files: run_grammar_gate;
+# project.yaml: the import of this module). dependency.yaml is optional: without it the legacy digest is recorded as null, as it always was.
+REQUIRED_RELEASE_INPUTS = ('project.yaml', 'commitment.yaml',
+                           'proposals/atom-grammar/check_grammar.py',
+                           'proposals/atom-grammar/instance-grammar.schema.yaml')
+
+
 def _check_release_inputs_match_commit(tree, schema_files):
     """Everything the record takes from the WORKING DIRECTORY must be byte-identical to the source commit's blob.
 
@@ -336,7 +344,9 @@ def _check_release_inputs_match_commit(tree, schema_files):
         entry = tree.get(path.replace(os.sep, '/'))
         present = os.path.lexists(path)
         if not present and entry is None:
-            continue            # absent on both sides: nothing was read
+            if path in REQUIRED_RELEASE_INPUTS:
+                problems.append((path, 'a required input of the release, absent from the working directory and from the source commit'))
+            continue            # an optional input absent on both sides: nothing was read
         if not present:
             problems.append((path, 'missing from the working directory'))
         elif entry is None:
@@ -353,6 +363,18 @@ def _check_release_inputs_match_commit(tree, schema_files):
         print("\033[91m✗ ERROR: worktree_differs_from_source_commit: the record would be made of two different states of the source\033[0m")
         for path, why in problems:
             print(f"    {path}: {why}")
+        sys.exit(1)
+
+
+def _check_specs_in_artifacts(source_paths, artifacts):
+    """Every schema the record publishes as a `spec` must also be among the digested artifacts: a published schema must not be missing from the artifact manifest."""
+    listed = {entry['path'] for entry in artifacts['files']}
+    missing = sorted(path.replace(os.sep, '/') for path in source_paths if path.replace(os.sep, '/') not in listed)
+    if missing:
+        print("\033[91m✗ ERROR: spec_not_in_artifacts: the record would publish schemas that "
+              "release_artifacts.paths does not list:\033[0m")
+        for path in missing:
+            print(f"    {path}")
         sys.exit(1)
 
 
@@ -939,6 +961,7 @@ def run_release():
     # ... and nothing else of the record may come from a different state than that tree
     schema_files = _release_schema_files()
     _check_release_inputs_match_commit(tree, schema_files)
+    _check_specs_in_artifacts(schema_files, artifacts)
     print("  \033[92m✓ the schema files, project.yaml, commitment.yaml and the provenance inputs "
           "are the source commit's bytes\033[0m")
 
@@ -1007,6 +1030,7 @@ def run_release():
         print(f"  - {schema_file}: {meta_hash[:16]}...")
 
     _check_unique_source_paths(specs)
+    _check_specs_in_artifacts([entry['source_path'] for entry in specs], artifacts)
 
     # 6. Build hash: {createdBy (developer), release.createdBy (issuer), specs, validity}
     #    Both certificates are cryptographically bound before Vault signs.

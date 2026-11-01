@@ -27,7 +27,11 @@ A repository whose `project.yaml` has no `release_artifacts` cannot cut a releas
 
 So `run_release` compares, before it asks Vault for anything, every one of those inputs with the blob of the source commit, and the schema files it found with the selection made on the commit's tree. A difference (`worktree_differs_from_source_commit`, with the file and what differs) stops the release: a record made of two states of the source would contradict itself without anyone having lied.
 
-What this does not cover: the validation gates (`run_validation`, `run_primitive_validation`, the grammar gate) read the working directory too. Their verdict can concern a file that is not part of the record (an ignored example, for instance) and is not about the commit for such files; it does not enter the record. A release should be cut from a fresh clone of the commit.
+An input that exists **neither** in the working directory nor in the source commit is not consistency either: `project.yaml`, `commitment.yaml` and the two grammar files are required inputs of the release and the check names them itself (`dependency.yaml` is the one optional input: without it the legacy digest is `null`, as before). Each is a test end to end with the real commitment loader.
+
+**Every published schema is listed.** Every `specs[].source_path` the record would publish must be among `artifacts.files` (`spec_not_in_artifacts`, naming the files, before any Vault call). A published schema cannot be missing from the artifact manifest. This is a producer-side refusal of the compiler; it is not a rule of the record contract (a record-level check would be a revision of the contract and of the frozen yardstick, and is not made here).
+
+What this does not cover: the validation gates (`run_validation`, `run_primitive_validation`, the grammar gate) read the working directory too. Their verdict can concern a file that is not part of the record (an ignored example, for instance) and is not about the commit for such files; it does not enter the record. A release should be cut from a fresh clone of the commit. The boundary is pinned by two characterization tests (not wishes): a composition that the commit holds and the grammar rejects, left out of the working directory with `git status` clean, passes the gate and the release is cut; and an ignored bad example that the commit does not hold stops a release of a good commit. If the boundary is ever closed, those tests change on purpose.
 
 ## How the output is held to the contract
 
@@ -37,7 +41,7 @@ The compiler does not say that its own output is right.
 * The 32 signature coverage vectors of the contract run on the record the compiler wrote, not only on the golden record; the structural vectors too.
 * The declaration vectors run on the compiler's own functions, and on the reference's, and the two must agree.
 * The yardstick of PR #25 (the reference verifier, the golden fixtures, the vectors, the planted-defect proof) is frozen at its merge commit: `tests/test_conformance_frozen.py` fails if any of it changes together with the compiler.
-* 72 planted defects in `tools/compiler.py` (`tests/e3_compiler_mutants.py`): 63 have to turn one of the tests that target them red, 9 cannot change behaviour, are listed with the reason and have to survive.
+* 82 planted defects in `tools/compiler.py` (`tests/e3_compiler_mutants.py`): 72 have to turn one of the tests that target them red, 10 cannot change behaviour, are listed with the reason and have to survive.
 
 ## `verify-release`
 
