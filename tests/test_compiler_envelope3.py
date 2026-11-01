@@ -161,11 +161,21 @@ def test_a_filter_in_the_checkout_does_not_reach_the_digest(tmp_path, monkeypatc
 
 
 def test_the_declaration_comes_from_the_commit_not_from_the_working_directory(tmp_path, monkeypatch):
-    root, version, _commit, _calls = sup.release_sandbox(C, tmp_path, monkeypatch)
-    # the working copy of project.yaml declares something else entirely; the commit's declaration is the one that counts
+    root, _version, commit, _calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    # the working copy of project.yaml declares something else entirely; the commit's declaration is the one that is read
     (root / "project.yaml").write_text(sup.project_yaml(["a.txt"]))
-    run_release_in(root, monkeypatch)
-    assert [f["path"] for f in sup.written_record(root, version)["artifacts"]["files"]] == sorted(sup.golden_paths(), key=lambda p: p.encode("utf-8"))
+    project = C._declaration_from_commit(C._git_tree(commit))
+    assert project["compiler_settings"]["release_artifacts"]["paths"] == sup.golden_paths()
+
+
+def test_a_working_directory_that_declares_something_else_stops_the_release(tmp_path, monkeypatch, capsys):
+    root, _version, _commit, calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    (root / "project.yaml").write_text(sup.project_yaml(["a.txt"]))
+    with pytest.raises(SystemExit) as stop:
+        run_release_in(root, monkeypatch)
+    out = capsys.readouterr().out
+    assert stop.value.code == 1 and "worktree_differs_from_source_commit" in out and "project.yaml" in out
+    assert calls["vault"] == 0 and not (root / "release").exists()
 
 
 def test_a_declaration_in_the_working_directory_only_is_no_declaration(tmp_path, monkeypatch, capsys):
@@ -307,6 +317,108 @@ def test_duplicate_spec_source_paths_are_refused(monkeypatch):
         C._check_unique_source_paths(specs)
     assert stop.value.code == 1
     C._check_unique_source_paths([{"source_path": "schemas/atomic/a.yaml"}, {"source_path": "schemas/atomic/b.yaml"}])
+
+
+# ---------------------------------------------------------------- the rest of the record is the source commit's too
+
+SHAPE = "schemas/atomic/shape.yaml"
+
+
+def refused_for(root, monkeypatch, capsys, calls, *words):
+    with pytest.raises(SystemExit) as stop:
+        run_release_in(root, monkeypatch)
+    out = capsys.readouterr().out
+    assert stop.value.code == 1 and "worktree_differs_from_source_commit" in out, out
+    for word in words:
+        assert word in out, out
+    assert calls["vault"] == 0 and not (root / "release").exists()
+
+
+def test_a_clean_sandbox_is_consistent_and_the_guard_names_what_it_checked(tmp_path, monkeypatch, capsys):
+    root, version, _commit, _calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    assert sup.porcelain(root) == ""
+    run_release_in(root, monkeypatch)
+    assert "are the source commit's bytes" in capsys.readouterr().out
+
+
+def test_an_ignored_schema_file_leaves_git_status_clean_and_is_refused(tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[(".gitignore", b"schemas/atomic/ignored.yaml\n", "100644")])
+    import test_compiler as tc
+    (root / "schemas" / "atomic" / "ignored.yaml").write_text(tc._META.format(name="Ignored", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
+    assert sup.porcelain(root) == "", "the premise: the status the prerequisites ask is clean"
+    refused_for(root, monkeypatch, capsys, calls, "schemas/atomic/ignored.yaml", "not in the source commit")
+
+
+def test_an_assume_unchanged_schema_file_with_other_bytes_is_refused(tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    fx._git(root, "update-index", "--assume-unchanged", SHAPE)
+    (root / SHAPE).write_text((root / SHAPE).read_text().replace("a: 1", "a: 2"))
+    assert sup.porcelain(root) == ""
+    refused_for(root, monkeypatch, capsys, calls, SHAPE, "differ from the source commit")
+
+
+def test_a_line_end_filter_leaves_git_status_clean_and_is_refused(tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[(".gitattributes", b"*.yaml text eol=crlf\n", "100644")])
+    for yaml_file in (root / "schemas").rglob("*.yaml"):
+        yaml_file.write_bytes(yaml_file.read_bytes().replace(b"\n", b"\r\n"))
+    assert sup.porcelain(root) == "", "the premise: a CRLF working copy of a text=eol=crlf file is clean to git"
+    refused_for(root, monkeypatch, capsys, calls, "differ from the source commit")
+
+
+def test_a_skip_worktree_schema_file_that_is_missing_is_refused(tmp_path, monkeypatch, capsys):
+    import test_compiler as tc
+    content = (tc._META.format(name="Sparse", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n").encode()
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[("schemas/atomic/sparse.yaml", content, "100644")])
+    fx._git(root, "update-index", "--skip-worktree", "schemas/atomic/sparse.yaml")
+    (root / "schemas" / "atomic" / "sparse.yaml").unlink()
+    assert sup.porcelain(root) == "", "the premise: a sparse checkout leaves the status clean"
+    refused_for(root, monkeypatch, capsys, calls, "schemas/atomic/sparse.yaml", "does not offer")
+
+
+@pytest.mark.parametrize("path", ["dependency.yaml", "proposals/atom-grammar/check_grammar.py", "proposals/atom-grammar/instance-grammar.schema.yaml", "project.yaml"])
+def test_an_input_of_the_provenance_or_the_issuer_with_other_bytes_is_refused(path, tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    fx._git(root, "update-index", "--assume-unchanged", path)
+    with open(root / path, "ab") as fh:
+        fh.write(b"\n# changed after the commit\n")
+    assert sup.porcelain(root) == ""
+    refused_for(root, monkeypatch, capsys, calls, path, "differ from the source commit")
+
+
+def test_a_provenance_input_that_the_commit_holds_and_the_working_directory_lacks_is_refused(tmp_path, monkeypatch, capsys):
+    path = "dependency.yaml"     # the grammar files are read by the release grammar gate first, which stops on its own
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    fx._git(root, "update-index", "--skip-worktree", path)
+    (root / path).unlink()
+    assert sup.porcelain(root) == ""
+    refused_for(root, monkeypatch, capsys, calls, path, "missing from the working directory")
+
+
+def test_an_ignored_commitment_file_that_the_commit_does_not_hold_is_refused(tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=[(".gitignore", b"commitment.yaml\n", "100644")])
+    (root / "commitment.yaml").write_text("kind: DeveloperCommitment\n")
+    assert sup.porcelain(root) == ""
+    refused_for(root, monkeypatch, capsys, calls, "commitment.yaml", "not in the source commit")
+
+
+def test_a_symbolic_link_for_a_schema_file_is_refused(tmp_path, monkeypatch, capsys):
+    root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch)
+    fx._git(root, "update-index", "--assume-unchanged", SHAPE)
+    (root / SHAPE).unlink()
+    (root / SHAPE).symlink_to(root / "schemas" / "examples" / "c.yaml")
+    refused_for(root, monkeypatch, capsys, calls, SHAPE)
+
+
+def test_the_tree_selection_of_schema_files_is_the_glob_selection(tmp_path, monkeypatch):
+    import test_compiler as tc
+    meta = tc._META.format(name="X", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n"
+    extra = [("schemas/atomic/.hidden.yaml", meta.encode(), "100644"), ("schemas/atomic/empty.yaml", b"", "100644"), ("schemas/atomic/nested/deep.yaml", meta.encode(), "100644"),
+             ("schemas/aggregate/agg.yaml", meta.encode(), "100644"), ("schemas/examples/x.yaml", meta.encode(), "100644"), ("schemas/atomic/notes.txt", b"x", "100644"),
+             ("schemas/.dot/inside.yaml", meta.encode(), "100644"), ("other/atomic/outside.yaml", meta.encode(), "100644")]
+    root, _v, commit, _c = sup.release_sandbox(C, tmp_path, monkeypatch, extra_files=extra)
+    from_tree = C._release_schema_files_in_tree(C._git_tree(commit))
+    assert from_tree == C._release_schema_files()
+    assert "schemas/atomic/nested/deep.yaml" in from_tree and "schemas/atomic/.hidden.yaml" not in from_tree and "schemas/atomic/empty.yaml" not in from_tree
 
 
 # ---------------------------------------------------------------- the signature covers what the compiler wrote

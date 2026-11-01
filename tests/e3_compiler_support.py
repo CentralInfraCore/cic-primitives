@@ -51,6 +51,7 @@ def checkout(path, files):
     commit = fx.build_repo(path, files)
     fx._git(path, "update-ref", "refs/heads/main", commit)
     fx._git(path, "symbolic-ref", "HEAD", "refs/heads/main")
+    fx._git(path, "read-tree", "HEAD")      # the index, so that `git status` means something in the tests that ask it
     for name, content, mode in files:
         if mode in ("100644", "100755"):
             target = pathlib.Path(path) / name
@@ -68,7 +69,24 @@ def commit_files(paths):
     return list(fx.GOLDEN_FILES) + [("project.yaml", project_yaml(paths).encode("utf-8"), "100644")]
 
 
-def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths=None):
+def sandbox_files(extra=()):
+    """What run_release() reads from the working directory besides the artifacts: the schema files, project.yaml (added by the caller), dependency.yaml, the two
+    grammar files of the provenance digests. They are COMMITTED, because the compiler stops when the working directory and the source commit disagree."""
+    import test_compiler as tc
+    repo = ROOT
+    files = [
+        ("schemas/atomic/shape.yaml", (tc._META.format(name="Shape", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n").encode(), "100644"),
+        ("schemas/examples/c.yaml", (tc._META.format(name="Example", version="v0.1.dev") + tc._GOOD_COMPOSITION.lstrip("\n")).encode(), "100644"),
+        ("schemas/index.yaml", (repo / "schemas" / "index.yaml").read_bytes(), "100644"),
+        ("md.meta.schema.yaml", (repo / "md.meta.schema.yaml").read_bytes(), "100644"),
+        ("dependency.yaml", b"schema_version: '1'\n", "100644"),
+        ("proposals/atom-grammar/check_grammar.py", (repo / "proposals/atom-grammar/check_grammar.py").read_bytes(), "100644"),
+        ("proposals/atom-grammar/instance-grammar.schema.yaml", (repo / "proposals/atom-grammar/instance-grammar.schema.yaml").read_bytes(), "100644"),
+    ]
+    return files + list(extra)
+
+
+def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths=None, extra_files=()):
     """What tests/test_compiler.py::_release_sandbox did, as a real git checkout: run_release() resolves the artifacts from the git tree of HEAD, so the sandbox has one.
 
     Vault and the developer commitment are replaced; the issuer is the test issuer of the frozen fixtures, so a record this compiler writes can be re-authenticated by the
@@ -76,18 +94,8 @@ def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths
     """
     import test_compiler as tc
     paths = golden_paths() if paths is None else paths
-    files = commit_files(paths) if files is None else files
+    files = (commit_files(paths) if files is None else list(files)) + sandbox_files(extra_files)
     commit = checkout(tmp_path, files)
-    repo = ROOT
-    (tmp_path / "proposals").mkdir(exist_ok=True)
-    (tmp_path / "proposals" / "atom-grammar").symlink_to(repo / "proposals" / "atom-grammar", target_is_directory=True)
-    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
-    (tmp_path / "schemas" / "atomic" / "shape.yaml").write_text(tc._META.format(name="Shape", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
-    (tmp_path / "schemas" / "examples").mkdir()
-    (tmp_path / "schemas" / "examples" / "c.yaml").write_text(tc._META.format(name="Example", version="v0.1.dev") + tc._GOOD_COMPOSITION.lstrip("\n"))
-    (tmp_path / "dependency.yaml").write_text("schema_version: '1'\n")
-    (tmp_path / "md.meta.schema.yaml").write_text((repo / "md.meta.schema.yaml").read_text())
-    (tmp_path / "schemas" / "index.yaml").write_text((repo / "schemas" / "index.yaml").read_text())
     monkeypatch.chdir(tmp_path)
 
     calls = {"vault": 0}
@@ -112,7 +120,6 @@ def release_sandbox(C, tmp_path, monkeypatch, version="0.1.6", files=None, paths
     monkeypatch.setattr(C, "_load_valid_commitment", lambda require_signature=True: commitment)
     monkeypatch.setattr(C, "_vault_get_cert", vault_cert)
     monkeypatch.setattr(C, "_vault_sign", vault_sign)
-    # the settings of the WORKING DIRECTORY'S project.yaml: deliberately without the declaration, which has to come from the commit
     monkeypatch.setattr(C, "load_project_config", lambda full_config=False: (
         {"project": {"name": "cic-primitives", "owner": "Dev"}, "compiler_settings": settings} if full_config else settings))
     monkeypatch.setattr(C, "CONFIG", settings)
@@ -144,3 +151,8 @@ def git_tree_via_plumbing(repo, commit):
             mode, kind, oid = meta.decode().split(" ")
             tree[name.decode("utf-8", "surrogateescape")] = (mode, kind, oid)
     return tree
+
+
+def porcelain(path):
+    """What validate_release_prerequisites asks: `git status --porcelain` (untracked files included, ignored ones not)."""
+    return subprocess.run(["git", "-C", str(path), "status", "--porcelain"], capture_output=True, text=True, check=True).stdout

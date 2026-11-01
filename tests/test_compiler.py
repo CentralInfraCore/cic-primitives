@@ -1021,7 +1021,7 @@ _RELEASE_SETTINGS = {
 }
 
 
-def _release_sandbox(tmp_path, monkeypatch, mocker, version="0.1.6"):
+def _release_sandbox(tmp_path, monkeypatch, mocker, version="0.1.6", extra_files=()):
     """A tree run_release() can complete in without Vault or a network.
 
     Worth the setup: run_release had 104 of its 120 lines uncovered, and it is
@@ -1036,7 +1036,7 @@ def _release_sandbox(tmp_path, monkeypatch, mocker, version="0.1.6"):
     share it.
     """
     import e3_compiler_support as sup
-    root, version, _commit, _calls = sup.release_sandbox(compiler, tmp_path, monkeypatch, version=version)
+    root, version, _commit, _calls = sup.release_sandbox(compiler, tmp_path, monkeypatch, version=version, extra_files=extra_files)
     return root, version
 
 
@@ -1438,12 +1438,11 @@ def test_release_collects_specs_from_nested_directories(tmp_path, monkeypatch, m
     Without recursion the bundle silently omits deeper schemas — a release that
     claims to cover the primitive set while shipping part of it.
     """
-    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
-    deep = root / "schemas" / "atomic" / "nested"
-    deep.mkdir()
-    (deep / "deep.yaml").write_text(
-        _META.format(name="Deep", version="v0.1.dev")
-        + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
+    deep = (_META.format(name="Deep", version="v0.1.dev")
+            + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n").encode()
+    # committed: since envelope 3 the compiler stops at a schema file the source commit does not hold
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker,
+                                     extra_files=[("schemas/atomic/nested/deep.yaml", deep, "100644")])
     compiler.run_release()
     bundle = yaml.safe_load(
         (root / "release" / f"cic-primitives-v{version}.yaml").read_text())

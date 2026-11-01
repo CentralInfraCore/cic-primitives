@@ -148,13 +148,17 @@ def _source_commit():
     return commit
 
 
+# The files whose bytes the three legacy provenance digests are taken from (the working directory; see _check_release_inputs_match_commit).
+PROVENANCE_FILES = (('dependency_lock', 'dependency.yaml'),
+                    ('grammar', 'proposals/atom-grammar/check_grammar.py'),
+                    ('grammar_schema', 'proposals/atom-grammar/instance-grammar.schema.yaml'))
+
+
 def _collect_provenance(commit=None):
     """Facts about WHERE this build came from, so the signature can cover them."""
     provenance = {'envelope': RELEASE_ENVELOPE_VERSION,
                   'source_commit': commit or _source_commit()}
-    for label, path in (('dependency_lock', 'dependency.yaml'),
-                        ('grammar', 'proposals/atom-grammar/check_grammar.py'),
-                        ('grammar_schema', 'proposals/atom-grammar/instance-grammar.schema.yaml')):
+    for label, path in PROVENANCE_FILES:
         try:
             with open(path, 'rb') as fh:
                 provenance[f'{label}_sha256'] = get_sha256_b64(fh.read())
@@ -275,15 +279,81 @@ def _build_release_artifacts(paths, tree):
     return {'manifest_digest': 'sha256:' + get_sha256_hex(manifest.encode('utf-8')), 'files': files}
 
 
-def _resolve_release_artifacts(commit):
+def _resolve_release_artifacts(commit, tree=None):
     """Declaration -> refusal or the `artifacts` block, from the git tree of `commit` only."""
-    tree = _git_tree(commit)
+    tree = _git_tree(commit) if tree is None else tree
     project = _declaration_from_commit(tree)
     refusal = _validate_release_artifact_declaration(project, tree)
     if refusal:
         print(f"\033[91m✗ ERROR: release_artifacts: {refusal[0]}: {refusal[1]}\033[0m")
         sys.exit(1)
     return _build_release_artifacts(project['compiler_settings']['release_artifacts']['paths'], tree)
+
+
+def _release_schema_files():
+    """The schema files a release carries as `specs`, as found in the WORKING DIRECTORY: atomic + aggregate, no examples, no index."""
+    source_dir = CONFIG.get('source_dir', 'schemas')
+    all_files = glob.glob(os.path.join(source_dir, '**', '*.yaml'), recursive=True)
+    return sorted([
+        f for f in all_files
+        if os.path.basename(f) != 'index.yaml'
+        and not f.endswith('.gitkeep')
+        and '/examples/' not in f.replace(os.sep, '/')
+        and os.path.getsize(f) > 0
+    ])
+
+
+def _release_schema_files_in_tree(tree):
+    """The same selection as _release_schema_files, made on the git tree of the source commit (glob skips names that start with a dot)."""
+    source_dir = CONFIG.get('source_dir', 'schemas').strip('/')
+    selected = []
+    for path, (mode, kind, oid) in tree.items():
+        if kind != 'blob' or mode not in REGULAR_FILE_MODES:
+            continue
+        if not path.startswith(source_dir + '/') or not path.endswith('.yaml'):
+            continue
+        if any(part.startswith('.') for part in path.split('/')):
+            continue
+        if os.path.basename(path) == 'index.yaml' or '/examples/' in path:
+            continue
+        if len(_git_blob(oid)) > 0:
+            selected.append(path)
+    return sorted(selected)
+
+
+def _check_release_inputs_match_commit(tree, schema_files):
+    """Everything the record takes from the WORKING DIRECTORY must be byte-identical to the source commit's blob.
+
+    The `artifacts` block is read from the git tree. The rest of the record is not: `specs` (their content and `meta_hash`) come from the schema files, the three
+    legacy provenance digests from dependency.yaml and the two grammar files, the issuer and the developer's validity from project.yaml and commitment.yaml. A clean
+    `git status` (validate_release_prerequisites) does not make those the commit's bytes: an ignored file, a file marked assume-unchanged or skip-worktree, a line-end
+    filter, a symbolic link or a sparse checkout all leave the status clean. A record whose `specs` and whose `artifacts` come from two different states of the
+    source would contradict itself without anyone having lied, so the compiler stops (reason `worktree_differs_from_source_commit`) before it asks Vault for anything.
+    """
+    read = list(schema_files) + ['project.yaml', 'commitment.yaml'] + [path for _label, path in PROVENANCE_FILES]
+    problems = []
+    for path in read:
+        entry = tree.get(path.replace(os.sep, '/'))
+        present = os.path.lexists(path)
+        if not present and entry is None:
+            continue            # absent on both sides: nothing was read
+        if not present:
+            problems.append((path, 'missing from the working directory'))
+        elif entry is None:
+            problems.append((path, 'not in the source commit'))
+        elif entry[1] != 'blob' or entry[0] not in REGULAR_FILE_MODES:
+            problems.append((path, f'not a regular file in the source commit (mode {entry[0]}, type {entry[1]})'))
+        else:
+            with open(path, 'rb') as fh:
+                if fh.read() != _git_blob(entry[2]):
+                    problems.append((path, 'its bytes differ from the source commit'))
+    for path in sorted(set(_release_schema_files_in_tree(tree)) - {p.replace(os.sep, '/') for p in schema_files}):
+        problems.append((path, 'a schema file of the source commit that the working directory does not offer'))
+    if problems:
+        print("\033[91m✗ ERROR: worktree_differs_from_source_commit: the record would be made of two different states of the source\033[0m")
+        for path, why in problems:
+            print(f"    {path}: {why}")
+        sys.exit(1)
 
 
 def _check_unique_source_paths(specs):
@@ -862,9 +932,15 @@ def run_release():
     # refused must not cost a signature, and the commit that names them is the one the
     # record will carry.
     source_commit = _source_commit()
-    artifacts = _resolve_release_artifacts(source_commit)
+    tree = _git_tree(source_commit)
+    artifacts = _resolve_release_artifacts(source_commit, tree)
     print(f"  \033[92m✓ {len(artifacts['files'])} release artifacts digested from the tree of "
           f"{source_commit[:12]}\033[0m")
+    # ... and nothing else of the record may come from a different state than that tree
+    schema_files = _release_schema_files()
+    _check_release_inputs_match_commit(tree, schema_files)
+    print("  \033[92m✓ the schema files, project.yaml, commitment.yaml and the provenance inputs "
+          "are the source commit's bytes\033[0m")
 
     vault_addr = os.getenv('VAULT_ADDR')
     vault_token = os.getenv('VAULT_TOKEN')
@@ -911,17 +987,7 @@ def run_release():
     run_primitive_validation()
     run_domain_compatibility_check()
 
-    # 4. Collect schema files: atomic + aggregate, no examples, no index
-    source_dir = CONFIG.get('source_dir', 'schemas')
-    all_files = glob.glob(os.path.join(source_dir, '**', '*.yaml'), recursive=True)
-    schema_files = sorted([
-        f for f in all_files
-        if os.path.basename(f) != 'index.yaml'
-        and not f.endswith('.gitkeep')
-        and '/examples/' not in f.replace(os.sep, '/')
-        and os.path.getsize(f) > 0
-    ])
-
+    # 4. The schema files were collected (and checked against the source commit) above
     print(f"--- Building release bundle ({len(schema_files)} schemas) ---")
 
     # 5. Build specs[] — meta_hash over raw file bytes, version placeholder injected in spec content

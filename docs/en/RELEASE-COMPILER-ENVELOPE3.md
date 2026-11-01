@@ -21,6 +21,14 @@
 
 A repository whose `project.yaml` has no `release_artifacts` cannot cut a release: it stops with `declaration_missing`. Which files a repository publishes is the producer's decision and is made in `project.yaml`, in a change of its own.
 
+## The rest of the record is the source commit's too
+
+`artifacts` is read from the git tree. The rest of the record is not made from the tree: `specs` (their content and `meta_hash`) come from the schema files, the three legacy provenance digests from `dependency.yaml` and the two grammar files, the issuer and the validity from `project.yaml` and `commitment.yaml`. `validate_release_prerequisites` asks `git status --porcelain`, and a clean status does **not** make those the commit's bytes: an ignored file, a file marked assume-unchanged or skip-worktree, a line-end filter or a sparse checkout all leave it clean (each is a test, with the premise that the status is clean asserted first).
+
+So `run_release` compares, before it asks Vault for anything, every one of those inputs with the blob of the source commit, and the schema files it found with the selection made on the commit's tree. A difference (`worktree_differs_from_source_commit`, with the file and what differs) stops the release: a record made of two states of the source would contradict itself without anyone having lied.
+
+What this does not cover: the validation gates (`run_validation`, `run_primitive_validation`, the grammar gate) read the working directory too. Their verdict can concern a file that is not part of the record (an ignored example, for instance) and is not about the commit for such files; it does not enter the record. A release should be cut from a fresh clone of the commit.
+
 ## How the output is held to the contract
 
 The compiler does not say that its own output is right.
@@ -29,7 +37,7 @@ The compiler does not say that its own output is right.
 * The 32 signature coverage vectors of the contract run on the record the compiler wrote, not only on the golden record; the structural vectors too.
 * The declaration vectors run on the compiler's own functions, and on the reference's, and the two must agree.
 * The yardstick of PR #25 (the reference verifier, the golden fixtures, the vectors, the planted-defect proof) is frozen at its merge commit: `tests/test_conformance_frozen.py` fails if any of it changes together with the compiler.
-* 58 planted defects in `tools/compiler.py` (`tests/e3_compiler_mutants.py`): 50 have to turn one of the tests that target them red, 8 cannot change behaviour, are listed with the reason and have to survive.
+* 72 planted defects in `tools/compiler.py` (`tests/e3_compiler_mutants.py`): 63 have to turn one of the tests that target them red, 9 cannot change behaviour, are listed with the reason and have to survive.
 
 ## `verify-release`
 
