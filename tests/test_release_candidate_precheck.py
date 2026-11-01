@@ -327,6 +327,10 @@ def test_an_unknown_pin_name_stops(world):
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 V020_SOURCE = "9c67ea4478d3a7ebe74d31a00ec02db589ac9e32"
+# Immutable identifiers of the evidence. A tag is a mutable reference, so it is never the evidence: the record is read from the release COMMIT and its bytes are pinned by
+# their SHA-256. If the tag is ever moved, or the record changes, the test fails instead of silently measuring something else.
+V020_RELEASE_COMMIT = "960ee0f048d969a85ad20819bc0f2366ad91fa40"
+V020_RECORD_SHA256 = "955fab2d6d9638c773f29fbe97a3279f9f10b9539c4e3e79957df0acef9a57a6"
 V020_PIN = "cic-primitives-73ae469-6a188078"
 
 
@@ -335,7 +339,7 @@ def has_commit(commit):
 
 
 # Where the history is required (the gate sets CIC_REQUIRE_RELEASE_HISTORY), a missing commit or tag is a FAILURE, not a skip: a skipped test proves nothing.
-HISTORY = has_commit(V020_SOURCE) and has_commit("primitives/@v0.2.0")
+HISTORY = has_commit(V020_SOURCE) and has_commit(V020_RELEASE_COMMIT)
 REQUIRED = os.environ.get("CIC_REQUIRE_RELEASE_HISTORY") == "1"
 
 
@@ -346,9 +350,10 @@ def test_the_history_of_release_v020_is_there_where_it_is_required():
 
 @pytest.mark.skipif(not HISTORY and not REQUIRED, reason="the history and the tag of release v0.2.0 are not in this clone; run with the full history and the tags (the gate does)")
 def test_release_v020_does_not_hold_the_pinned_grammar(tmp_path):
-    # the v0.2.0 record lives on the tag, not on devel
-    tag = subprocess.run(["git", "-C", str(REPO), "show", "primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml"], capture_output=True)
+    # the v0.2.0 record lives on the release commit, not on devel; the commit id, not the tag, is the evidence
+    tag = subprocess.run(["git", "-C", str(REPO), "show", f"{V020_RELEASE_COMMIT}:release/cic-primitives-v0.2.0.yaml"], capture_output=True)
     assert tag.returncode == 0
+    assert hashlib.sha256(tag.stdout).hexdigest() == V020_RECORD_SHA256, "the record of v0.2.0 is not the frozen one"
     record_path = tmp_path / "cic-primitives-v0.2.0.yaml"
     record_path.write_bytes(tag.stdout)
     out = io.StringIO()
@@ -364,3 +369,12 @@ def test_release_v020_does_not_hold_the_pinned_grammar(tmp_path):
     # and only 2 of the 12 are digested by the record AND equal
     assert "files the record digests itself (2 of 12)" in text
     assert "FAIL  record digest coverage: 2 of 12" in text
+
+
+@pytest.mark.skipif(not HISTORY and not REQUIRED, reason="the history of release v0.2.0 is not in this clone")
+def test_the_tag_of_v020_still_names_the_frozen_release_commit():
+    """The tag is not the evidence, but it is what people read: if it moved, say so (a tag that moved is a finding, not a fix)."""
+    r = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--verify", "-q", "primitives/@v0.2.0^{commit}"], capture_output=True, text=True)
+    if r.returncode != 0:
+        pytest.skip("the tag is not in this clone; the evidence above does not depend on it")
+    assert r.stdout.strip() == V020_RELEASE_COMMIT, "the tag primitives/@v0.2.0 no longer names the frozen release commit"
