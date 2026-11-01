@@ -2,6 +2,7 @@
 import base64
 import hashlib
 import io
+import os
 import pathlib
 import subprocess
 import sys
@@ -333,7 +334,17 @@ def has_commit(commit):
     return subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"{commit}^{{commit}}"], capture_output=True).returncode == 0
 
 
-@pytest.mark.skipif(not (has_commit(V020_SOURCE) and has_commit("primitives/@v0.2.0")), reason="the history and the tag of release v0.2.0 are not in this clone (a shallow checkout); run with the full history and the tags")
+# Where the history is required (the gate sets CIC_REQUIRE_RELEASE_HISTORY), a missing commit or tag is a FAILURE, not a skip: a skipped test proves nothing.
+HISTORY = has_commit(V020_SOURCE) and has_commit("primitives/@v0.2.0")
+REQUIRED = os.environ.get("CIC_REQUIRE_RELEASE_HISTORY") == "1"
+
+
+def test_the_history_of_release_v020_is_there_where_it_is_required():
+    if REQUIRED:
+        assert HISTORY, "CIC_REQUIRE_RELEASE_HISTORY=1 but the commit or the tag of release v0.2.0 is not in this clone (fetch-depth: 0 and the tags)"
+
+
+@pytest.mark.skipif(not HISTORY and not REQUIRED, reason="the history and the tag of release v0.2.0 are not in this clone; run with the full history and the tags (the gate does)")
 def test_release_v020_does_not_hold_the_pinned_grammar(tmp_path):
     # the v0.2.0 record lives on the tag, not on devel
     tag = subprocess.run(["git", "-C", str(REPO), "show", "primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml"], capture_output=True)

@@ -42,6 +42,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The full history and the tags: the release candidate pre-check's negative evidence on release v0.2.0 reads the commit and the tag of that release
+          # (tests/test_release_candidate_precheck.py). Git objects are immutable, so the run is deterministic. Without them the test would be skipped, and a
+          # skipped test proves nothing, hence CIC_REQUIRE_RELEASE_HISTORY below.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -70,3 +75,5 @@ jobs:
 
       - name: Gate
         run: make gate.local
+        env:
+          CIC_REQUIRE_RELEASE_HISTORY: "1"
