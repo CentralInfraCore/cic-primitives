@@ -1,0 +1,21 @@
+{
+  "build_hash": "AVGoRHl/tPGYxFA2PGO6psEPTvJzAA3PDHKv9HCuN0E=",
+  "canonical_sha256_hex": "0151a844797fb4f198c450363c63baa6c10f4ef273000dcf0c72aff470ae3741",
+  "files": [
+    {
+      "digest": "sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
+      "path": "a.txt"
+    },
+    {
+      "digest": "sha256:f2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad",
+      "path": "d/b.txt"
+    },
+    {
+      "digest": "sha256:edd3a863872a04239eb29ad4bc12fc892b3d4ae57cc7e786a3697816f8e141c2",
+      "path": "\u00e9.txt"
+    }
+  ],
+  "manifest_digest": "sha256:39e022575a650d2c2cf04a4d65ae8744e04d0ccb3699fb417db9c4c160b2ec53",
+  "manifest_text": "b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060  a.txt\nf2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad  d/b.txt\nedd3a863872a04239eb29ad4bc12fc892b3d4ae57cc7e786a3697816f8e141c2  \u00e9.txt\n",
+  "source_commit": "f0cf873c0e2f889d440cc7411535a63a89a41e9f"
+}
