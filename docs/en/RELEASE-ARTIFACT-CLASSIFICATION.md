@@ -1,26 +1,26 @@
-# Release artifact list: classification of the files of cic-primitives (proposal)
+# Release artifact list: classification of the files of cic-primitives
 
-Status: **a review table, not a decision.** Nothing here is in `project.yaml`, and nothing here is merged as the list. The owner approves the content after this survey; until then the real release path of this repository stops with `declaration_missing`. This document is a separate piece of work from the compiler change (cic-primitives #26) and does not depend on it.
+Status: **the content decision of the owner is applied; this is still not the list.** The owner approved the 30-file set below as the *content* of the published surface (review of 2026-11-01). That is not a release authorization, and it is not applied to `project.yaml`: the declaration goes into `project.yaml` in a separate, targeted change, together with the compiler's check that every published schema is listed (cic-primitives #26). Until then the real release path of this repository stops with `declaration_missing`.
 
-State surveyed: `devel` at `d2d8ec7` (131 tracked files). The list that is approved applies to the **release source commit**, which is a commit on a release branch and not necessarily `devel`'s head (see "Pin and devel").
+State surveyed: `devel` at `d2d8ec7` (131 tracked files). The list applies to the **release source commit**, which is a commit on a release branch and not necessarily `devel`'s head (see "Pin and devel").
 
 ## The rule
 
-The producer's published surface has a meaning of its own. It is not the file set of any one consumer, and it is not "every YAML".
+The producer's published surface has a meaning of its own. It is not the file set of any one consumer, it is not "every YAML", and it is not the whole toolchain that makes a release.
 
 > A file is in the list when its content determines the **contract, the interpretation or the reproducibility** of the released primitive package.
 
-So: the released primitives and what validates and interprets them (meta-schemas, the record schema), the grammar and access model they are checked with and their golden data, the normative text, the licence, the dependency lock. Not: tests, CI and repository configuration, internal notes and plans, working papers, examples that must fail, historical records, tooling of the release process. Where the rule does not decide, the file is `REVIEW` with the question, not guessed.
+So: the released primitives and what validates and interprets them (meta-schemas, the record schema), the grammar and access model they are checked with and their golden data, the normative text, the licence, the dependency lock. Not: tests, CI and repository configuration, internal notes and plans, working papers, examples, historical records, and the tooling that produces or checks a release.
 
-The twelve files that `cic-primitive-forms` pins are a **checked subset**: the table marks them, and a test of the real declaration (when one exists) can require that all twelve are in the list. They do not define the list; the producer's rule does. The result happens to contain all twelve, which is a consequence and not the criterion.
+The twelve files that `cic-primitive-forms` pins are a **checked subset**, marked in the table. They do not define the list; the producer's rule does. The result happens to contain all twelve, which is a consequence and not the criterion.
 
-Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
+Counts: **INCLUDE 30**, **EXCLUDE 101**, REVIEW 0.
 
 ## The table
 
-`Forms pin` marks the twelve files of the grammar pin `cic-primitives-73ae469-6a188078`.
+`Forms pin` marks the twelve files of the grammar pin `cic-primitives-73ae469-6a188078`. Rows whose reason begins "Owner decision" were `REVIEW` in the first survey and are decided.
 
-| Path | Bytes | Role | Forms pin | Proposal | Technical reason |
+| Path | Bytes | Role | Forms pin | Decision | Technical reason |
 |---|---|---|---|---|---|
 | `.github/workflows/gate.yml` | 3226 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
 | `.gitignore` | 476 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
@@ -28,8 +28,8 @@ Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
 | `CLAUDE.md` | 6265 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
 | `Dockerfile` | 749 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
 | `LICENSE.md` | 1364 | licence text | yes | **INCLUDE** | the terms the release is published under; pinned by Forms |
-| `LICENSE.meta.yaml` | 506 | licence metadata |  | **REVIEW** | same as LICENSE.yaml |
-| `LICENSE.yaml` | 506 | licence metadata |  | **REVIEW** | machine-readable licence metadata (imported from base-repo); decide whether the published surface carries it beside LICENSE.md |
+| `LICENSE.meta.yaml` | 506 | licence metadata |  | **EXCLUDE** | Owner decision (review of 2026-11-01): the licence text is the primary contract |
+| `LICENSE.yaml` | 506 | licence metadata |  | **EXCLUDE** | Owner decision (review of 2026-11-01): no demonstrated consumer dependency |
 | `Makefile` | 10247 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
 | `README.hu.md` | 7636 | repository readme (hu) |  | **EXCLUDE** | same as README.md |
 | `README.md` | 7829 | repository readme |  | **EXCLUDE** | describes the repository, not the released primitives (the grammar has its own README in the list) |
@@ -40,8 +40,8 @@ Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
 | `docker-compose.yml` | 1284 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
 | `feature-list.md` | 965 | internal planning |  | **EXCLUDE** | not normative |
 | `md.meta.schema.yaml` | 3907 | meta-schema of the schema metadata |  | **INCLUDE** | defines the metadata every spec must carry (`run_validation`); imported from base-repo (`dependency.yaml`), still part of how the release is interpreted |
-| `project.schema.yaml` | 3682 | schema of project.yaml |  | **REVIEW** | imported from base-repo; describes the build configuration, not the primitives |
-| `project.yaml` | 747 | project metadata and release settings |  | **REVIEW** | holds the declaration itself (so a digest of it ties the list to the record) but also operational settings (Vault key name and certificate path, owner e-mail); decide whether those belong to the published surface |
+| `project.schema.yaml` | 3682 | schema of project.yaml |  | **EXCLUDE** | Owner decision (review of 2026-11-01): it validates build configuration |
+| `project.yaml` | 747 | project metadata and release settings |  | **EXCLUDE** | Owner decision (review of 2026-11-01): it also carries operational configuration (Vault key name and certificate path, owner e-mail); the declared set appears in the signed record itself |
 | `proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md` | 14867 | access grammar specification | yes | **INCLUDE** | pinned by Forms. Its own header says `Status: proposed`: including it publishes a proposal text as part of the surface |
 | `proposals/atom-grammar/P0-4-MIGRATION.md` | 3765 | access migration note | yes | **INCLUDE** | pinned by Forms. Devel has moved on in this file since the pin (see "Pin and devel") |
 | `proposals/atom-grammar/README.md` | 34260 | grammar documentation | yes | **INCLUDE** | describes the grammar the release applies (status `implemented`); pinned by Forms |
@@ -50,7 +50,7 @@ Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
 | `proposals/atom-grammar/access-vectors/reading.yaml` | 12453 | access golden vectors |  | **INCLUDE** | same class as `resolution.yaml` (pinned by Forms): the other suites of the vectors that give the access model its meaning |
 | `proposals/atom-grammar/access-vectors/resolution.yaml` | 60711 | access golden vectors | yes | **INCLUDE** | conformance data of the access model; pinned by Forms |
 | `proposals/atom-grammar/access_policy.py` | 17807 | access model (reference) | yes | **INCLUDE** | the reference model of Access/PolicySurface resolution; pinned by Forms |
-| `proposals/atom-grammar/check_access_vectors.py` | 22295 | runner of the access vectors |  | **REVIEW** | a tool that runs the vectors against the model; reproducibility, not contract. Include if the published surface should let a consumer re-run the vectors |
+| `proposals/atom-grammar/check_access_vectors.py` | 22295 | runner of the access vectors |  | **INCLUDE** | Owner decision (review of 2026-11-01): needed to run the reference behaviour of Access reproducibly; it runs, with its self-test, in a tree of only the listed files (see "Self-containment") |
 | `proposals/atom-grammar/check_grammar.py` | 57874 | grammar implementation | yes | **INCLUDE** | the instance grammar the release gate applies; already digested in `provenance.grammar_sha256`; pinned by Forms |
 | `proposals/atom-grammar/instance-grammar.schema.yaml` | 10095 | grammar schema | yes | **INCLUDE** | the schema the grammar checks against; already digested in `provenance.grammar_schema_sha256`; pinned by Forms |
 | `proposals/atom-grammar/p0-4-contradiction-matrix.md` | 5718 | working paper |  | **EXCLUDE** | its own header: "munkaanyag, nem normatív" |
@@ -58,8 +58,8 @@ Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
 | `release.schema.yaml` | 6158 | schema of the release record |  | **INCLUDE** | the shape of the record a consumer reads; part of how the record is interpreted |
 | `release/cic-primitives-v0.1.5.yaml` | 55002 | a historical release record |  | **EXCLUDE** | records are outputs, never inputs; a record does not carry another record |
 | `renovate.json` | 268 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
-| `requirements.in` | 398 | tool dependencies |  | **REVIEW** | imported from base-repo; reproducibility of the compiler environment, not of the primitives |
-| `requirements.txt` | 2085 | locked tool dependencies |  | **REVIEW** | same as requirements.in |
+| `requirements.in` | 398 | tool dependencies |  | **EXCLUDE** | Owner decision (review of 2026-11-01): developer dependency description |
+| `requirements.txt` | 2085 | locked tool dependencies |  | **EXCLUDE** | Owner decision (review of 2026-11-01): toolchain lock, not the contract of the primitives |
 | `schemas/aggregate/.gitkeep` | 0 | placeholder |  | **EXCLUDE** | empty file |
 | `schemas/aggregate/config-surface.yaml` | 2262 | released primitive (aggregate) |  | **INCLUDE** | a spec of the release: its content is in `specs[]` already; the artifact digest gives it the same sha256 form as every other released file |
 | `schemas/aggregate/managed-entity.yaml` | 7209 | released primitive (aggregate) |  | **INCLUDE** | a spec of the release: its content is in `specs[]` already; the artifact digest gives it the same sha256 form as every other released file |
@@ -78,16 +78,16 @@ Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
 | `schemas/examples/invalid/aggregate-invalid-slot-mode.yaml` | 785 | negative test fixture |  | **EXCLUDE** | must fail validation by design; used by the tests, read by no consumer |
 | `schemas/examples/invalid/domain-sealed-override.yaml` | 1540 | negative test fixture |  | **EXCLUDE** | must fail validation by design; used by the tests, read by no consumer |
 | `schemas/examples/invalid/missing-required-metadata.yaml` | 593 | negative test fixture |  | **EXCLUDE** | must fail validation by design; used by the tests, read by no consumer |
-| `schemas/examples/kubernetes-pod.yaml` | 12332 | example composition |  | **REVIEW** | not a spec and not normative, but the release grammar gate checks the compositions under `schemas/examples` ("compositions this release would ship"); decide whether the gate input is part of the published surface |
+| `schemas/examples/kubernetes-pod.yaml` | 12332 | example composition |  | **EXCLUDE** | Owner decision (review of 2026-11-01): an example, not a normative primitive specification |
 | `schemas/index.yaml` | 3287 | meta-schema of the primitives |  | **INCLUDE** | defines how every primitive is validated (`run_primitive_validation`); not a spec itself, so it is not in `specs[]` and nothing else digests it |
 | `setup.cfg` | 121 | repository, CI or editor configuration |  | **EXCLUDE** | not part of the published surface |
 | `tools/check_provenance.py` | 10906 | provenance gate |  | **EXCLUDE** | a gate of this repository's CI |
-| `tools/compiler.py` | 56937 | the compiler |  | **REVIEW** | it made the record; `source_commit` already identifies it. Include if a consumer should be able to take the exact compiler from the release |
+| `tools/compiler.py` | 56937 | the compiler |  | **EXCLUDE** | Owner decision (review of 2026-11-01): a release-producing tool, not the published surface |
 | `tools/git_hook_commit-msg.sh` | 2166 | release or developer tooling |  | **EXCLUDE** | signing and git hooks of the process; not the published surface |
 | `tools/init-hooks.sh` | 1474 | release or developer tooling |  | **EXCLUDE** | signing and git hooks of the process; not the published surface |
 | `tools/release.sh` | 296 | release or developer tooling |  | **EXCLUDE** | signing and git hooks of the process; not the published surface |
 | `tools/release_candidate_precheck.py` | 18636 | pre-check tool (Forms pin) |  | **EXCLUDE** | a tool for the release process, not for consumers of the primitives |
-| `tools/release_record_conformance.py` | 22989 | reference verifier of the record contract |  | **REVIEW** | the independent yardstick; include if a consumer should be able to check a record against the contract from the release alone |
+| `tools/release_record_conformance.py` | 22989 | reference verifier of the record contract |  | **EXCLUDE** | Owner decision (review of 2026-11-01): the tool that checks a release, not its content |
 | `tools/vault-rootCA-sign-agent.sh` | 7681 | release or developer tooling |  | **EXCLUDE** | signing and git hooks of the process; not the published surface |
 | `tools/vault-sign-agent.md` | 3606 | release or developer tooling |  | **EXCLUDE** | signing and git hooks of the process; not the published surface |
 | `tools/vault-sign-agent.sh` | 4763 | release or developer tooling |  | **EXCLUDE** | signing and git hooks of the process; not the published surface |
@@ -100,22 +100,7 @@ Counts: **INCLUDE 29**, **REVIEW 10**, **EXCLUDE 92**.
 | `docs/hu/RELEASE-RECORD-CONTRACT.md` | 6746 | record contract summary (hu) | | **EXCLUDE** | the English text is the normative one |
 | `docs/**` (4 files) | 24211 | process documentation | | **EXCLUDE** | pre-check, conformance and compiler notes of the release process |
 
-## Questions for the owner (the `REVIEW` rows)
-
-- `LICENSE.meta.yaml`
-- `LICENSE.yaml`
-- `project.schema.yaml`
-- `project.yaml`
-- `proposals/atom-grammar/check_access_vectors.py`
-- `requirements.in`
-- `requirements.txt`
-- `schemas/examples/kubernetes-pod.yaml`
-- `tools/compiler.py`
-- `tools/release_record_conformance.py`
-
-Each is a yes/no on whether the file belongs to the published surface; the reason column says what the choice means. A `REVIEW` row is not in the proposed list below.
-
-## The proposed `paths` (INCLUDE only, sorted by UTF-8 bytes)
+## The approved content: 30 paths (sorted by UTF-8 bytes)
 
 ```yaml
 compiler_settings:
@@ -133,6 +118,7 @@ compiler_settings:
       - proposals/atom-grammar/access-vectors/reading.yaml
       - proposals/atom-grammar/access-vectors/resolution.yaml
       - proposals/atom-grammar/access_policy.py
+      - proposals/atom-grammar/check_access_vectors.py
       - proposals/atom-grammar/check_grammar.py
       - proposals/atom-grammar/instance-grammar.schema.yaml
       - release.schema.yaml
@@ -152,14 +138,28 @@ compiler_settings:
       - schemas/index.yaml
 ```
 
-This block is a proposal text. It is **not** applied to `project.yaml`.
+This block is **text in this document**. It is not applied to `project.yaml` by this change.
+
+## Self-containment of the access tools
+
+Asked before the publication decision: do `access_policy.py` and `check_access_vectors.py` need anything outside the declared surface? Measured, not read: a directory with **only** the 30 listed files (nothing else from the repository), Python in isolated mode (`-I`):
+
+| Command in that directory | Result |
+|---|---|
+| `python proposals/atom-grammar/check_access_vectors.py` | `187 cases, 0 failure(s)` |
+| `python proposals/atom-grammar/check_access_vectors.py --self-test` | `50/50 seeded faults detected` |
+| `python proposals/atom-grammar/check_grammar.py --self-test` | `53/53` |
+
+The files they read are all in the list: the four vector suites, `access_policy.py`, `schemas/atomic/access.yaml`, `schemas/aggregate/policy-surface.yaml` (the access tools) and `instance-grammar.schema.yaml` (the grammar). What they need from outside the repository are Python packages, not files of it: `PyYAML` and `jsonschema` (the standard library otherwise). Those are not part of the published surface; a consumer that runs the tools installs them (the toolchain lock `requirements.txt` is excluded by decision). Running the grammar over compositions needs those compositions as input (the examples are excluded); its self-test does not.
 
 ## Pin and devel
 
-All twelve Forms-pinned files are in the proposal. The pin commit `73ae469` is an ancestor of `devel`'s head, and eleven of the twelve are byte-identical there; `proposals/atom-grammar/P0-4-MIGRATION.md` differs (`devel` moved on, 12 lines), and the working paper `p0-4-contradiction-matrix.md` also changed (not in the list). Including a file in the list does not make a release contain the pinned bytes: a release that meets the Forms pin has to be cut from a source commit that holds those exact blobs (the owner's decision of 2026-11-01: a new release from the pin). The pre-check (`tools/release_candidate_precheck.py`) is the tool that compares the two; it is not changed here.
+All twelve Forms-pinned files are in the approved set. The pin commit `73ae469` is an ancestor of `devel`'s head, and eleven of the twelve are byte-identical there; `proposals/atom-grammar/P0-4-MIGRATION.md` differs (`devel` moved on, 12 lines). Listing a file does not make a release contain the pinned bytes.
+
+**The approved list is not enough for a release from the historical pin.** The compiler reads the declaration from the `project.yaml` of the *source commit*. A release that starts from the state of `73ae469` therefore needs a new commit on a release branch that already contains the approved declaration and keeps the exact bytes of all twelve pinned files. That commit is not literally `73ae469`; the pre-check (`tools/release_candidate_precheck.py`), which compares the twelve digests, has to be run against it and not against `73ae469`. The pre-check is not changed here, and that release procedure stays on hold.
 
 ## What the list does not do
 
 * It does not make a consumer's requirement part of the producer: nothing here reads a consumer's pins.
-* It is explicit: a new file is not in the release until it is added. A producer-side consistency check (every `specs[].source_path` is also in `artifacts.files`) would catch a forgotten schema file; it is not part of the contract and is not implemented. Offered as a follow-up, not decided.
-* It is a list of paths in a commit; the approval of a list is not the authorization of a release. Signing and publication stay on hold.
+* It is explicit: a new file is not in the release until it is added. The compiler change (#26) refuses a release whose published schemas are not all listed (`spec_not_in_artifacts`), so a forgotten schema cannot be left out of the manifest; the other 17 files of the list have no such cross-check.
+* It is a list of paths in a commit. The approval of its content is not the authorization of a release; signing and publication stay on hold.
