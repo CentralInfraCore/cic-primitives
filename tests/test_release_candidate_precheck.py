@@ -333,11 +333,11 @@ def has_commit(commit):
     return subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"{commit}^{{commit}}"], capture_output=True).returncode == 0
 
 
-@pytest.mark.skipif(not has_commit(V020_SOURCE), reason="the history of release v0.2.0 is not in this clone (a shallow checkout); run with the full history")
+@pytest.mark.skipif(not (has_commit(V020_SOURCE) and has_commit("primitives/@v0.2.0")), reason="the history and the tag of release v0.2.0 are not in this clone (a shallow checkout); run with the full history and the tags")
 def test_release_v020_does_not_hold_the_pinned_grammar(tmp_path):
     # the v0.2.0 record lives on the tag, not on devel
     tag = subprocess.run(["git", "-C", str(REPO), "show", "primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml"], capture_output=True)
-    assert tag.returncode == 0, "the tag primitives/@v0.2.0 is needed (git fetch --tags)"
+    assert tag.returncode == 0
     record_path = tmp_path / "cic-primitives-v0.2.0.yaml"
     record_path.write_bytes(tag.stdout)
     out = io.StringIO()
