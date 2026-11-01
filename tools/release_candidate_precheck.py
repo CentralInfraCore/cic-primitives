@@ -16,13 +16,14 @@ questions (cryptographic origin, and whether the signed claim covers the pinned 
              every one of the twelve (the owner's requirement: source_commit stays mandatory and does not stand in for the file digests). Where the record keeps them is
              the record contract; the places read here are the spec sources and the two grammar files, nothing is invented.
 
-Exit status 1 when a hard check fails. `OPEN` lines are gates this tool does not and cannot close (a trust anchor pinned outside the record, certificate validity at
+Exit status 1 when a hard check fails. Exit status 0 is NOT fitness for release: read `readiness` (also `--json`), which is never `ready` while an OPEN gate exists. `OPEN` lines are gates this tool does not and cannot close (a trust anchor pinned outside the record, certificate validity at
 the release date, the digest-encoding contract, the signing itself); they never turn into a pass.
 """
 import argparse
 import base64
 import datetime
 import hashlib
+import json
 import re
 import subprocess
 import sys
@@ -36,6 +37,23 @@ PROVENANCE_FILES = {
     "grammar_schema_sha256": "proposals/atom-grammar/instance-grammar.schema.yaml",
 }
 COMPONENT = "primitives/"
+# The profile of the CIC grammar pin: EXACTLY these twelve distinct paths (cic-primitive-forms tools/grammar_identity.py GRAMMAR_FILES). It is fixed here and never read from
+# the manifest it judges: a manifest that dropped, added or swapped a file would otherwise define its own acceptable set.
+PROFILE_CIC_GRAMMAR_12 = (
+    "LICENSE.md",
+    "proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md",
+    "proposals/atom-grammar/P0-4-MIGRATION.md",
+    "proposals/atom-grammar/README.md",
+    "proposals/atom-grammar/access-vectors/resolution.yaml",
+    "proposals/atom-grammar/access_policy.py",
+    "proposals/atom-grammar/check_grammar.py",
+    "proposals/atom-grammar/instance-grammar.schema.yaml",
+    "schemas/aggregate/policy-surface.yaml",
+    "schemas/atomic/access.yaml",
+    "schemas/atomic/role.yaml",
+    "schemas/atomic/shape.yaml",
+)
+PROFILES = {"cic-grammar-12": PROFILE_CIC_GRAMMAR_12, "none": None}
 
 
 class Report:
@@ -47,6 +65,13 @@ class Report:
 
     def failed(self):
         return any(s == FAIL for s, _, _ in self.lines)
+
+    def readiness(self):
+        """'failed' when a check failed; otherwise 'checks_passed_gates_open'. This tool never returns 'ready': an OPEN gate is not one it can close, and exit status 0 is
+        never to be read as fitness for release."""
+        if self.failed():
+            return "failed"
+        return "checks_passed_gates_open" if any(s == OPEN for s, _, _ in self.lines) else "checks_passed"
 
     def render(self):
         return "\n".join(f"{s:5} {c}" + (f": {d}" if d else "") for s, c, d in self.lines)
@@ -107,6 +132,29 @@ def check_files(report, repo, commit, pin, label):
     return found
 
 
+def check_profile(report, pin, profile):
+    """The pin set is the profile's set: exactly the listed paths, each once. 'none' is the general tool with no profile (a stated choice, not a default of silence)."""
+    want = PROFILES[profile]
+    paths = [f["path"] for f in pin["files"]]
+    if want is None:
+        report.add(INFO, "profile", "none: the manifest's own file set is accepted as it is")
+        return
+    problems = []
+    dup = sorted({p for p in paths if paths.count(p) > 1})
+    if dup:
+        problems.append("repeated: " + ", ".join(dup))
+    missing = [p for p in want if p not in paths]
+    extra = sorted(p for p in set(paths) if p not in want)
+    if missing:
+        problems.append("missing: " + ", ".join(missing))
+    if extra:
+        problems.append("not in the profile: " + ", ".join(extra))
+    if problems:
+        report.add(FAIL, f"profile {profile}: the pin set is not the {len(want)} files of the profile", " | ".join(problems))
+    else:
+        report.add(PASS, f"profile {profile}: the pin set is exactly the {len(want)} files of the profile")
+
+
 def check_manifest_arithmetic(report, pin, name):
     entries = [(f["path"], f["sha256"]) for f in pin["files"]]
     got = manifest_digest(entries)
@@ -141,6 +189,7 @@ def candidate(args, report):
     report.add(INFO, "candidate", f"{commit}")
     if commit != pin["commit"]:
         report.add(FAIL, "candidate commit", f"{commit} is not the pinned commit {pin['commit']}: a different commit is a different pin until the files are proved identical (--release-head)")
+    check_profile(report, pin, args.profile)
     check_manifest_arithmetic(report, pin, args.pin)
     if git(repo, "cat-file", "-e", f"{commit}^{{commit}}", check=False).returncode != 0:
         report.add(FAIL, "candidate commit", "does not exist in this repository")
@@ -185,6 +234,7 @@ def gates(report, release_date, record_mode=False):
     if not record_mode:
         report.add(OPEN, "record digest coverage", "the record has to carry its own digest of all 12 pinned files and the algorithm; the present compiler digests the schema sources and two "
                    "grammar files, so at most 6 of the 12 by construction. A record contract change, not decided or made here; until then no candidate is complete")
+    report.add(OPEN, "manifest origin", "the recomputed manifest digest shows consistency, not that the manifest comes from the entitled consumer: that is not shown by this tool")
     report.add(OPEN, "trust anchor", "a CIC root pinned OUTSIDE the record (verify-release --trust-root) is not supplied by this tool")
     report.add(OPEN, "signer authority", "the release issuer certificate is not chained to anything in the record; whether the countersignature alone authorizes a release is not decided")
     if release_date:
@@ -205,6 +255,7 @@ def record(args, report):
     prov = rec.get("provenance") or {}
     commit = prov.get("source_commit")
     report.add(INFO, "record", f"version {rec.get('version')}, source_commit {commit}")
+    check_profile(report, pin, args.profile)
     check_manifest_arithmetic(report, pin, args.pin)
     if not commit:
         report.add(FAIL, "source_commit", "the record carries none")
@@ -222,7 +273,7 @@ def record(args, report):
     for key, path in PROVENANCE_FILES.items():
         if prov.get(key):
             digested[path] = (f"provenance.{key}", prov[key])
-    covered, alone = [], []
+    covered, alone, wrong = [], [], []
     for path, hexsha in by_path.items():
         if path not in digested:
             alone.append(path)
@@ -235,14 +286,20 @@ def record(args, report):
         if same:
             covered.append(f"{path} ({where})")
         else:
+            wrong.append(path)
             report.add(FAIL, f"record digest of {path}", f"{where} does not equal the pinned file")
     report.add(INFO, f"files the record digests itself ({len(covered)} of {len(by_path)})", "; ".join(covered) or "none")
     # the owner's requirement: the record carries its own digest of EVERY pinned file; source_commit stays mandatory and does not stand in for them
-    if alone:
-        report.add(FAIL, f"record digest coverage: {len(covered)} of {len(by_path)}",
-                   f"{len(alone)} pinned files have no digest of their own in the record and rest on the source commit alone: " + "; ".join(alone))
+    # coverage is PASS only when every pinned file has a digest in the record AND that digest equals the pinned bytes: a present but wrong digest is not coverage
+    if alone or wrong:
+        parts = []
+        if alone:
+            parts.append(f"{len(alone)} have no digest of their own in the record and rest on the source commit alone: " + "; ".join(alone))
+        if wrong:
+            parts.append(f"{len(wrong)} have a digest that is not the pinned file's: " + "; ".join(wrong))
+        report.add(FAIL, f"record digest coverage: {len(covered)} of {len(by_path)} present and equal", " | ".join(parts))
     else:
-        report.add(PASS, f"record digest coverage: all {len(by_path)} pinned files have a digest of their own in the record")
+        report.add(PASS, f"record digest coverage: all {len(by_path)} pinned files have a digest of their own in the record, and each equals the pinned file")
     gates(report, None, record_mode=True)
 
 
@@ -258,6 +315,8 @@ def main(argv=None):
     ap.add_argument("--version")
     ap.add_argument("--release-date", type=datetime.date.fromisoformat)
     ap.add_argument("--record")
+    ap.add_argument("--profile", choices=sorted(PROFILES), default="cic-grammar-12", help="the pin set the manifest has to be exactly (default: the 12 files of the CIC grammar pin)")
+    ap.add_argument("--json", action="store_true", help="print the result as JSON with a machine-readable readiness")
     args = ap.parse_args(argv)
     report = Report()
     try:
@@ -271,7 +330,13 @@ def main(argv=None):
         report.add(FAIL, "git", str(e))
     report.add(INFO, "scope", "PASS lines prove byte-identity and consistency of the named files only; they do not prove the signer's authority, the release's authenticity "
                "or the trust anchor (the OPEN lines), and a 12 of 12 PASS is not a statement that a release is genuine")
-    print(report.render())
+    readiness = report.readiness()
+    if args.json:
+        print(json.dumps({"readiness": readiness, "failed": report.failed(), "open_gates": [c for st, c, _ in report.lines if st == OPEN],
+                          "lines": [{"status": st, "check": c, "detail": d} for st, c, d in report.lines]}, ensure_ascii=False, indent=1))
+    else:
+        print(report.render())
+        print(f"readiness: {readiness}")
     return 1 if report.failed() else 0
 
 

@@ -22,3 +22,10 @@ Az 1-es kilépési kód kemény hibát jelent. Az `OPEN` sorok olyan kapuk, amel
 ## Nyitott kapuk (az eszköz nem ellenőrzi)
 
 1. A rekordon **kívül** pinelt CIC root (`--trust-root`). 2. Az aláíró jogosultsága (az issuer tanúsítvány nincs láncolva; az ellenjegyzés önmagában felhatalmaz-e, nincs eldöntve). 3. A tanúsítványok érvényessége a release napján (a `v0.2.0` tanúsítványai 2026-12-31-én lejárnak). 4. A digest-kódolás szerződése (base64 és `sha256:` hex; Forms-egység Rust/Go golden tesztekkel). 5. Aláírás és publikálás: a tulajdonos HOLD-ja alatt.
+
+## Profil, readiness, kilépési kód
+
+* **Profil.** A `--profile cic-grammar-12` (alapértelmezett) pontosan a CIC grammar pin 12 különböző útvonalát követeli meg; a halmaz az eszközben rögzített, nem a megítélt manifestből olvasott. Elhagyott, hozzáadott, kicserélt vagy ismételt fájl bukik, az elemszámtól függetlenül. A `--profile none` az általános eszköz. A manifest-digest konzisztenciát bizonyít, nem azt, hogy a manifest a jogosult fogyasztótól jön (`manifest origin` OPEN kapu).
+* **A lefedettség jelenlét és egyezés.** A `record digest coverage` csak akkor PASS, ha minden pinelt fájlnak van digestje a rekordban **és** mind egyezik a pinelt bájtokkal; egy meglévő, de hibás digest nem lefedettség, és mellette nem jelenik meg PASS.
+* **Readiness.** A 0-s kilépési kód **nem** release-alkalmasság. Minden futás `readiness: failed` vagy `readiness: checks_passed_gates_open` sorral zár (`--json`-nal géppel is). Az eszköz nyitott kapu mellett sosem mond `ready`-t.
+* **Fail-closed történet.** `CIC_REQUIRE_RELEASE_HISTORY=1` mellett a hiányzó commit, a hiányzó tag és az elmozdult tag három külön hiba, külön üzenettel; csak e mód nélkül marad ki a bizonyító teszt.
