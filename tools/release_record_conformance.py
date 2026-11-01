@@ -4,7 +4,7 @@
 It is the yardstick the compiler change will be measured against: the compiler does not get to say that its own output is right. It READS. It creates no record,
 signs nothing, publishes nothing and writes no source data; git is only asked to list and print objects.
 
-    release_record_conformance.py RECORD [--repo PATH] [--require record,blobs,crypto] [--json]
+    release_record_conformance.py RECORD --require record,blobs,crypto|none [--repo PATH] [--json]
 
 Three layers, reported apart. The success of one is never taken for the success of another:
 
@@ -30,6 +30,7 @@ import sys
 import yaml
 
 PASS, FAIL, NOT_RUN, INCOMPLETE = "PASS", "FAIL", "NOT_RUN", "INCOMPLETE"
+LAYERS = ("record", "blobs", "crypto")
 ABSENT = object()
 SUPPORTED_ENVELOPE = 3
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -40,7 +41,7 @@ REGULAR_MODES = ("100644", "100755")
 RECORD_REASONS = (
     "envelope_mismatch", "envelope_unsupported", "envelope_too_old",
     "source_commit_missing", "source_commit_form",
-    "artifacts_missing", "artifact_path_form", "artifact_path_duplicate", "artifact_order", "artifact_digest_form", "artifact_manifest_mismatch",
+    "artifacts_missing", "artifact_path_form", "artifact_path_duplicate", "artifact_order", "artifact_digest_form", "artifact_manifest_digest_form", "artifact_manifest_mismatch",
     "spec_source_path_duplicate",
 )
 CRYPTO_REASONS = ("build_hash_mismatch", "signature_invalid", "countersign_invalid")
@@ -110,7 +111,16 @@ def _same(a, b):
 
 # ---------------------------------------------------------------- the record layer: one function per reason, run in the order of RECORD_CHECKS
 
+def is_legacy_envelope_1(bundle):
+    """Section 11: no `provenance` member at all, `release` a mapping without `envelope`, and non-empty `release.build_hash` and `release.sign`. Nothing else is legacy."""
+    release = bundle.get("release")
+    return ("provenance" not in bundle and isinstance(release, dict) and "envelope" not in release
+            and all(isinstance(release.get(k), str) and release.get(k) for k in ("build_hash", "sign")))
+
+
 def _check_envelope(bundle):
+    if is_legacy_envelope_1(bundle):
+        return "envelope_too_old", "a legacy envelope 1 record (no provenance, no envelope field)"
     provenance = bundle.get("provenance")
     release = bundle.get("release")
     p = provenance.get("envelope", ABSENT) if isinstance(provenance, dict) else ABSENT
@@ -187,10 +197,13 @@ def _check_digest_form(bundle):
         digest = entry.get("digest") if isinstance(entry, dict) else None
         if not isinstance(digest, str) or not DIGEST_RE.match(digest):
             return "artifact_digest_form", "files[%d].digest is not sha256: and 64 lowercase hexadecimal digits" % index
+    return None
+
+
+def _check_manifest_digest_form(bundle):
     declared = bundle["artifacts"].get("manifest_digest")
-    # not in section 11 by name: an absent or malformed manifest digest is read as a digest of the wrong form (see the note in docs/en/RELEASE-RECORD-CONFORMANCE.md)
     if not isinstance(declared, str) or not DIGEST_RE.match(declared):
-        return "artifact_digest_form", "artifacts.manifest_digest is not sha256: and 64 lowercase hexadecimal digits"
+        return "artifact_manifest_digest_form", "artifacts.manifest_digest is absent, not a string, or not sha256: and 64 lowercase hexadecimal digits"
     return None
 
 
@@ -220,6 +233,7 @@ RECORD_CHECKS = (
     ("path_duplicate", _check_path_duplicate),
     ("order", _check_order),
     ("digest_form", _check_digest_form),
+    ("manifest_digest_form", _check_manifest_digest_form),
     ("manifest", _check_manifest),
     ("spec_source_paths", _check_spec_source_paths),
 )
@@ -461,9 +475,16 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("record")
     parser.add_argument("--repo", help="git repository that holds the source commit; enables the blobs layer")
-    parser.add_argument("--require", default="", help="comma-separated layers that must be PASS for exit status 0 (record,blobs,crypto)")
+    parser.add_argument("--require", required=True, help="comma-separated layers that must be PASS for exit status 0: record, blobs, crypto; or `none` to only report. "
+                        "Required, so that a CI call states what it needs: a layer that is NOT_RUN or INCOMPLETE is not PASS and exits with 3")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    required = [x for x in args.require.split(",") if x]
+    if required == ["none"]:
+        required = []
+    elif not required or any(x not in LAYERS for x in required):
+        print("--require takes record, blobs, crypto (comma-separated) or none; got %r" % args.require, file=sys.stderr)
+        return 2
     try:
         with open(args.record, encoding="utf-8") as fh:
             bundle = yaml.safe_load(fh)
@@ -476,10 +497,9 @@ def main(argv=None):
     else:
         _print(report)
     status = {"record": report["record"].status, "blobs": report["blobs"].status, "crypto": report["crypto"]["status"]}
-    required = [x for x in args.require.split(",") if x]
     if any(s == FAIL for s in status.values()):
         return 1
-    if any(status.get(layer) != PASS for layer in required):
+    if any(status[layer] != PASS for layer in required):
         return 3
     return 0
 

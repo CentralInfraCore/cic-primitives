@@ -14,13 +14,13 @@ Companion of `docs/en/RELEASE-RECORD-CONTRACT.md` (the contract, section numbers
 
 ## Three layers, reported apart
 
-`python tools/release_record_conformance.py RECORD [--repo PATH] [--require record,blobs,crypto] [--json]`
+`python tools/release_record_conformance.py RECORD --require record,blobs,crypto|none [--repo PATH] [--json]`
 
 * **record**: the record alone (sections 4 to 8 and 11, the structural reasons). No git, no signature.
 * **blobs**: each artifact digest against the git tree of `provenance.source_commit` in `--repo`. `NOT_RUN`, with the reason, when no repository is given or the commit is not in it (section 11: an addition to the record's own evidence, not a condition of it).
 * **crypto**: the checks inherited from envelope 2, with the functions of `tools/compiler.py` itself (`_release_hash_payload`, `_verify_cert_signature`), not a model of them: `release.build_hash` recomputed over the whole bundle, `release.sign` and `cic_countersign` verified over it. The three are reported one by one, and all three are always run, so one failure does not hide another. The layer is `PASS` only when all three pass; an absent counter-signature makes it `INCOMPLETE`.
 
-The success of one layer is never taken for the success of another, and there is no overall verdict: the output ends with what is **not** proven (who signed; authenticity; fitness to publish; the layers that did not run). Exit status 1 on any `FAIL`; `--require` makes a named layer that is not `PASS` exit with 3.
+The success of one layer is never taken for the success of another, and there is no overall verdict: the output ends with what is **not** proven (who signed; authenticity; fitness to publish; the layers that did not run). `--require` is mandatory, so that a CI call states what it needs: exit status 1 on any `FAIL`; 3 when a required layer is not `PASS`, which includes `NOT_RUN` and `INCOMPLETE`; 2 for a usage error (an unknown layer, an unreadable record); `--require none` only reports. A required layer that was not run is never a green gate.
 
 `validate_declaration(project, tree)` is the producer-side counterpart (section 6): a pure function over a parsed `project.yaml` and a tree listing; the rule the compiler has to agree with. It does not read the working directory.
 
@@ -43,15 +43,20 @@ The control of the series: the same defect, re-authenticated, is a validly signe
 
 ## Planted defects
 
-Two series, in `tests/test_release_record_conformance_planted.py`. (1) Each record check is switched off in turn, and each reason it owns must lose a vector; the same for the three crypto checks. (2) 68 small breaks, 8 of them documented as equivalent, in the verifier source (`tests/e3_mutants.py`): the targeted vector must be among the failing tests (a break that fails only an unrelated test does not count), and the mutants that cannot change behaviour are listed with the reason and **have to survive**. The equivalent ones: a leading or trailing slash and the empty string (the segment test refuses them with the same reason), code-point order against UTF-8 byte order (the same order), the order test against equal neighbours (the duplicate test runs first), the git object type against the mode, the submodule mode taken alone, `--full-tree`. UTF-16 order is not equivalent and has its own vector pair (U+FF5E and U+10000).
+Two series, in `tests/test_release_record_conformance_planted.py`. (1) Each record check is switched off in turn, and each reason it owns must lose a vector; the same for the three crypto checks. (2) 79 small breaks, 8 of them documented as equivalent, in the verifier source (`tests/e3_mutants.py`): the targeted vector must be among the failing tests (a break that fails only an unrelated test does not count), and the mutants that cannot change behaviour are listed with the reason and **have to survive**. The equivalent ones: a leading or trailing slash and the empty string (the segment test refuses them with the same reason), code-point order against UTF-8 byte order (the same order), the order test against equal neighbours (the duplicate test runs first), the git object type against the mode, the submodule mode taken alone, `--full-tree`. UTF-16 order is not equivalent and has its own vector pair (U+FF5E and U+10000).
 
-## Where the contract is silent or ambiguous (not changed here; for the next contract revision)
+## Decided in the contract after the first review of this change
 
-1. `artifacts.manifest_digest` absent or not of the form `sha256:` and 64 lowercase hexadecimal digits has no named reason. The verifier reads it as `artifact_digest_form`.
-2. A real envelope 1 record omits the envelope fields (`release/cic-primitives-v0.1.5.yaml` has none; the envelope 2 verifier defaults to 1). Section 11 sends "both absent" to `envelope_unsupported`, so a real v1 record is `envelope_unsupported`, not `envelope_too_old`; only a record that states the envelope 1 reaches `envelope_too_old`.
-3. An absent `cic_countersign` is not a refusal in the contract. The verifier reports `NOT_RUN` for that check and `INCOMPLETE` for the layer, never `PASS`.
-4. Section 11 says a record that fails an earlier check "is not examined further". The verifier applies that inside the record layer and as the envelope gate of the crypto layer; the crypto layer is otherwise independent of the record layer (a record that fails `artifact_order` is still checked for `build_hash_mismatch`), which is what lets the coverage vectors show each cryptographic check alone.
-5. `countersign_invalid` here is the signature over `build_hash`. The chain of the authority certificate to the root it carries, and the pinned root, are trust gates (section 2) and are not checked.
+The first version of this document listed three places where the contract was silent. They are now settled in `docs/en/RELEASE-RECORD-CONTRACT.md` section 11, and the verifier and the vectors follow it:
+
+1. A new reason `artifact_manifest_digest_form` for an absent, mistyped or malformed `artifacts.manifest_digest`; `artifact_digest_form` stays the reason for the digests of the files.
+2. A legacy envelope 1 record is identified by a normative rule (no `provenance` member, `release` without `envelope`, non-empty `release.build_hash` and `release.sign`) and is `envelope_too_old`; any other record with both envelope fields absent is `envelope_unsupported`, exactly one absent is `envelope_mismatch`. The real `release/cic-primitives-v0.1.5.yaml` is a vector.
+3. An absent `cic_countersign` is neither a refusal nor a pass: the check is `NOT_RUN`, the layer `INCOMPLETE`, and a layer that is not `PASS` does not satisfy `--require`.
+
+## Left as it is
+
+1. Section 11 says a record that fails an earlier check "is not examined further". The verifier applies that inside the record layer and as the envelope gate of the crypto layer; the crypto layer is otherwise independent of the record layer (a record that fails `artifact_order` is still checked for `build_hash_mismatch`), which is what lets the coverage vectors show each cryptographic check alone.
+2. `countersign_invalid` here is the signature over `build_hash`. The chain of the authority certificate to the root it carries, and the pinned root, are trust gates (section 2) and are not checked.
 
 ## Not in this change
 

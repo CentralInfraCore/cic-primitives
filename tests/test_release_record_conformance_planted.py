@@ -30,6 +30,7 @@ OWNS = {
     "path_duplicate": ["artifact_path_duplicate"],
     "order": ["artifact_order"],
     "digest_form": ["artifact_digest_form"],
+    "manifest_digest_form": ["artifact_manifest_digest_form"],
     "manifest": ["artifact_manifest_mismatch"],
     "spec_source_paths": ["spec_source_path_duplicate"],
 }
@@ -90,7 +91,9 @@ def run_mutant(mutant, tmp):
     source = SOURCE.read_text(encoding="utf-8")
     assert source.count(mutant["old"]) == 1, "%s: the planted text occurs %d times" % (mutant["id"], source.count(mutant["old"]))
     path = pathlib.Path(tmp) / ("m_%s.py" % mutant["id"])
-    path.write_text(source.replace(mutant["old"], mutant["new"]), encoding="utf-8")
+    mutated = source.replace(mutant["old"], mutant["new"])
+    compile(mutated, mutant["id"], "exec")   # a break that is not even valid Python is killed for the wrong reason
+    path.write_text(mutated, encoding="utf-8")
     env = dict(os.environ, E3_VERIFIER=str(path), PYTHONDONTWRITEBYTECODE="1")
     # a defect meant to be caught is run against the vectors that target it (the run is short); one documented as equivalent is run against all of them
     select = ["-k", " or ".join(mutant["kills"])] if mutant["kills"] else []

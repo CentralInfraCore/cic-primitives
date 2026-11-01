@@ -266,7 +266,6 @@ def contract_reasons():
 
 def test_the_verifier_gives_exactly_the_reasons_the_contract_names():
     verifier = set(V.RECORD_REASONS + V.CRYPTO_REASONS + V.BLOB_REASONS + V.DECLARATION_REASONS)
-    # manifest-digest-absent is read as artifact_digest_form: the only reason the verifier gives that the contract table does not give for that case
     assert verifier == contract_reasons(), (verifier ^ contract_reasons())
 
 
@@ -310,17 +309,24 @@ def test_the_module_does_not_open_a_file_for_writing_or_sign():
 
 # ---------------------------------------------------------------- command line
 
-def run_cli(*args):
+def run_cli(*args, cwd=None):
     # the planted-defect runs point E3_VERIFIER at a mutated copy; the copy lives elsewhere, so the repository root is put on the path for its compiler import
     env = {"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": "/nonexistent", "PYTHONPATH": str(fx.ROOT)}
     script = os.environ.get("E3_VERIFIER") or str(fx.ROOT / "tools" / "release_record_conformance.py")
-    return subprocess.run([sys.executable, script] + list(args), capture_output=True, text=True, env=env, cwd=str(fx.ROOT))
+    return subprocess.run([sys.executable, script] + list(args), capture_output=True, text=True, env=env, cwd=str(cwd or fx.ROOT))
+
+
+def write_record(tmp_path, bundle, name="r.yaml"):
+    record = tmp_path / name
+    record.write_text(yaml.dump(bundle, sort_keys=False))
+    return str(record)
+
+
+ALL_LAYERS = "record,blobs,crypto"
 
 
 def test_cli_prints_the_three_layers_apart_and_the_open_claims(repos, tmp_path):
-    record = tmp_path / "r.yaml"
-    record.write_text(yaml.dump(fx.load_golden(), sort_keys=False))
-    done = run_cli(str(record), "--repo", repos["golden"][0])
+    done = run_cli(write_record(tmp_path, fx.load_golden()), "--repo", repos["golden"][0], "--require", ALL_LAYERS)
     assert done.returncode == 0, done.stdout + done.stderr
     assert re.search(r"^record\s+PASS", done.stdout, re.M)
     assert re.search(r"^blobs\s+PASS", done.stdout, re.M)
@@ -330,24 +336,79 @@ def test_cli_prints_the_three_layers_apart_and_the_open_claims(repos, tmp_path):
     assert all(line.startswith("NOT proven") for line in done.stdout.splitlines() if "authentic" in line or "fit to publish" in line)
 
 
-def test_cli_without_a_repository_says_the_blob_checks_were_not_made(tmp_path):
-    record = tmp_path / "r.yaml"
-    record.write_text(yaml.dump(fx.load_golden(), sort_keys=False))
-    done = run_cli(str(record))
-    assert done.returncode == 0
-    assert "blobs    NOT_RUN" in done.stdout
-    assert run_cli(str(record), "--require", "record,blobs").returncode == 3
-    assert run_cli(str(record), "--require", "record,crypto").returncode == 0
+def test_cli_the_required_layers_have_to_be_stated(tmp_path):
+    record = write_record(tmp_path, fx.load_golden())
+    missing = run_cli(record)
+    assert missing.returncode == 2 and "--require" in missing.stderr
 
 
-def test_cli_exit_status_one_on_a_failing_layer(tmp_path):
+@pytest.mark.parametrize("value", ["", ",", "records", "record,blob", "none,record", "ALL"])
+def test_cli_an_unknown_layer_is_a_usage_error(value, tmp_path):
+    done = run_cli(write_record(tmp_path, fx.load_golden()), "--require", value)
+    assert done.returncode == 2, (value, done.stdout)
+    assert done.stdout == ""   # nothing was verified or printed
+
+
+def test_cli_require_none_only_reports(tmp_path):
+    record = write_record(tmp_path, fx.load_golden())
+    done = run_cli(record, "--require", "none")
+    assert done.returncode == 0 and "blobs    NOT_RUN" in done.stdout
+
+
+def test_cli_a_required_layer_that_is_not_run_is_not_a_success(repos, tmp_path):
+    record = write_record(tmp_path, fx.load_golden())
+    # blobs: no repository
+    assert run_cli(record, "--require", "record,blobs").returncode == 3
+    assert run_cli(record, "--require", "blobs").returncode == 3
+    assert run_cli(record, "--require", "record,crypto").returncode == 0
+    # blobs: a repository that does not hold the commit
+    done = run_cli(record, "--repo", repos["special"][0], "--require", "blobs")
+    assert done.returncode == 3 and "blobs    NOT_RUN" in done.stdout
+    # crypto: the compiler cannot be imported from a directory without project.yaml, so the layer is not run
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    done = run_cli(record, "--require", "record", cwd=elsewhere)
+    assert done.returncode == 0 and "crypto   NOT_RUN" in done.stdout
+    assert run_cli(record, "--require", "record,crypto", cwd=elsewhere).returncode == 3
+    assert run_cli(record, "--require", ALL_LAYERS, cwd=elsewhere).returncode == 3
+
+
+def test_cli_a_required_layer_that_is_incomplete_is_not_a_success(repos, tmp_path):
+    bundle = copy.deepcopy(fx.load_golden())
+    del bundle["cic_countersign"]
+    record = write_record(tmp_path, bundle)
+    done = run_cli(record, "--repo", repos["golden"][0], "--require", "record,blobs")
+    assert done.returncode == 0 and re.search(r"^crypto\s+INCOMPLETE", done.stdout, re.M)
+    for required in ("crypto", "record,crypto", ALL_LAYERS):
+        assert run_cli(record, "--repo", repos["golden"][0], "--require", required).returncode == 3, required
+
+
+def test_cli_a_failing_layer_is_exit_status_one_whatever_is_required(tmp_path):
     bad = fx.apply_ops(fx.load_golden(), [vec.s("provenance.source_commit", None)], {})
-    record = tmp_path / "bad.yaml"
-    record.write_text(yaml.dump(bad, sort_keys=False))
-    done = run_cli(str(record), "--json")
-    assert done.returncode == 1
-    assert json.loads(done.stdout)["first_reason"] == "source_commit_missing"
+    record = write_record(tmp_path, bad, "bad.yaml")
+    for required in ("none", "blobs", ALL_LAYERS):
+        done = run_cli(record, "--json", "--require", required)
+        assert done.returncode == 1, required
+        assert json.loads(done.stdout)["first_reason"] == "source_commit_missing"
 
 
 def test_cli_unreadable_record_is_exit_status_two(tmp_path):
-    assert run_cli(str(tmp_path / "missing.yaml")).returncode == 2
+    assert run_cli(str(tmp_path / "missing.yaml"), "--require", "none").returncode == 2
+
+
+# ---------------------------------------------------------------- a real legacy record
+
+LEGACY = fx.ROOT / "release" / "cic-primitives-v0.1.5.yaml"
+
+
+def test_real_legacy_envelope_1_record_is_too_old_and_not_unsupported():
+    bundle = yaml.safe_load(LEGACY.read_text(encoding="utf-8"))
+    assert "provenance" not in bundle and "envelope" not in bundle["release"]
+    result = V.check_record(bundle)
+    assert (result.status, result.reason) == ("FAIL", "envelope_too_old")
+    assert V.check_crypto(bundle)["status"] == "NOT_RUN"
+
+
+def test_real_legacy_record_through_the_command_line(tmp_path):
+    done = run_cli(str(LEGACY), "--json", "--require", "none")
+    assert done.returncode == 1 and json.loads(done.stdout)["first_reason"] == "envelope_too_old"
