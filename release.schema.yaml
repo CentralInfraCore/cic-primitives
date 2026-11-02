@@ -123,9 +123,12 @@ properties:
         enum:
         - 1
         - 2
+        - 3
         description: "Which payload build_hash covers. 1 = the four members {createdBy, releasedBy, specs,\
           \ validity} \u2014 legacy, leaves kind/version/timestamp unsigned. 2 = the whole bundle except\
-          \ release.sign, release.build_hash and cic_countersign. Absent means 1."
+          \ release.sign, release.build_hash and cic_countersign. 3 = the same payload rule as 2, and\
+          \ the bundle carries `artifacts` and a mandatory `provenance.source_commit` (docs/en/RELEASE-RECORD-CONTRACT.md).\
+          \ Absent means 1."
   cic_countersign:
     type: object
     description: External CIC counter-signature over release.build_hash. Applied by CICSourceCA after
@@ -184,3 +187,57 @@ properties:
         type:
         - string
         - 'null'
+  artifacts:
+    type: object
+    description: 'Envelope 3: a digest of every released file (docs/en/RELEASE-RECORD-CONTRACT.md, sections 6 to 8). sha256: and 64
+      lowercase hexadecimal digits of the git blob bytes at provenance.source_commit; files sorted by the UTF-8 bytes of the path, unique;
+      manifest_digest over the sha256sum-format lines. This schema checks the shape only; tools/release_record_conformance.py is the reference check.'
+    required:
+    - manifest_digest
+    - files
+    properties:
+      manifest_digest:
+        type: string
+        pattern: ^sha256:[0-9a-f]{64}$
+      files:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required:
+          - path
+          - digest
+          properties:
+            path:
+              type: string
+              minLength: 1
+            digest:
+              type: string
+              pattern: ^sha256:[0-9a-f]{64}$
+allOf:
+- description: An envelope 3 record carries artifacts and a source_commit that is 40 lowercase hexadecimal digits (never null).
+  if:
+    required:
+    - release
+    properties:
+      release:
+        required:
+        - envelope
+        properties:
+          envelope:
+            const: 3
+  then:
+    required:
+    - provenance
+    - artifacts
+    properties:
+      provenance:
+        required:
+        - envelope
+        - source_commit
+        properties:
+          envelope:
+            const: 3
+          source_commit:
+            type: string
+            pattern: ^[0-9a-f]{40}$

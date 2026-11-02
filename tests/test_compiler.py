@@ -1,5 +1,6 @@
 import pytest
 import pathlib
+import re
 
 from tools import compiler
 from _helpers import cert_subject_name, make_test_key_and_cert, sign_hash
@@ -858,18 +859,25 @@ def test_fingerprint_is_stable_and_distinguishing():
 # Provenance block: what the signature covers about the build's origin
 # ---------------------------------------------------------------------------
 
+def _git_checkout(path):
+    """A git repository at `path`: since envelope 3 the source commit is mandatory, so provenance is only collected inside one."""
+    import e3_compiler_support as sup
+    import e3_fixtures as fx
+    sup.checkout(path, list(fx.GOLDEN_FILES))
+
+
 def test_collect_provenance_records_the_source_and_digests():
     p = compiler._collect_provenance()
     assert p["envelope"] == compiler.RELEASE_ENVELOPE_VERSION
-    # In a git checkout this is a real commit id; the point is that the field
-    # exists so the signature covers it either way.
-    assert "source_commit" in p
+    # Since envelope 3 it is always a real commit id (the compiler stops without one).
+    assert re.fullmatch(r"[0-9a-f]{40}", p["source_commit"])
     for key in ("dependency_lock_sha256", "grammar_sha256", "grammar_schema_sha256"):
         assert key in p
 
 
 def test_collect_provenance_digest_follows_the_file(tmp_path, monkeypatch):
     """A changed dependency lock must change the digest the release signs."""
+    _git_checkout(tmp_path)
     monkeypatch.chdir(tmp_path)
     (tmp_path / "dependency.yaml").write_text("a: 1\n")
     first = compiler._collect_provenance()["dependency_lock_sha256"]
@@ -879,6 +887,7 @@ def test_collect_provenance_digest_follows_the_file(tmp_path, monkeypatch):
 
 
 def test_collect_provenance_survives_a_missing_file(tmp_path, monkeypatch):
+    _git_checkout(tmp_path)
     monkeypatch.chdir(tmp_path)
     p = compiler._collect_provenance()
     assert p["dependency_lock_sha256"] is None
@@ -1012,80 +1021,46 @@ _RELEASE_SETTINGS = {
 }
 
 
-def _release_sandbox(tmp_path, monkeypatch, mocker, version="0.1.6"):
-    """A tree run_release() can complete in without Vault, git or a network.
+def _release_sandbox(tmp_path, monkeypatch, mocker, version="0.1.6", extra_files=()):
+    """A tree run_release() can complete in without Vault or a network.
 
     Worth the setup: run_release had 104 of its 120 lines uncovered, and it is
     the function that decides what a signed artifact contains. Every property
-    asserted below — that the envelope is v2, that the hash covers the whole
+    asserted below — that the envelope is v3, that the hash covers the whole
     bundle, that provenance is inside it — was previously only checked by
     reading the code.
+
+    Since envelope 3 the sandbox is a real git checkout: the artifacts are
+    resolved from the git tree of HEAD, and the source commit is not optional.
+    The set-up lives in tests/e3_compiler_support.py, where the envelope 3 tests
+    share it.
     """
-    repo = pathlib.Path(compiler.__file__).resolve().parent.parent
-    (tmp_path / "proposals").mkdir()
-    (tmp_path / "proposals" / "atom-grammar").symlink_to(
-        repo / "proposals" / "atom-grammar", target_is_directory=True)
-    (tmp_path / "schemas" / "atomic").mkdir(parents=True)
-    (tmp_path / "schemas" / "atomic" / "shape.yaml").write_text(
-        _META.format(name="Shape", version="v0.1.dev")
-        + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
-    (tmp_path / "schemas" / "examples").mkdir()
-    (tmp_path / "schemas" / "examples" / "c.yaml").write_text(
-        _META.format(name="Example", version="v0.1.dev") + _GOOD_COMPOSITION.lstrip("\n"))
-    (tmp_path / "dependency.yaml").write_text("schema_version: '1'\n")
-    # run_release() runs the three older validations first; they need the two
-    # meta-schemas and a docs tree, so the sandbox carries the real ones.
-    repo_root = pathlib.Path(compiler.__file__).resolve().parent.parent
-    for name in ("md.meta.schema.yaml",):
-        (tmp_path / name).write_text((repo_root / name).read_text())
-    (tmp_path / "schemas" / "index.yaml").write_text(
-        (repo_root / "schemas" / "index.yaml").read_text())
-    monkeypatch.chdir(tmp_path)
-
-    dev_key, dev_cert = make_test_key_and_cert("Dev")
-    rel_key, rel_cert = make_test_key_and_cert("Releaser")
-    today = datetime.datetime.now(datetime.timezone.utc).date()
-    validity = {"from": str(today), "until": "2099-01-01"}
-    created_by = {"name": "Dev", "email": "d@e", "certificate": dev_cert}
-    commitment = {
-        "kind": "DeveloperCommitment", "validity": validity, "createdBy": created_by,
-    }
-
-    monkeypatch.setenv("VAULT_ADDR", "https://vault")
-    monkeypatch.setenv("VAULT_TOKEN", "token")
-    mocker.patch("tools.compiler.validate_release_prerequisites",
-                 return_value=(version, "primitives/"))
-    mocker.patch("tools.compiler._load_valid_commitment", return_value=commitment)
-    mocker.patch("tools.compiler._vault_get_cert", return_value=rel_cert)
-    mocker.patch("tools.compiler._vault_sign",
-                 side_effect=lambda digest, *a, **k: sign_hash(rel_key, digest))
-    mocker.patch("tools.compiler.load_project_config", side_effect=lambda full_config=False: (
-        {"project": {"name": "cic-primitives", "owner": "Dev"},
-         "compiler_settings": _RELEASE_SETTINGS}
-        if full_config else _RELEASE_SETTINGS))
-    return tmp_path, version
+    import e3_compiler_support as sup
+    root, version, _commit, _calls = sup.release_sandbox(compiler, tmp_path, monkeypatch, version=version, extra_files=extra_files)
+    return root, version
 
 
-def test_release_writes_an_envelope_v2_bundle(tmp_path, monkeypatch, mocker):
+def test_release_writes_an_envelope_v3_bundle(tmp_path, monkeypatch, mocker):
     root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
     compiler.run_release()
     artifact = root / "release" / f"cic-primitives-v{version}.yaml"
     assert artifact.is_file()
     bundle = yaml.safe_load(artifact.read_text())
     assert bundle["kind"] == "PrimitiveRelease"
-    assert bundle["release"]["envelope"] == compiler.RELEASE_ENVELOPE_VERSION == 2
-    assert bundle["provenance"]["envelope"] == 2
-    assert "source_commit" in bundle["provenance"]
+    assert bundle["release"]["envelope"] == compiler.RELEASE_ENVELOPE_VERSION == 3
+    assert bundle["provenance"]["envelope"] == 3
+    assert re.fullmatch(r"[0-9a-f]{40}", bundle["provenance"]["source_commit"])
+    assert bundle["artifacts"]["files"]
 
 
 def test_release_hash_covers_the_whole_bundle(tmp_path, monkeypatch, mocker):
-    """Recomputing the v2 payload over the written artifact must reproduce it."""
+    """Recomputing the v3 payload (the v2 rule) over the written artifact must reproduce it."""
     root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
     compiler.run_release()
     bundle = yaml.safe_load(
         (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
     recomputed = compiler.get_sha256_b64(compiler.to_canonical_json(
-        compiler._release_hash_payload(bundle, 2)))
+        compiler._release_hash_payload(bundle, 3)))
     assert recomputed == bundle["release"]["build_hash"]
 
 
@@ -1463,12 +1438,11 @@ def test_release_collects_specs_from_nested_directories(tmp_path, monkeypatch, m
     Without recursion the bundle silently omits deeper schemas — a release that
     claims to cover the primitive set while shipping part of it.
     """
-    root, version = _release_sandbox(tmp_path, monkeypatch, mocker)
-    deep = root / "schemas" / "atomic" / "nested"
-    deep.mkdir()
-    (deep / "deep.yaml").write_text(
-        _META.format(name="Deep", version="v0.1.dev")
-        + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n")
+    deep = (_META.format(name="Deep", version="v0.1.dev")
+            + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n").encode()
+    # committed: since envelope 3 the compiler stops at a schema file the source commit does not hold
+    root, version = _release_sandbox(tmp_path, monkeypatch, mocker,
+                                     extra_files=[("schemas/atomic/nested/deep.yaml", deep, "100644")])
     compiler.run_release()
     bundle = yaml.safe_load(
         (root / "release" / f"cic-primitives-v{version}.yaml").read_text())
