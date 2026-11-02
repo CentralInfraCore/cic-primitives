@@ -13,8 +13,10 @@ questions (cryptographic origin, and whether the signed claim covers the pinned 
              pin name recompute; the commit that the release will actually be cut from (--release-head: the release branch head, or the merge commit on main) holds
              the same twelve files; the version is a valid next increment; the files in which devel has moved on are listed.
 `record`     after the release: the record's `provenance.source_commit` holds the twelve files byte-identical to the manifest, AND the record carries its own digest of
-             every one of the twelve (the owner's requirement: source_commit stays mandatory and does not stand in for the file digests). Where the record keeps them is
-             the record contract; the places read here are the spec sources and the two grammar files, nothing is invented.
+             every one of the twelve (the owner's requirement: source_commit stays mandatory and does not stand in for the file digests). Where the record keeps them
+             is the record contract (docs/en/RELEASE-RECORD-CONTRACT.md): an envelope 3 record keeps them in `artifacts.files` as `sha256:<hex>` of the raw blob bytes,
+             and only there is read; a record of an earlier envelope (1, 2) keeps at most the spec sources and the two grammar files, which are read as before.
+             This tool does not check the artifacts block itself (order, uniqueness, manifest_digest, signatures): that is tools/release_record_conformance.py.
 
 Exit status 1 when a hard check fails. Exit status 0 is NOT fitness for release: read `readiness` (also `--json`), which is never `ready` while an OPEN gate exists. `OPEN` lines are gates this tool does not and cannot close (a trust anchor pinned outside the record, certificate validity at
 the release date, the digest-encoding contract, the signing itself); they never turn into a pass.
@@ -37,6 +39,10 @@ PROVENANCE_FILES = {
     "grammar_schema_sha256": "proposals/atom-grammar/instance-grammar.schema.yaml",
 }
 COMPONENT = "primitives/"
+# envelope 3 (docs/en/RELEASE-RECORD-CONTRACT.md): the record's own digest of an artifact is `sha256:` + 64 lowercase hex of the raw git blob bytes
+ENVELOPE_WITH_ARTIFACTS = 3
+LEGACY_ENVELOPES = (1, 2)
+ARTIFACT_DIGEST = re.compile(r"sha256:([0-9a-f]{64})")
 # The profile of the CIC grammar pin: EXACTLY these twelve distinct paths (cic-primitive-forms tools/grammar_identity.py GRAMMAR_FILES). It is fixed here and never read from
 # the manifest it judges: a manifest that dropped, added or swapped a file would otherwise define its own acceptable set.
 PROFILE_CIC_GRAMMAR_12 = (
@@ -208,6 +214,7 @@ def candidate(args, report):
         report.add(INFO, "release head differs from the candidate in", ", ".join(outside) if outside else "nothing")
     else:
         report.add(OPEN, "release head", "not given: the source_commit of the record will be the head the release runs on, and the twelve files have to be proved there too")
+    declared = check_declaration(report, repo, args.release_head, pin) if args.release_head else False
 
     # devel has moved on: a release cut from its head would not be the pin
     moved = [f["path"] for f in pin["files"] if blob(repo, args.devel, f["path"]) != blob(repo, commit, f["path"])]
@@ -227,13 +234,47 @@ def candidate(args, report):
             report.add(INFO, "release branch", f"{COMPONENT}releases/v{args.version}")
     else:
         report.add(OPEN, "version", "not given")
-    gates(report, args.release_date)
+    gates(report, args.release_date, declared=declared)
 
 
-def gates(report, release_date, record_mode=False):
+def check_declaration(report, repo, head, pin):
+    """The release head's project.yaml declares the release artifacts (`compiler_settings.release_artifacts.paths`, the source of an envelope 3 record). -> True when it is there
+    and holds all the pinned paths. A declaration that leaves a pinned path out is a FAIL: the record written from that head cannot carry that file's digest. No declaration is
+    not a failure here (a head of an earlier release has none): the record coverage stays the OPEN gate it was. Which paths the compiler accepts is its business, not read here."""
+    data = blob(repo, head, "project.yaml")
+    if data is None:
+        report.add(INFO, "release artifact declaration", "no project.yaml at the release head: an earlier record can digest at most 6 of the 12")
+        return False
+    try:
+        declaration = ((yaml.safe_load(data) or {}).get("compiler_settings") or {}).get("release_artifacts")
+    except yaml.YAMLError as e:
+        report.add(FAIL, "release artifact declaration", f"project.yaml at the release head does not parse: {e}")
+        return False
+    if declaration is None:
+        report.add(INFO, "release artifact declaration", "none at the release head (compiler_settings.release_artifacts): an earlier record can digest at most 6 of the 12")
+        return False
+    paths = declaration.get("paths") if isinstance(declaration, dict) else None
+    if not isinstance(paths, list) or not all(isinstance(x, str) for x in paths):
+        report.add(FAIL, "release artifact declaration", "compiler_settings.release_artifacts.paths at the release head is not a list of paths")
+        return False
+    missing = [f["path"] for f in pin["files"] if f["path"] not in set(paths)]
+    if missing:
+        report.add(FAIL, "release artifact declaration", f"the release head does not declare {len(missing)} of the {len(pin['files'])} pinned files as release artifacts, so its record "
+                   "cannot carry their digests: " + "; ".join(missing))
+        return False
+    report.add(PASS, "release artifact declaration", f"the release head declares all {len(pin['files'])} pinned files among its {len(paths)} release artifacts")
+    return True
+
+
+def gates(report, release_date, record_mode=False, declared=False):
+    """`declared`: the release head declares all pinned files as release artifacts (an envelope 3 release). It changes the wording of two gates, never their status."""
     if not record_mode:
-        report.add(OPEN, "record digest coverage", "the record has to carry its own digest of all 12 pinned files and the algorithm; the present compiler digests the schema sources and two "
-                   "grammar files, so at most 6 of the 12 by construction. A record contract change, not decided or made here; until then no candidate is complete")
+        if declared:
+            report.add(OPEN, "record digest coverage", "the declaration only says what the compiler will digest: the record has to carry its own digest of all 12 pinned files, and that is "
+                       "shown by `record` mode on the record after the release, not here")
+        else:
+            report.add(OPEN, "record digest coverage", "the record has to carry its own digest of all 12 pinned files and the algorithm; the present compiler digests the schema sources and two "
+                       "grammar files, so at most 6 of the 12 by construction. A record contract change, not decided or made here; until then no candidate is complete")
     report.add(OPEN, "manifest origin", "the recomputed manifest digest shows consistency, not that the manifest comes from the entitled consumer: that is not shown by this tool")
     report.add(OPEN, "trust anchor", "a CIC root pinned OUTSIDE the record (verify-release --trust-root) is not supplied by this tool")
     report.add(OPEN, "signer authority", "the release issuer certificate is not chained to anything in the record; whether the countersignature alone authorizes a release is not decided")
@@ -241,7 +282,11 @@ def gates(report, release_date, record_mode=False):
         report.add(OPEN, "certificate validity", f"has to be shown for {release_date} (the certificates of v0.2.0 expire 2026-12-31)")
     else:
         report.add(OPEN, "certificate validity", "no --release-date given; the certificates of v0.2.0 expire 2026-12-31")
-    report.add(OPEN, "digest encoding", "the base64 -> sha256:hex mapping of the record digests is not a contract yet (Forms unit with Rust/Go golden tests)")
+    if declared:
+        report.add(OPEN, "digest encoding", "the record side is a contract (envelope 3: sha256:<hex> of the raw git blob bytes, the form of the pin manifest); whether the receipt's own "
+                   "contract takes these values as they are is not shown here (Forms unit with Rust/Go golden tests)")
+    else:
+        report.add(OPEN, "digest encoding", "the base64 -> sha256:hex mapping of the record digests is not a contract yet (Forms unit with Rust/Go golden tests)")
     report.add(OPEN, "signing and publishing", "HOLD by the owner until the gates above are shown")
 
 
@@ -267,20 +312,26 @@ def record(args, report):
 
     # what the record digests itself, and what rests on the source commit alone
     by_path = {f["path"]: f["sha256"] for f in pin["files"]}
-    digested = {}
-    for spec in rec.get("specs", []):
-        digested[spec["source_path"]] = ("spec meta_hash", spec["meta_hash"])
-    for key, path in PROVENANCE_FILES.items():
-        if prov.get(key):
-            digested[path] = (f"provenance.{key}", prov[key])
+    envelope = (rec.get("release") or {}).get("envelope") if isinstance(rec.get("release"), dict) else None
+    if type(envelope) is int and envelope == ENVELOPE_WITH_ARTIFACTS:
+        digested = artifact_digests(report, rec)
+        if digested is None:
+            gates(report, None, record_mode=True, declared=True)
+            return
+    elif envelope is None or (type(envelope) is int and envelope in LEGACY_ENVELOPES):
+        digested = legacy_digests(rec, prov)
+    else:
+        report.add(FAIL, "record envelope", f"release.envelope is {envelope!r}: this tool reads envelope 3 (artifacts.files) and the earlier envelopes 1 and 2 (spec sources and the two grammar files)")
+        gates(report, None, record_mode=True)
+        return
     covered, alone, wrong = [], [], []
     for path, hexsha in by_path.items():
         if path not in digested:
             alone.append(path)
             continue
-        where, b64 = digested[path]
+        where, value, decode = digested[path]
         try:
-            same = b64_to_hex(b64) == hexsha
+            same = decode(value) == hexsha
         except Exception:
             same = False
         if same:
@@ -300,7 +351,45 @@ def record(args, report):
         report.add(FAIL, f"record digest coverage: {len(covered)} of {len(by_path)} present and equal", " | ".join(parts))
     else:
         report.add(PASS, f"record digest coverage: all {len(by_path)} pinned files have a digest of their own in the record, and each equals the pinned file")
-    gates(report, None, record_mode=True)
+    gates(report, None, record_mode=True, declared=envelope == ENVELOPE_WITH_ARTIFACTS)
+
+
+def legacy_digests(rec, prov):
+    """Envelope 1 and 2: {path: (where, base64 value, decoder)} for the spec sources and the two grammar files, the only places those records keep a digest of a file."""
+    digested = {}
+    for spec in rec.get("specs", []):
+        digested[spec["source_path"]] = ("spec meta_hash", spec["meta_hash"], b64_to_hex)
+    for key, path in PROVENANCE_FILES.items():
+        if prov.get(key):
+            digested[path] = (f"provenance.{key}", prov[key], b64_to_hex)
+    return digested
+
+
+def artifact_digest_hex(value):
+    """`sha256:<64 lowercase hex>` -> the hex; anything else (uppercase, another algorithm, base64, a non-string) raises, so it is never coverage."""
+    m = ARTIFACT_DIGEST.fullmatch(value) if isinstance(value, str) else None
+    if not m:
+        raise ValueError("not sha256:<64 lowercase hex>")
+    return m.group(1)
+
+
+def artifact_digests(report, rec):
+    """Envelope 3: {path: (where, digest, decoder)} from `artifacts.files`, or None (a FAIL is reported) when the block is not there. A path listed more than once has no single
+    digest: it is entered with a value that never decodes, so it is reported as a wrong digest and not as coverage."""
+    artifacts = rec.get("artifacts")
+    files = artifacts.get("files") if isinstance(artifacts, dict) else None
+    if not isinstance(files, list):
+        report.add(FAIL, "record digest coverage", "an envelope 3 record carries no artifacts.files list")
+        return None
+    seen = {}
+    for entry in files:
+        if isinstance(entry, dict) and isinstance(entry.get("path"), str):
+            seen.setdefault(entry["path"], []).append(entry.get("digest"))
+    digested = {}
+    for path, digests in seen.items():
+        digested[path] = ("artifacts.files", digests[0] if len(digests) == 1 else None, artifact_digest_hex)
+    report.add(INFO, "record read", "envelope 3: artifacts.files only; the block itself (order, uniqueness, manifest_digest, signatures) is checked by tools/release_record_conformance.py, not here")
+    return digested
 
 
 def main(argv=None):
