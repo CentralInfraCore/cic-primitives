@@ -1,0 +1,18 @@
+# Amendments to the frozen yardstick of PR #25 (merge commit d2d8ec7).
+#
+# tests/fixtures/envelope3/FROZEN.sha256 is NOT edited: it keeps the digests of the accepted state and is still checked against the blobs of d2d8ec7.
+# A file of the yardstick may differ from that state only if it is listed here, with the digest it had (from_sha256, which has to be the one in FROZEN.sha256) and the digest it
+# has now (to_sha256, which has to be the working tree), and a reason. tests/test_conformance_frozen.py checks all three, so an amendment cannot be added silently.
+amendments:
+  - path: tools/release_record_conformance.py
+    from_sha256: 6e9f14d99768aa28c734e258d58f6bc6d11438c3149e005bb5b20ad9d1742560
+    to_sha256: 5ada2263895d1257e31a0ecc52c3007ac03788ced2ef64170b734a3bc8a29183
+    change: >-
+      DIGEST_RE and COMMIT_RE end with \Z instead of $. In Python $ also matches in front of a final newline, so the verifier accepted "<40 hex>\n" as a source_commit and "sha256:<64 hex>\n" as an artifact digest, and gave the wrong reason for a manifest digest with a final newline.
+    vectors: "tests/e3_vectors_fullmatch.py; the proof is tests/test_release_record_conformance_fullmatch.py"
+  - path: tests/e3_mutants.py
+    from_sha256: 5de8fa3d9d1d0855d87454b9c99f3f493b03898871813d0387c06fc9d5cdbf2a
+    to_sha256: 6a473876174cc2c518898802a9e56e3e3768ea1c6d6a886448dbdcc896cb43fb
+    change: >-
+      Mechanical: the nine mutants that rewrite DIGEST_RE or COMMIT_RE carry the text of the changed lines (the end anchor $ is \Z in them). No mutant was added, removed or retargeted.
+    vectors: "tests/e3_vectors_fullmatch.py; the proof is tests/test_release_record_conformance_fullmatch.py"

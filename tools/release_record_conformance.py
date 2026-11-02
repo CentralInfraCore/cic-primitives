@@ -33,8 +33,8 @@ PASS, FAIL, NOT_RUN, INCOMPLETE = "PASS", "FAIL", "NOT_RUN", "INCOMPLETE"
 LAYERS = ("record", "blobs", "crypto")
 ABSENT = object()
 SUPPORTED_ENVELOPE = 3
-DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}\Z")
+COMMIT_RE = re.compile(r"^[0-9a-f]{40}\Z")
 REGULAR_MODES = ("100644", "100755")
 
 # every reason this module can give, in the order of section 11; tests/test_release_record_conformance.py compares this list with the contract text
