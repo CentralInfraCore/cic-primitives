@@ -99,6 +99,19 @@ properties:
       vault_cert_path:
         type: string
         description: "Vault KV v2 path to the signing certificate. Format: 'mount/secret-name/key'. Overridden by VAULT_CERT env var."
+      release_artifacts:
+        type: object
+        description: "The files a release publishes (docs/en/RELEASE-RECORD-CONTRACT.md, section 6): explicit paths relative to the repository root, resolved only against the git tree of the source commit. No globs, no include or exclude. Read from the source commit, not from the working directory."
+        additionalProperties: false
+        required:
+          - paths
+        properties:
+          paths:
+            type: array
+            minItems: 1
+            items:
+              type: string
+              minLength: 1
 
   x-cic:
     type: object
