@@ -22,5 +22,39 @@ compiler_settings:
   vault_cert_path: "cic-my-sign-key/crt/bar"
   owner_email: sinkog@centralinfracore.hu
   validity_days: 365
+  # The files a release publishes (docs/en/RELEASE-ARTIFACT-CLASSIFICATION.md: the owner's decision of 2026-11-01, 30 paths). Explicit paths, relative to the
+  # repository root, no globs; the compiler reads this declaration from the SOURCE COMMIT's project.yaml and resolves the paths against that commit's git tree.
+  release_artifacts:
+    paths:
+      - LICENSE.md
+      - dependency.yaml
+      - docs/en/RELEASE-RECORD-CONTRACT.md
+      - md.meta.schema.yaml
+      - proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md
+      - proposals/atom-grammar/P0-4-MIGRATION.md
+      - proposals/atom-grammar/README.md
+      - proposals/atom-grammar/access-vectors/expansion.yaml
+      - proposals/atom-grammar/access-vectors/migration.yaml
+      - proposals/atom-grammar/access-vectors/reading.yaml
+      - proposals/atom-grammar/access-vectors/resolution.yaml
+      - proposals/atom-grammar/access_policy.py
+      - proposals/atom-grammar/check_access_vectors.py
+      - proposals/atom-grammar/check_grammar.py
+      - proposals/atom-grammar/instance-grammar.schema.yaml
+      - release.schema.yaml
+      - schemas/aggregate/config-surface.yaml
+      - schemas/aggregate/managed-entity.yaml
+      - schemas/aggregate/operation-surface.yaml
+      - schemas/aggregate/policy-surface.yaml
+      - schemas/aggregate/state-surface.yaml
+      - schemas/atomic/access.yaml
+      - schemas/atomic/address.yaml
+      - schemas/atomic/behavior.yaml
+      - schemas/atomic/contract.yaml
+      - schemas/atomic/event.yaml
+      - schemas/atomic/identity.yaml
+      - schemas/atomic/role.yaml
+      - schemas/atomic/shape.yaml
+      - schemas/index.yaml
 x-cic:
   repo_type: primitive
