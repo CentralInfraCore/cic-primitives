@@ -21,7 +21,7 @@ Out of scope, kept as separate, later work (the trust gates): the external trust
 * **Source commit**: the git commit the release is made from, `provenance.source_commit`.
 * **Artifact**: a file, identified by its path in the tree of the source commit, that the record releases.
 * **Blob bytes**: the content of the git blob at that path in the source commit, exactly as stored (no filter, no line-ending conversion, no normalization).
-* **Digest**: `sha256:` followed by 64 lowercase hexadecimal digits, the SHA-256 of the blob bytes. This is the form of the receipt fields (`primitive_build_hash`, `grammar_sha256`), so a consumer needs no re-encoding for the new fields. The algorithm is carried in the value itself.
+* **Digest**: `sha256:` followed by 64 lowercase hexadecimal digits, the SHA-256 of the blob bytes. This is the form the digest fields of a receipt take (`sha256:` and 64 lowercase hex), so a consumer needs no re-encoding of an `artifacts` digest. It holds for the `artifacts` digests **only**: `release.build_hash`, `provenance.grammar_sha256`, `provenance.grammar_schema_sha256`, `provenance.dependency_lock_sha256` and `specs[].meta_hash` remain base64 SHA-256 (the legacy form, below), so a receipt field that takes one of them needs the conversion that the consumer's own contract defines; this contract does not define it. The algorithm of an `artifacts` digest is carried in the value itself.
 
 ## 4. Envelope 3
 
