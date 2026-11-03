@@ -1,0 +1,103 @@
+{
+ "format": 1,
+ "what": "RFC 3161 time-stamp tokens over the SHA-256 of three signed cic-primitives release records, obtained from the DigiCert public time-stamp authority on 2026-11-03, before the certificate chain of those records ends on 2026-12-31. A token shows that the digest existed no later than the time it states; it shows nothing about who signed the record or whether the release is genuine.",
+ "authority": {
+  "name": "DigiCert public RFC 3161 time-stamp authority",
+  "endpoint": "http://timestamp.digicert.com",
+  "transport_note": "plain HTTP (port 443 did not answer from the machine that made the requests); the reply is signed, its integrity does not rest on the transport",
+  "terms_note": "No terms of use for the public endpoint were found: neither the search nor DigiCert's documentation pages state who may use it or restrict its use; they describe it for code signing. Only a SHA-256 digest, an algorithm identifier, a random nonce and a request for the TSA certificate were sent."
+ },
+ "trust_anchor": {
+  "file": "trust-anchor/DigiCert_Trusted_Root_G4.pem",
+  "subject": "C=US, O=DigiCert Inc, OU=www.digicert.com, CN=DigiCert Trusted Root G4 (self-signed)",
+  "sha256": "55:2F:7B:DC:F1:A7:AF:9E:6C:E6:72:01:7F:4F:12:AB:F7:72:40:C7:8E:76:1A:C2:03:D1:D9:D2:0A:C8:99:88",
+  "sha1": "DD:FB:16:CD:49:31:C9:73:A2:03:7D:3F:C8:3A:4D:7D:77:5D:05:E4",
+  "serial": "059B1B579E8E2132E23907BDA777755C",
+  "not_after": "Jan 15 12:00:00 2038 GMT",
+  "verified_against": [
+   {
+    "source": "operating system store, Ubuntu package ca-certificates 20260816ubuntu0.24.04.1, /usr/share/ca-certificates/mozilla/DigiCert_Trusted_Root_G4.crt",
+    "kind": "independent of the reply"
+   },
+   {
+    "source": "https://knowledge.digicert.com/general-information/digicert-trusted-root-authority-certificates, entry DigiCert Trusted Root G4 (self-signed), read on 2026-11-03",
+    "kind": "the publisher's own figures: SHA-256, SHA-1 and serial all equal"
+   }
+  ],
+  "note": "The reply carries a cross-signed DigiCert Trusted Root G4 (issuer DigiCert Assured ID Root CA, valid to 2031-11-09) with the same public key. It is NOT used as the anchor; the self-signed root (valid to 2038-01-15) is."
+ },
+ "stamps": [
+  {
+   "release": "v0.2.1",
+   "record": {
+    "git_commit": "5e8c3219b52399e3e764b0b0bb27de710f5445a4",
+    "path": "release/cic-primitives-v0.2.1.yaml",
+    "sha256": "e5d8268aede0d24f02e60a151099a2fdc7615172ed3105b0a05b6b5d19addf63",
+    "bytes": 79011
+   },
+   "request": {
+    "file": "v0.2.1/request.tsq",
+    "sha256": "22a80e66f9b942f5d71a1acb401a9036927425a9ec8e2b0ed6160b28d6bd29d9",
+    "nonce": "0xEEA25FE7D7899723"
+   },
+   "response": {
+    "file": "v0.2.1/response.tsr",
+    "sha256": "d3f4df0465578294b1a58157919462a0d8ec33fd7411b93417e1f7c24d2b5f65",
+    "status": "Granted",
+    "serial": "0x675CA92462CD68E87963124F1967FD43",
+    "policy_oid": "2.16.840.1.114412.7.1",
+    "stamp_time_utc": "Nov  3 22:07:48 2026 GMT",
+    "nonce": "0xEEA25FE7D7899723"
+   },
+   "tsa_chain_file": "v0.2.1/tsa-chain.pem"
+  },
+  {
+   "release": "v0.2.0",
+   "record": {
+    "git_commit": "960ee0f048d969a85ad20819bc0f2366ad91fa40",
+    "path": "release/cic-primitives-v0.2.0.yaml",
+    "sha256": "955fab2d6d9638c773f29fbe97a3279f9f10b9539c4e3e79957df0acef9a57a6",
+    "bytes": 64905
+   },
+   "request": {
+    "file": "v0.2.0/request.tsq",
+    "sha256": "1c2b433880a73cc92e9f3511c1066ccf37c872eb1f1c2d817cceb49a293c0a16",
+    "nonce": "0xF53BC5599CE05F53"
+   },
+   "response": {
+    "file": "v0.2.0/response.tsr",
+    "sha256": "4d43ca701ced71f57d3ef78c881553ead52560b0fd75e67131c5e4fc7a1a456e",
+    "status": "Granted",
+    "serial": "0x2CD213F94B1638FBFF68D10520DE73E2",
+    "policy_oid": "2.16.840.1.114412.7.1",
+    "stamp_time_utc": "Nov  3 22:09:44 2026 GMT",
+    "nonce": "0xF53BC5599CE05F53"
+   },
+   "tsa_chain_file": "v0.2.0/tsa-chain.pem"
+  },
+  {
+   "release": "v0.1.5",
+   "record": {
+    "git_commit": "d59f7d6b5d22751a932b2bc0a522cf8acec1806b",
+    "path": "release/cic-primitives-v0.1.5.yaml",
+    "sha256": "284e44bfcf62d79f782d6cae359c4c99ef2f5297f6f71dcea52a95d28b8c4456",
+    "bytes": 55002
+   },
+   "request": {
+    "file": "v0.1.5/request.tsq",
+    "sha256": "d403b78ad4f66e53748777753121f33079545c23157a9f4571c66091eeca5fae",
+    "nonce": "0x2CDA40EE6D7CFA7A"
+   },
+   "response": {
+    "file": "v0.1.5/response.tsr",
+    "sha256": "c91b2ad33077fef2806ec11e4ce363d49f102f3426fe7e77f6bd7cf48262ec6e",
+    "status": "Granted",
+    "serial": "0x03F23860CF26B3B2F8645FA478CFAAFC",
+    "policy_oid": "2.16.840.1.114412.7.1",
+    "stamp_time_utc": "Nov  3 22:09:45 2026 GMT",
+    "nonce": "0x2CDA40EE6D7CFA7A"
+   },
+   "tsa_chain_file": "v0.1.5/tsa-chain.pem"
+  }
+ ]
+}
