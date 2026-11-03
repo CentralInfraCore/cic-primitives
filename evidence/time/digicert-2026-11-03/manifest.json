@@ -99,5 +99,40 @@
    },
    "tsa_chain_file": "v0.1.5/tsa-chain.pem"
   }
- ]
+ ],
+ "cic_chain": {
+  "developer": {
+   "file": "cic-chain/developer.pem",
+   "subject": "C = HU, O = CentralInfraCore, CN = Gabor Zoltan Sinko",
+   "sha256": "5E:F7:39:DC:91:CF:87:6D:3E:E9:29:DB:94:60:6A:60:A5:80:46:D7:C6:0C:25:EC:93:10:70:83:E9:28:93:03",
+   "not_before": "Mar 20 13:22:59 2026 GMT",
+   "not_after": "Dec 31 13:22:59 2026 GMT",
+   "source": "carried by each of the three records (release.createdBy.certificate); the three records carry the same certificate"
+  },
+  "developer-ca": {
+   "file": "cic-chain/developer-ca.pem",
+   "subject": "C = HU, O = CentralInfraCore, CN = CIC Developer CA",
+   "sha256": "D3:59:D1:47:8F:E9:15:89:FA:02:B7:8A:EC:E3:98:37:DC:0D:60:27:24:B2:6E:0F:4E:4F:86:4B:40:76:F6:6A",
+   "not_before": "Mar 20 13:22:46 2026 GMT",
+   "not_after": "Dec 31 13:22:46 2026 GMT",
+   "source": "NOT carried by the records; a public certificate taken from the owner's local PKI directory (EEC/CICDeveloperCA/CICDeveloperCA2026.pem). That it is the issuer of the developer certificate is shown by openssl verify, not assumed"
+  },
+  "source-ca": {
+   "file": "cic-chain/source-ca.pem",
+   "subject": "C = HU, O = CentralInfraCore, CN = CIC Source CA",
+   "sha256": "27:2B:B9:73:EA:68:4C:C0:00:D6:DF:3E:77:21:25:2C:3C:48:85:BF:93:4E:9A:57:C5:CF:D0:E1:BE:C8:BC:20",
+   "not_before": "Mar 20 13:22:39 2026 GMT",
+   "not_after": "Dec 31 13:22:39 2026 GMT",
+   "source": "carried by each of the three records (cic_countersign.authority.certificate); the same in all three"
+  },
+  "root": {
+   "file": "cic-chain/root.pem",
+   "subject": "C = HU, O = CentralInfraCore, CN = CIC Root CA",
+   "sha256": "7A:87:3A:BB:99:D7:20:D9:77:96:B4:A9:82:30:C4:3A:31:99:3B:7E:67:E3:30:2B:B5:7F:AE:9C:4F:5F:D1:A3",
+   "not_before": "Mar 19 12:59:30 2026 GMT",
+   "not_after": "Dec 31 23:59:59 2026 GMT",
+   "source": "carried by each of the three records (cic_countersign.authority.root_certificate); the same in all three"
+  },
+  "note": "The CIC certificates are public. They are kept because the Developer CA is in none of the records, and because a later check of 'was this signature made while the chain was valid' needs them with the time of the stamp. They are not a trust anchor for the release (docs/P5-TRUST-MODEL-PLAN.md): they say when the chain ended, not whether it may be believed."
+ }
 }

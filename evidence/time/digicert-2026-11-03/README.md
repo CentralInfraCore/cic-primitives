@@ -18,12 +18,13 @@ From a clone of cic-primitives that has the full history (the records are read f
 bash evidence/time/digicert-2026-11-03/verify.sh --selftest
 ```
 
-It checks the trust anchor against the figures in `manifest.json`, the record against its digest, the token against the request and against the record file, and the token **at the time stamp** (not "now"). With `--selftest` it also shows that a record changed by one byte and a wrong anchor are refused. It needs `openssl`, `git` and `python3`, and no network. Exit status 0 only if every check holds.
+It reads the time of each stamp **from the token** (the signed time; the manifest value is only compared with it) and runs **every** token check at that time, so a later end of the TSA chain, or the clock of the machine, changes nothing. It checks the trust anchor and the kept CIC certificates against the figures in `manifest.json`, the record against its digest, the token against the request and against the record file, and **that the stamp lies inside the validity of the developer certificate, the Developer CA, the Source CA and the root of the CIC chain**, twice (`openssl verify -attime` over both chains, and plain arithmetic on the dates), and that the kept CIC certificates are the ones the records carry. With `--selftest` it also shows that a record changed by one byte, a wrong anchor, a stamp after the end of the CIC chain, a stamp before it began, a stamp when only some of the CIC certificates are still valid, and a wrong issuer of the developer certificate are all refused. It needs `openssl`, `git` and `python3` with PyYAML, and no network. Exit status 0 only if every check holds.
 
 ## What is here
 
 * `manifest.json`: for each release the record (commit, path, SHA-256), the request (SHA-256, nonce), the response (SHA-256, status, serial, policy, time, nonce), and the trust anchor with the sources it was checked against.
 * `<release>/request.tsq`, `response.tsr`, `tsa-chain.pem`: the request that was sent (70 bytes: algorithm, digest, nonce, "send the TSA certificate"), the reply, and the three certificates the reply carries.
+* `cic-chain/`: the four public certificates of the CIC chain that signed the records: developer, Developer CA (**not carried by any record**), Source CA, root. With their validity they are what shows that the stamp was made while the chain was valid.
 * `trust-anchor/DigiCert_Trusted_Root_G4.pem`: the **self-signed** DigiCert Trusted Root G4, SHA-256 `55:2F:7B:DC:F1:A7:AF:9E:6C:E6:72:01:7F:4F:12:AB:F7:72:40:C7:8E:76:1A:C2:03:D1:D9:D2:0A:C8:99:88`, valid to 2038-01-15. It was taken from the operating system store (an independent source) and its SHA-256, SHA-1 and serial equal those DigiCert publishes. The reply also carries a *cross-signed* copy of this root (valid to 2031); that one is not used as the anchor.
 
 ## What it proves, and what it does not
@@ -38,4 +39,4 @@ It does **not** prove who signed the record, that the signature was valid on tha
 * No terms of use for the public endpoint were found (the documentation describes it for code signing and states neither permission nor restriction for other use). Only digests were sent. Another authority needs a new decision.
 * The requests were made over plain HTTP (port 443 did not answer from that machine); the replies are signed, so this does not weaken the check.
 * OpenSSL `ts -verify` was used; the tokens and the anchor are kept so any other RFC 3161 verifier can be applied later.
-* A second, independent copy of this directory is required by the decision; where it lives is recorded outside this directory.
+* **A second, independent copy of this directory is required by the decision and does not exist yet.** The GitHub repository is one copy; where the second lives is for the owner to name, and it is not recorded here until it exists.
