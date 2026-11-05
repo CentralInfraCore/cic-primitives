@@ -68,7 +68,27 @@ A row is added at each step; a row is never edited, a correction is a new row.
 
 **The read-back.** (1) With the **read** identity, fetch the stored object **by its version id** into a new, empty directory. (2) Compute its SHA-256 and compare it with section 1. (3) Compare the size. (4) Stop at the first difference and record the failure.
 
-**The restore.** From the stored object only: fetch, check the SHA-256, unpack, run `verify.sh --selftest` with no network, in a directory and a user that were not used for the build. The restore is a success only if the verification ends as it did at the build. The archive contains the verifier, the trust anchor, the four CIC certificates and the git history it needs, so no network and no access to the original repository is required; the OpenSSL version is the one thing it relies on, and the versions used at the build are recorded (a different version that fails is a finding to record, not a reason to edit the archive).
+**The restore** (from the stored object only; in a directory and a user not used for the build). The commands below were run once in a clean directory on the build machine, with a minimal `PATH`, as a **dry run of the procedure**; that is not a restore drill from storage, because nothing is stored. The order matters, and the Git history is part of it, because the verifier reads the old release commits with `git cat-file` and `git show`.
+
+```
+ 1. sha256sum -c cic-primitives-t3-evidence-2026-11-03.tar.gz.sha256       # the archive is the recorded one (also compare the value with section 1)
+ 2. mkdir unpacked && tar xzf cic-primitives-t3-evidence-2026-11-03.tar.gz -C unpacked
+ 3. check every file against unpacked/ARCHIVE-VERIFY-MANIFEST.json ("files_sha256": 18 entries, the bundle included)
+ 4. git init -q repo && cd repo                                            # a repository must exist before a bundle can be verified
+ 5. git bundle verify ../unpacked/cic-primitives-t3.bundle                 # "okay": the bundle is complete and self-consistent
+ 6. git fetch -q ../unpacked/cic-primitives-t3.bundle 'refs/*:refs/*'       # the local Git environment: refs/remotes/origin/devel and the three release tags
+ 7. for each of the three commits in ARCHIVE-VERIFY-MANIFEST.json:  git cat-file -e <commit>^{commit}     # reachable
+    and  git show <commit>:<record_path> | sha256sum   equals "record_sha256" of the manifest
+ 8. bash ../unpacked/evidence/time/digicert-2026-11-03/verify.sh --selftest # run from inside repo/: it must end with "ALL CHECKS HOLD" and exit 0
+```
+
+The dry run: the archive hash matched, all 18 files matched the manifest, the bundle verified (SHA-1 object format), the three commits were reachable, the record `v0.2.1` read from Git had the SHA-256 the manifest names, and `verify.sh --selftest` ended with `ALL CHECKS HOLD`.
+
+**The dependencies of the verifier, taken from `verify.sh` itself** (not only OpenSSL): `bash`; `openssl` (`ts -verify`, `verify -attime`, certificate reading; 3.0.13 was used); `git` (`init`, `fetch`, `bundle verify`, `cat-file`, `show`; 2.43.0); `python3` **with PyYAML** (it reads the certificates out of the record and the JSON manifest; 3.12.3 and PyYAML 6.0.1); **GNU** `date -d`, `sha256sum`, `mktemp`, `cut`, `cat`, `cp`, `rm`, `printf`, `sed`, `env`, `dirname` (coreutils 9.4; a BSD `date` does not accept `-d`), `find` (findutils) and `cmp` (diffutils); `tar` and `gzip` for unpacking (tar 1.35). `verify.sh` contains no network command (read in full: no `curl`, `wget` or the like) and takes the time from the token, not from the machine's clock. The exact versions used are written into the custody log at each restore. A different version that fails is a finding to record, not a reason to edit the archive. Because the dependencies are several tools, a fresh machine needs all of them, and the successor has to be told so.
+
+**The knowledge must not live only in the repository.** A copy of this section (the commands and the dependency list) is stored **beside the archive as a separate small object** with its own recorded SHA-256, so that someone with nothing but the store can restore. The archive itself is not modified.
+
+**The reference must not live only in the repository either.** The SHA-256 proves that the stored bytes equal the recorded bytes; where the recorded value comes from is a separate question. If the approved archive hash and the custody log lived only in the GitHub repository, a loss of that repository would take the reference with it. So the approved hash (section 1), the custody log and this section are also kept in **at least one independent, protected place**: as a separate versioned object in the store, and in the label or sleeve of the offline medium (the hash and the date, written by hand). The independent copy of the log is appended to at each step like the log itself (decision S9).
 
 ## 7. The restore drill and the periodic check
 
@@ -98,8 +118,11 @@ The second copy required by the decision of 2026-11-03 is satisfied by `BACKED U
 | S4 | Client-side encryption of the archive: yes or no, and if yes who holds the key and how a lost key is survived (a lost key is a new failure mode for data that is public) |
 | S5 | The retention period and the immutability setting |
 | S6 | The checking cadence of section 7 and who performs it |
-| S7 | Where the custody log lives and who may add rows |
+| S7 | The custody log: version-controlled, append-only (the position taken in the review); who may add rows |
+| S9 | How the independent copy of the approved hash, the custody log and the restore commands is kept (section 6): where, who may append, and how it is checked against the repository copy |
 | S8 | The open question of the DigiCert public endpoint's terms of use (recorded in the evidence README) is unaffected by this plan and stays open |
+
+**Positions recorded in the review of #33.** S1: accepted in principle, with a new scan before every upload. S2: accepted (an immutable object store and an offline copy). S3: HOLD, nothing is selected. S4: client-side encryption is not mandatory for this public archive. S5: durable multi-year retention; the concrete immutability period is still to be decided. S6: accepted (hash every six months, restore every year, extra drills around the chain's end). S7: accepted (version-controlled, append-only), the way an independent copy of the log is kept still to be fixed (S9). S8: open, not solved by a backup. None of this selects a provider, approves access, or allows an upload.
 
 ## 10. Not claimed
 
