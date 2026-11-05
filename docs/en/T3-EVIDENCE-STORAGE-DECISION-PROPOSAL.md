@@ -35,7 +35,7 @@ Three identities, none of them the account's master credential, none of them sha
 
 * **The master credential is locked away** and not used for any of the three; the account holder is named; the account has two-factor verification with the recovery codes kept offline in a second place; the contact address of the account is a role mailbox that more than one person can read.
 * **Compliance mode removes the need to trust the identities about deletion**: even the administrator cannot shorten the retention or delete before expiry. What an identity could still do is extend the retention (harmless) or close the account (see the risks); so the account itself, its payment method and its recovery codes are the real controls.
-* **Upload, then lock, then prove.** The uploader writes; the administrator sets retention and legal hold; the reader reads back by version; a deliberate attempt to delete and to shorten, on a **throw-away object** in the same bucket, must be refused before the archive is trusted to the setup.
+* **The lock comes before the archive, never after it: protected from the first moment.** Enabling Object Lock on a bucket does **not** by itself lock what is uploaded (the provider's page: the default retention of a bucket must be configured, it is set when the bucket is created, and it applies only to files uploaded or copied afterward). If the archive were uploaded first and locked afterward there would be a window in which it is on the remote store and not under compliance protection. The order is therefore the one of section 7: the bucket with its **default compliance retention** first, a trial object that proves the protection, the archive into the already protected bucket, then the checks of the object's own retention state and the legal hold. The administrator identity sets the bucket's default retention (capability `writeBucketRetentions`); the uploader needs no retention capability at all, the bucket's default does the locking.
 * **Provider choice is not made by this section**: the table is written for B2 (the proposal) and maps one to one to IAM users and policies for S3.
 
 ## 4. Retention (S5) and cost and risk
@@ -82,9 +82,19 @@ These are checks on the provider's own pages or a throw-away bucket; none needs 
 | S3 | The provider, the identities and the settings of section 3 | B2 for the online copy, S3 as the fallback, if V1 to V3 and V6 pass; the offline medium as the second class |
 | S5 | The retention | ten years in two layers (section 4), with the owner's recorded commitment to extend |
 | S9 | The custody model | the four places of section 5 |
-| S10 | Who is the account holder, the administrator and the successor, and which payment method and role mailbox are used | the owner names them; nothing is created before |
+| S10 | Who is the account holder, the administrator and the successor, and which payment method and role mailbox are used | the owner names them; nothing is created before (**held: nobody is named yet**) |
 
-After the owner's decision, the order is: create the account and the identities, run the throw-away trial, upload, read back by version, restore drill, complete the custody log, and only then the state changes.
+**After the owner's decision, the order is this, and the archive is never on the remote store without compliance protection:**
+
+1. **Create an Object Lock bucket with its default compliance retention set** (3 000 days) as part of creating it. Nothing is uploaded yet. Check the bucket's settings back: Object Lock enabled, the default mode compliance, the retention period.
+2. **Upload a throw-away object** (a labelled file of a few bytes under `T3/trial/`) **into that already protected bucket**, and prove, with the right identities: the object carries its own retention state and retain-until date that the bucket default gave it (not set by hand); a delete by version id is refused; a shortening of the retention is refused; an overwrite creates a new version and leaves the locked one readable (V1). The trial object is locked for the same period (it cannot be deleted, by design; a few bytes). If the owner also wants to watch an expiry, a separate trial bucket with a one-day default retention can be used for that and discarded.
+3. **Upload the real archive** and its small reference objects (section 5) **into the protected bucket**, with the uploader identity, nothing else.
+4. **Read back the object's own retention state and its retain-until date** with the reader identity (the default must have been applied to the archive, not assumed), then have the administrator set the **legal hold** as a supplementary protection (not a substitute for the compliance retention). Record the version id.
+5. **Read back by version id**, compare the SHA-256 with section 1, run the **offline restore** of the plan from the stored object only, and write the custody log. Only a passed restore drill changes the state.
+
+If any step fails, stop: nothing later is done, and a failure at step 3 or 4 is an incident in the custody log (the archive is under the default protection from step 3 on, so it is not exposed in the meantime).
+
+**Positions recorded in the review of #34.** S3: Backblaze B2, a conditional go, after V1 to V3 and V6 are shown; S5: ten years, go, with the extension a mandatory, verified operation; S9: the four places, go; S10: hold, no person, account or access is named yet. The legal hold is accepted as a supplementary protection, not a substitute for the compliance retention. **The conditional go for B2 is not a permission to create an account, to pay, or to upload.**
 
 ## 8. Sources (read on 2026-11-05)
 
