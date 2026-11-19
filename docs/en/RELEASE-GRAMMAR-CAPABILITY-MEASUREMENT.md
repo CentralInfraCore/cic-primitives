@@ -57,11 +57,11 @@ Classes: **supported** (positives accepted, negatives refused, Rust = Go); **not
 
 ## 4. Gap analysis
 
-Three groups, as the owner asked.
+The groups below follow the owner's request; the classification in 4.1 supersedes any shorter reading.
 
 **Supported by the Form as it is** (usable in the normative schemas): mandatory and optional, nullable against absent, string, integer and boolean scalars (fail-closed at the positions that matter), `min_items`, refusal of unknown fields, list item identity by a key (including duplicate-key refusal), the composite and scalar boundary, opaque fields, and the parse-level refusal of duplicate keys, aliases, merge keys, tags and second documents.
 
-**Not supported, to be handled as the plan says (named semantic check, declared)**: a closed value set or constant (the record `kind`), a pattern (the `sha256:` and 64-hex form, the 40-hex `source_commit`), the integer range 2^53 - 1, sorted order of a list, uniqueness of a non-key value or of a set, `max_items`. None of these is worked around in the schema, in Relay or in a second validator; each is a named semantic check of the verifier, declared in the machine-checked declaration of the plan (section 7, part 4).
+**Declared by the grammar but not evaluated by the Form, so a named check of the verifier remains necessary**: a closed value set or constant (the record `kind`), a pattern (the `sha256:` and 64-hex form, the 40-hex `source_commit`), the integer range 2^53 - 1, uniqueness of a non-key value or of a set: the grammar has `contract` entries for `enum`, `pattern`, `range` and `unique`, and the Form passes them through unevaluated (K18). `max_items` is declared by the grammar and refused by the Form. Sorted order of a list by the UTF-8 bytes of the path is a release rule that the grammar does not declare (4.3). None of these is worked around in the schema, in Relay or in a second validator; each stays a named semantic check of the verifier, declared in the machine-checked declaration of the plan (section 7, part 4), until the Form evaluates the contract.
 
 **Differently read, against the defining reader**: plain `yes` and dates and timestamps at string positions, and the keys `yes`, `1`, `null`. They are the cases interpretation identity exists for; the Form is not wrong, the two readers answer differently, and under the admission profile the comparison refuses them.
 
@@ -115,7 +115,7 @@ The normative schemas are **not** written in this pull request, and the lint is 
 
 ## 5. Not verified in this document
 
-* The measurement covers the capabilities the record contract needs (25 cases); it is not a full survey of the Form.
+* The measurement covers the capabilities the record contract needs (34 cases); it is not a full survey of the Form.
 * The Form's behavior under other commits and under another grammar profile.
 * That the keys and values of the representative `ModuleRelease` and `PrimitiveRelease` schemas behave as the cases do (the schemas are step 3).
 * Whether FG1 to FG5 are intended limits of the Form or defects; that is for the Forms, and no issue was opened here.
