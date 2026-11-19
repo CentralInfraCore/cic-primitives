@@ -50,7 +50,7 @@ fn main() {
                 continue;
             }
         };
-        println!("{}|-|compile|OK", id);
+        println!("{}|-|compile|OK|unevaluated={}", id, cs.unevaluated_contracts.join(","));
         let mut files: Vec<_> = fs::read_dir(d.join("docs"))
             .unwrap()
             .map(|e| e.unwrap().path())

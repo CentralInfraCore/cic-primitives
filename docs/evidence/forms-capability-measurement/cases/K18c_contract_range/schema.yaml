@@ -1,0 +1,10 @@
+spec:
+  identity:
+    atomic_ref: "cic:core:Identity@v0.2.0"
+    kind: CapProbe
+    namespace: "cic:release"
+    version: v0.0.1
+  config_surface:
+    aggregate_ref: "cic:core:ConfigSurface@v0.2.0"
+    nodes:
+      - {name: n, shape_type: scalar, scalar_type: integer, mandatory: true, contract: [{type: range, expression: '0..9007199254740991'}]}

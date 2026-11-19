@@ -28,22 +28,38 @@ func describe(err error) string {
 
 func main() {
 	a := []string{"value", "access", "modify", "inherit", "default_injection", "conformance"}
-	dirs, _ := filepath.Glob(filepath.Join(os.Args[1], "K*"))
+	dirs, gerr := filepath.Glob(filepath.Join(os.Args[1], "K*"))
+	if gerr != nil || len(dirs) == 0 {
+		fmt.Fprintln(os.Stderr, "no cases found")
+		os.Exit(2)
+	}
 	sort.Strings(dirs)
 	for _, d := range dirs {
 		id := filepath.Base(d)
-		schema, _ := os.ReadFile(filepath.Join(d, "schema.yaml"))
+		schema, rerr := os.ReadFile(filepath.Join(d, "schema.yaml"))
+		if rerr != nil {
+			fmt.Fprintln(os.Stderr, "read error: "+rerr.Error())
+			os.Exit(2)
+		}
 		cs, err := forms.CompileSchema(forms.SchemaInput{Bytes: schema, SHA256: forms.SHA256Hex(schema), Grammar: "cic-primitives-73ae469-6a188078", Surface: "config_surface"})
 		if err != nil {
 			fmt.Println(id + "|-|compile|" + describe(err))
 			continue
 		}
-		fmt.Println(id + "|-|compile|OK")
-		files, _ := filepath.Glob(filepath.Join(d, "docs", "*.yaml"))
+		fmt.Println(id + "|-|compile|OK|unevaluated=" + strings.Join(cs.UnevaluatedContracts, ","))
+		files, ferr := filepath.Glob(filepath.Join(d, "docs", "*.yaml"))
+		if ferr != nil || len(files) == 0 {
+			fmt.Fprintln(os.Stderr, "no documents in "+id)
+			os.Exit(2)
+		}
 		sort.Strings(files)
 		for _, f := range files {
 			name := strings.TrimSuffix(filepath.Base(f), ".yaml")
-			text, _ := os.ReadFile(f)
+			text, terr := os.ReadFile(f)
+			if terr != nil {
+				fmt.Fprintln(os.Stderr, "read error: "+terr.Error())
+				os.Exit(2)
+			}
 			node, err := forms.Parse(string(text))
 			if err != nil {
 				fmt.Println(id + "|" + name + "|parse|" + describe(err))

@@ -6,8 +6,10 @@ Status: **measurement and gap analysis, documentation and evidence only.** No sc
 
 * **Form**: `cic-primitive-forms` `main` `2f02a75592a4b0894a3b76891e9ba3741479a7c5`, **unchanged**; the library (`compile_schema`, `parse`, `validate`) in Rust (`rustc 1.99.1`) and in Go (`go1.26.11`).
 * **Grammar profile**: `cic-primitives-73ae469-6a188078`, the only profile the Forms carry (a development commit; the production pin is a separate work package).
-* **Cases**: 25 capability cases, 106 documents, each case a schema plus `pos_` (conforming), `neg_` (the record contract needs it refused) and `inf_` (recorded, no expectation) documents. Source and output: `docs/evidence/forms-capability-measurement/` (generator, both probe programs, `expected-output.txt`, SHA-256 `285ce31a...5c7`).
-* **Result of the comparison**: the Rust and the Go output are **byte-identical on all 129 lines**. There is no Rust-Go difference, so the STOP condition did not arise. This is **implementation parity, not evidence of correctness**: two implementations that agree can share the same gap, and several results below are exactly that.
+* **Cases**: 34 capability cases, 128 documents, each case a schema plus `pos_` (conforming), `neg_` (the record contract needs it refused) and `inf_` (recorded, no expectation) documents. Source and output: `docs/evidence/forms-capability-measurement/`: the generator (`gen_cases.py`; the committed cases equal its output), both probe programs, the **two raw outputs kept apart** (`go-output.txt`, `rust-output.txt`), their full SHA-256 digests (`SHA256SUMS`) and the machine comparison (`comparison.txt`, produced by `compare.py`).
+* **Result of the comparison**: both raw outputs are 160 lines, 8309 bytes, SHA-256 `0ce05b45d7ec6b10b9a1cb7cb23b4f3395660c05ba287fa0b6de0d7e8843fdc7` each: **byte-identical**. There is no Rust-Go difference, so the STOP condition did not arise. This is **implementation parity, not evidence of correctness**: two implementations that agree can share the same gap, and several results below are exactly that.
+* **The Go probe** stops with an error (exit 2) on a file it cannot read, a missing case or an empty document set; the Rust probe stops on any such error by construction (`unwrap`).
+* **The pinned grammar** was read as well, not only the Form's documents: `cic-primitives` `73ae469` (`proposals/atom-grammar/instance-grammar.schema.yaml`, `schemas/atomic/contract.yaml`, `proposals/atom-grammar/README.md`). That reading changed the classification of the findings (section 4).
 
 Every result below is bound to those two identifiers. A different commit or profile needs the measurement repeated.
 
@@ -29,11 +31,14 @@ Classes: **supported** (positives accepted, negatives refused, Rust = Go); **not
 | K09 | unknown fields refused | supported | `UNKNOWN_FIELD@$.c.y` (nested) and `UNKNOWN_FIELD@$.z` (top) |
 | K10 | list item identity by a declared key | supported for identity | duplicate key: `PATH_DUPLICATE_IDENTITY@$.files[{path="a"}]`; missing key: `PATH_KEY_MISSING`; **sorted order, duplicate non-key values and keys differing by case are not constrained** (accepted) |
 | K11 | composite against scalar boundary | supported | scalar or list at a composite position refused; `null`: `NULL_NOT_ALLOWED` |
-| K12, K12b | a closed value set (`enum`), a constant (`const`) | **not supported, silently ignored** | the schema compiles; `Other` accepted next to `PrimitiveRelease` |
-| K13, K13b | a pattern on a string | **not supported, silently ignored** | the schema compiles; `no prefix`, upper-case and short digests accepted; an unconstrained string takes any text |
+| K12, K12b | `enum` and `const` written as **node keys** | the Form accepts and ignores them (FG1); the pinned grammar forbids them as node keys | the schema compiles; `Other` accepted next to `PrimitiveRelease` |
+| K13, K13b | `pattern` written as a **node key** | the Form accepts and ignores it (FG1); the pinned grammar forbids it as a node key | the schema compiles; no-prefix, upper-case and short digests accepted; an unconstrained string takes any text |
 | K14 | opaque field | supported | map, list and scalar accepted; absent mandatory: `MISSING_MANDATORY` |
 | K15 | a set of strings (unique scalars) | **not supported** (not enforced) | `[a, a]` accepted |
 | K16 | parse level, before any tree | see section 3 | duplicate key, alias, merge key, tag and second document refused; byte order mark accepted; keys `yes`, `1`, `null` read as text |
+| K18a-d | the grammar's own mechanism: a **`contract` entry** of type `pattern`, `enum`, `range`, `unique` | declared by the grammar; accepted by the Form and **listed as unevaluated, not enforced** | the schema compiles and `compile` lists the node in `unevaluated`; every negative (`sha256` form, `Other`, `2^53`, `-1`, a duplicate digest) is accepted |
+| K18e-g | a malformed `contract` entry: a type outside the grammar's closed list, an empty list, an entry without `expression` | the Form accepts all three (the grammar forbids them) | the schemas compile; same class as FG1 |
+| K19a, K19b | `ordered: true` and `ordered: false` on a list | declared by the grammar (whether the element order is meaningful); accepted by the Form | no effect observed: sorted and unsorted documents accepted either way |
 | K17a-d | an unknown key on a schema node | **silently ignored** | `foo`, `pattern`, `unique_items` ignored; the misspelled `mandatry` is ignored and the field becomes mandatory (neither presence key means mandatory); `max_items` is the one refused key |
 
 ## 3. Parse-level results (K16), against the pre-tree rules of the plan
@@ -62,43 +67,51 @@ Three groups, as the owner asked.
 
 ### 4.1 Classification of the findings
 
-The findings are of different kinds and are kept apart:
+The Form's documents alone gave a partial picture; the **pinned grammar** changes it. The findings are kept apart:
 
 | Finding | Classification | Where it belongs |
 |---|---|---|
-| No `pattern`, `enum`, `const` in the grammar (K12, K13) | grammatical capability gap | the Forms and the grammar; the record contract keeps named semantic checks (section 4) |
-| No integer range, no list order, no set uniqueness (K06, K10, K15) | grammatical capability gap | the same |
-| An unknown schema node key is silently ignored (K12, K13, K17) | **potential Form defect** (FG1, preliminarily HIGH) | the Forms; see 4.2 |
-| A misspelled presence key (`mandatry`) is accepted and the field becomes mandatory (K17b) | **potential Form defect** (FG1) | the Forms; see 4.2 |
+| `pattern`, `enum`, `const` as **direct node keys** (K12, K13) | not a grammar gap: the pinned grammar **forbids** them as node keys (`additionalProperties: false`) and offers `contract` for constraints | the test shape was wrong for the grammar; the observation that the Form accepts them is FG1 |
+| `contract` entries of type `range`, `pattern`, `enum`, `unique`, `must`, `when`, `mandatory` (K18a-d) | **declared by the grammar**; the Form passes them through and lists them as unevaluated (ADR 0002: "passed through; not evaluated") | an **evaluation capability gap of the Form**, not a grammar gap |
+| An unknown schema node key is accepted and ignored (K12, K13, K17) | **confirmed deviation from the pinned grammar** (FG1, HIGH) | the Forms; see 4.2 |
+| A misspelled presence key (`mandatry`) is accepted and the field becomes mandatory (K17b) | the same deviation (FG1) | the Forms |
+| A malformed `contract` entry is accepted: type outside the closed list, empty list, no `expression` (K18e-g) | the same deviation (FG1): the Form does not validate a node against the grammar | the Forms |
+| `max_items` | declared by the grammar; the Form **refuses** it (fail-closed, #88) | an execution gap, handled fail-closed |
+| `ordered` | declared by the grammar; accepted by the Form, no effect observed (K19) | see 4.3 |
 | Rust and Go behave identically | implementation parity, not evidence of correctness | not a result in itself |
-| A byte order mark is accepted at parse (K16) | an admission-profile question | the plan's `encoding_form`; not a Form claim |
+| A byte order mark is accepted at parse (K16) | an admission-profile question | the plan's `encoding_form` |
 | PyYAML and the Form read some values and keys differently (K05c, K16) | an interpretation-identity question | the plan, section 5 |
 
-### 4.2 FG1 against the Form's normative contract
+### 4.2 FG1 against the pinned grammar and the Form's contract
 
-FG1 is more serious than a missing capability: a schema that **compiles successfully** can look as if constraints are enforced that are not (`pattern`, `enum`, `const`, `unique_items`, a misspelled presence key). Whether the behavior is **declared** or an **implementation defect** was checked against the Form's own documents at `2f02a75` (read, not run):
+FG1 is more serious than a missing capability: a schema that **compiles successfully** can look as if constraints are enforced that are not.
 
-* **ADR 0002** (`docs/adr/0002-minimal-schema-contract.md`): lists the information the contract needs per node (`name`, `shape_type`, `role`, presence, `nullable`, `default`, `contract`), the required and forbidden companions per Shape type, and says `contract` is "passed through; not evaluated here". It says **nothing** about a node member that is not on the list: neither that it is ignored nor that it is refused.
-* **`docs/P1-SUPPORTED-SUBSET.md`**: "Passed through, not evaluated: `contract`, `description`, `role`, `capability` and the other descriptive members". The class of "other descriptive members" is open-ended and not enumerated; `pattern`, `enum` and `const` are not descriptive members, they are constraint keywords.
-* **The Form's own stated principle for a constraint it does not check**: the same document says a `max_items` is "refused rather than dropped" (`SCHEMA_SHAPE_UNSUPPORTED`, issue #88, item 8: "`max_items` is accepted and never checked" was treated as a defect and fixed: "a maximum the validator would not check is refused rather than dropped"). The implementation applies the principle to that one key; it applies the same refusal-by-name (`forbid`) only to a fixed set of keys per Shape type, and nothing else.
-* **Issue search**: no open or closed issue in `cic-primitive-forms` that concerns unknown schema node keys in general was found (the search is of titles; the Form's issue list was not read in full). #88 is open.
+* **The normative grammar forbids it.** `proposals/atom-grammar/instance-grammar.schema.yaml` at `73ae469` (the pinned commit), lines 14 to 17: `type: object`, `required: [name, shape_type]`, `additionalProperties: false`. An unknown node key is not valid under the grammar the Form is pinned to. Under the same file a `contract` is an array of at least one entry, each with a `type` from `[range, pattern, must, when, enum, mandatory, unique]` and an `expression`; K18e-g are all invalid under it and all compile in the Form.
+* **The Form pins the file and does not apply it.** `corpus/pins.yaml` pins `instance-grammar.schema.yaml` by SHA-256; `compile_schema` does not reject what the file rejects.
+* **The Form's contract is silent on whose job it is.** ADR 0002 lists the per-node information and the required and forbidden companions per Shape type; `docs/P1-SUPPORTED-SUBSET.md` names a pass-through class of "descriptive members". Neither says whether the entry point **guarantees** the grammar's node rules or **presumes** an already validated schema (searched in those two documents; no such statement found). The Form's stated principle for a constraint it does not check is "refused rather than dropped" (`max_items`, #88 item 8), applied to that key and to the per-Shape forbidden companions only.
+* **Issue search**: no issue in `cic-primitive-forms` that concerns unknown schema node keys in general was found (titles searched; the list was not read in full). #88 is open.
 
-**Result.** The behavior is **neither declared as intended nor specified**; it stands against a principle the Form states for one key. That is a specification gap and a potential implementation defect, **for the Forms to decide**; it is not decided here. Until the Forms decide, the following hold in this repository: FG1 stays a documented finding; **no lint, no filter and no second check of the Form's schema acceptance is implemented in `cic-primitives`** (the implementation of any such check is on HOLD), because that would take over a responsibility that belongs to the Form and would hide the finding the Form's owner has to see.
+**Result.** The deviation from the pinned grammar is established. What stays open, and is for the Forms to decide, is **the responsibility of the schema-compilation entry point**: does `compile_schema` guarantee the grammar's node rules, or does it presume a schema validated elsewhere, and if so where and by what. Until the Forms decide, FG1 stays a documented finding; **no lint, no filter and no second check of the Form's schema acceptance is implemented in `cic-primitives`** (any such implementation is on HOLD): it would take over a responsibility that belongs to the Form and hide the finding. A draft of the upstream issue is prepared (not opened).
 
-### 4.3 The other candidates (documented findings)
+### 4.3 The other findings, split by kind
 
-| # | Finding | Handling |
-|---|---|---|
-| FG2 | No value constraint: enum, constant, pattern. | named semantic checks of the verifier (the plan's section 7 declaration) |
-| FG3 | No integer range; only above int64 is refused. | the admission limit 2^53 - 1 stays a named check |
-| FG4 | No order constraint on a list; no uniqueness for a set (`[a, a]` accepted). | `artifact_order` stays a named check; path uniqueness is expressible through the list key |
-| FG5 | A byte order mark is accepted at parse. | refused before the readers (`encoding_form`) |
+**FG2, FG3 (value constraints, integer range): an evaluation gap, not a grammar gap.** The grammar already has `contract` entries of type `pattern`, `enum`, `range` and `unique`. The Form does not evaluate them (listed as unevaluated; K18a-d negatives accepted). So the record contract can **declare** these constraints in the grammar's own mechanism, but nothing enforces them until the Form evaluates contracts. Until then the verifier's named semantic checks stay necessary, and nothing is reinvented in `cic-primitives` or Relay.
+
+**FG4 (order, uniqueness, counts), split three ways:**
+
+| Layer | Finding |
+|---|---|
+| Grammar (declared) | `ordered` (a boolean, whether the element order is meaningful, default false), `min_items`, `max_items`, `collection_variant: set`, a `unique` contract |
+| Form execution | `min_items` evaluated; `max_items` refused (fail-closed); `ordered` accepted, no effect observed (K19); a set takes `[a, a]` (K15); `unique` not evaluated (K18d) |
+| Release-specific semantics | "sorted by the UTF-8 bytes of the path" (contract section 8) is a release rule for one algorithm; it is **not** what `ordered` declares (that the order matters), so it stays the named check `artifact_order` regardless of what the Form evaluates |
+
+**FG5 (byte order mark):** accepted at parse; refused before the readers (`encoding_form`, an admission-profile rule).
 
 Mapping the Form's reasons to the contract's reasons is separate: for example `PATH_DUPLICATE_IDENTITY` (Form) is the structural counterpart of `artifact_path_duplicate` and `spec_source_path_duplicate` (contract), so those two duplicate checks are expressible with a list key; which reason identifier a verifier reports stays the contract's.
 
 ### 4.4 What this means for the normative schemas (not started)
 
-The normative schemas are **not** written in this pull request. The measurement showed that a schema in the current grammar cannot carry value constraints, and that the Form does not tell an author so. How the schemas are to be written in the presence of FG1 is a question for the review of this measurement, not an assumption of it.
+The normative schemas are **not** written in this pull request, and the lint is on hold. The measurement changes the question: the grammar describes more than the Form evaluates, so a normative schema can declare constraints (as `contract` entries) that the Form does not yet enforce. Whether and how the schemas declare them is for the review of this measurement; the responsibilities (declaration in the grammar, evaluation in the Form, named checks in the verifier until then) are kept apart.
 
 ## 5. Not verified in this document
 

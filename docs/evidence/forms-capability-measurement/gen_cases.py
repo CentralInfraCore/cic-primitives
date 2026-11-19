@@ -111,6 +111,33 @@ case("K17c_unknown_key_on_composite", "an unknown key on a composite node (patte
   "pos_known": "c: {x: a}\n", "neg_unknown": "c: {y: a}\n"})
 case("K17d_unknown_key_on_list", "an unknown key on a list node (unique_items)", LIST % "unique_items: true", {
   "pos_one": "files:\n  - {path: a, digest: d}\n", "neg_duplicate_key": "files:\n  - {path: a, digest: d}\n  - {path: a, digest: d}\n"})
+
+CN = lambda ctype, expr, base: base % ("contract: [{type: %s, expression: %s}]" % (ctype, expr))
+case("K18a_contract_pattern", "a pattern as a Contract entry (the grammar's own mechanism), not as a node key",
+     "- {name: d, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^sha256:[0-9a-f]{64}$'}]}", {
+  "pos_digest": "d: sha256:" + "a"*64 + "\n", "neg_no_prefix": "d: " + "a"*64 + "\n", "neg_upper": "d: sha256:" + "A"*64 + "\n", "neg_short": "d: sha256:" + "a"*63 + "\n"})
+case("K18b_contract_enum", "an enum as a Contract entry",
+     "- {name: kind, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: enum, expression: [PrimitiveRelease, ModuleRelease]}]}", {
+  "pos_member": "kind: PrimitiveRelease\n", "neg_non_member": "kind: Other\n"})
+case("K18c_contract_range", "a range as a Contract entry",
+     "- {name: n, shape_type: scalar, scalar_type: integer, mandatory: true, contract: [{type: range, expression: '0..9007199254740991'}]}", {
+  "pos_max_safe": "n: 9007199254740991\n", "pos_zero": "n: 0\n", "neg_2_53": "n: 9007199254740992\n", "neg_negative": "n: -1\n"})
+case("K18d_contract_unique", "a unique as a Contract entry on a list (a non-key field)",
+     "- name: files\n  shape_type: collection\n  collection_variant: list\n  mandatory: true\n  contract: [{type: unique, expression: digest}]\n  item_fields:\n    - {name: path, shape_type: scalar, scalar_type: string, role: key}\n    - {name: digest, shape_type: scalar, scalar_type: string, mandatory: true}", {
+  "pos_distinct": "files:\n  - {path: a, digest: d1}\n  - {path: b, digest: d2}\n", "neg_duplicate_digest": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n"})
+case("K18e_contract_unknown_type", "a Contract entry whose type is outside the grammar's closed list",
+     "- {name: a, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: bogus, expression: x}]}", {
+  "pos_present": "a: x\n", "neg_absent": "{}\n"})
+case("K18f_contract_empty_list", "an empty contract list (the grammar requires minItems 1)",
+     "- {name: a, shape_type: scalar, scalar_type: string, mandatory: true, contract: []}", {
+  "pos_present": "a: x\n", "neg_absent": "{}\n"})
+case("K18g_contract_missing_expression", "a Contract entry without the required expression",
+     "- {name: a, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern}]}", {
+  "pos_present": "a: x\n", "neg_absent": "{}\n"})
+case("K19a_ordered_true", "ordered: true on a list (the grammar's flag that the element order is meaningful)", LIST % "ordered: true", {
+  "inf_sorted": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n", "inf_unsorted": "files:\n  - {path: b, digest: d}\n  - {path: a, digest: d}\n"})
+case("K19b_ordered_false", "ordered: false on a list", LIST % "ordered: false", {
+  "inf_sorted": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n", "inf_unsorted": "files:\n  - {path: b, digest: d}\n  - {path: a, digest: d}\n"})
 for cid, (desc, sch, docs) in sorted(cases.items()):
     d = os.path.join(OUT, cid, "docs")
     os.makedirs(d, exist_ok=True)
