@@ -1,0 +1,1 @@
+schema attempts enum on a scalar (a closed set of values, e.g. a record kind)

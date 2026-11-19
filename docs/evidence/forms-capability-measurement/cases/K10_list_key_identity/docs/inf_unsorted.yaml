@@ -1,0 +1,3 @@
+files:
+  - {path: b, digest: d}
+  - {path: a, digest: d}
