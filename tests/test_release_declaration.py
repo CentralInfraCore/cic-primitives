@@ -1,6 +1,6 @@
 """The declaration of the files this repository publishes (project.yaml, compiler_settings.release_artifacts.paths), measured.
 
-The list was approved by the owner as content (docs/en/RELEASE-ARTIFACT-CLASSIFICATION.md, 30 paths). This file is the evidence that the declaration in project.yaml IS that list
+The list was approved by the owner as content (docs/en/RELEASE-ARTIFACT-CLASSIFICATION.md, 30 paths; 31 since the amendment of 2026-11-20, which adds proposals/atom-grammar/name-vectors/node-name.yaml). This file is the evidence that the declaration in project.yaml IS that list
 and that it works with the compiler of this repository: the paths exist in the commit under test, every schema the compiler would publish as a `spec` is among them, the twelve
 files of the Forms grammar pin are a subset, and the artifacts block the compiler produces from it is the same on every run and equals one computed here from the git blobs.
 
@@ -61,7 +61,7 @@ def forms_pin_paths():
 
 
 def test_the_declaration_is_the_list_the_owner_approved(declared):
-    assert len(declared) == 30
+    assert len(declared) == 31
     assert declared == approved_paths()
 
 
@@ -100,7 +100,7 @@ def test_the_twelve_files_of_the_forms_grammar_pin_are_a_subset(declared):
     assert len(pin) == 12
     assert set(pin) <= set(declared), sorted(set(pin) - set(declared))
     # the other way round is not required: the producer's list is its own, not the consumer's
-    assert len(set(declared) - set(pin)) == 18
+    assert len(set(declared) - set(pin)) == 19
 
 
 def test_the_artifacts_block_is_the_same_on_every_run_and_in_every_declared_order(declared, tree):
@@ -138,3 +138,30 @@ def test_the_declaration_names_no_consumer_and_no_generated_or_tooling_file(decl
     for path in declared:
         assert not path.startswith(("tests/", "tools/", ".github/", "ai/", "features/", "release/")), path
         assert path not in ("project.yaml", "commitment.yaml", "requirements.in", "requirements.txt"), path
+
+
+def test_the_name_vectors_are_published_and_their_checker_is_not(declared):
+    """The amendment of 2026-11-20 (owner): the normative conformance data of the node-name grammar is part of the surface, like the access golden vectors; the
+    repository-specific gate (it needs the git history, historical fixtures and the evidence files) is not."""
+    assert "proposals/atom-grammar/name-vectors/node-name.yaml" in declared
+    assert not any("check_name_vectors" in p for p in declared)
+    assert not any(p.startswith(("docs/evidence/", "tests/")) for p in declared)
+
+
+def test_the_published_package_works_on_its_own(commit):
+    """A directory with ONLY the declared files, Python in isolated mode: the access tools, the grammar self-test with the bound version, the refusal without a version, and
+    a consumer check of the published node-name vectors with the published checker (tests/published_package.py)."""
+    import tempfile
+    import published_package as pp
+    with tempfile.TemporaryDirectory() as d:
+        paths = pp.build(d, commit)
+        assert len(paths) == 31
+        results = {label: (rc, last) for label, rc, last in pp.run(d)}
+    assert results["check_access_vectors.py"][0] == 0 and "0 failure(s)" in results["check_access_vectors.py"][1]
+    assert results["check_access_vectors.py --self-test"][0] == 0 and "50/50" in results["check_access_vectors.py --self-test"][1]
+    assert results["check_grammar.py --self-test --node-name-grammar 2"][0] == 0 and "62/62" in results["check_grammar.py --self-test --node-name-grammar 2"][1]
+    refused = results["check_grammar.py --self-test (no version: must refuse)"]
+    assert refused[0] != 0 and "NODE_NAME_GRAMMAR_VERSION_MISSING" in refused[1]
+    consumer = results["consumer check of name-vectors/node-name.yaml with the published checker"]
+    assert consumer[0] == 0 and "0 mismatch(es)" in consumer[1], consumer
+

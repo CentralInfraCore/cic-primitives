@@ -22,7 +22,7 @@ compiler_settings:
   vault_cert_path: "cic-my-sign-key/crt/bar"
   owner_email: sinkog@centralinfracore.hu
   validity_days: 365
-  # The files a release publishes (docs/en/RELEASE-ARTIFACT-CLASSIFICATION.md: the owner's decision of 2026-11-01, 30 paths). Explicit paths, relative to the
+  # The files a release publishes (docs/en/RELEASE-ARTIFACT-CLASSIFICATION.md: the owner's decision of 2026-11-01, 30 paths; 31 since the amendment of 2026-11-20: proposals/atom-grammar/name-vectors/node-name.yaml). Explicit paths, relative to the
   # repository root, no globs; the compiler reads this declaration from the SOURCE COMMIT's project.yaml and resolves the paths against that commit's git tree.
   release_artifacts:
     paths:
@@ -41,6 +41,7 @@ compiler_settings:
       - proposals/atom-grammar/check_access_vectors.py
       - proposals/atom-grammar/check_grammar.py
       - proposals/atom-grammar/instance-grammar.schema.yaml
+      - proposals/atom-grammar/name-vectors/node-name.yaml
       - release.schema.yaml
       - schemas/aggregate/config-surface.yaml
       - schemas/aggregate/managed-entity.yaml
