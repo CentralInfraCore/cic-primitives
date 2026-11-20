@@ -14,7 +14,7 @@ So: the released primitives and what validates and interprets them (meta-schemas
 
 The twelve files that `cic-primitive-forms` pins are a **checked subset**, marked in the table. They do not define the list; the producer's rule does. The result happens to contain all twelve, which is a consequence and not the criterion.
 
-Counts: **INCLUDE 30**, **EXCLUDE 101**, REVIEW 0.
+Counts at the survey: **INCLUDE 30**, **EXCLUDE 101**, REVIEW 0. Files added to the repository after the survey are not in the table; the two files of the **amendment of 2026-11-20** (below) are decided there, which makes the approved content **31** paths.
 
 ## The table
 
@@ -100,7 +100,7 @@ Counts: **INCLUDE 30**, **EXCLUDE 101**, REVIEW 0.
 | `docs/hu/RELEASE-RECORD-CONTRACT.md` | 6746 | record contract summary (hu) | | **EXCLUDE** | the English text is the normative one |
 | `docs/**` (4 files) | 24211 | process documentation | | **EXCLUDE** | pre-check, conformance and compiler notes of the release process |
 
-## The approved content: 30 paths (sorted by UTF-8 bytes)
+## The approved content: 31 paths (sorted by UTF-8 bytes; 30 approved on 2026-11-01, one added by the amendment of 2026-11-20)
 
 ```yaml
 compiler_settings:
@@ -121,6 +121,7 @@ compiler_settings:
       - proposals/atom-grammar/check_access_vectors.py
       - proposals/atom-grammar/check_grammar.py
       - proposals/atom-grammar/instance-grammar.schema.yaml
+      - proposals/atom-grammar/name-vectors/node-name.yaml
       - release.schema.yaml
       - schemas/aggregate/config-surface.yaml
       - schemas/aggregate/managed-entity.yaml
@@ -138,19 +139,32 @@ compiler_settings:
       - schemas/index.yaml
 ```
 
-This block is **text in this document**. It is not applied to `project.yaml` by this change.
+This block is the content decision; `project.yaml` carries the same 31 paths (`tests/test_release_declaration.py` compares them).
 
-## Self-containment of the access tools
+## Self-containment of the published package
 
-Asked before the publication decision: do `access_policy.py` and `check_access_vectors.py` need anything outside the declared surface? Measured, not read: a directory with **only** the 30 listed files (nothing else from the repository), Python in isolated mode (`-I`):
+Asked before the publication decision, and measured again for the amendment: does anything the published tools do need a file outside the declared surface? Measured, not read: a directory with **only** the 31 declared files (read from the git blobs of the commit; nothing else from the repository), Python in isolated mode (`-I`) (`tests/published_package.py`, evidence `docs/evidence/publication-name-vectors/measurement.txt`):
 
 | Command in that directory | Result |
 |---|---|
 | `python proposals/atom-grammar/check_access_vectors.py` | `187 cases, 0 failure(s)` |
 | `python proposals/atom-grammar/check_access_vectors.py --self-test` | `50/50 seeded faults detected` |
-| `python proposals/atom-grammar/check_grammar.py --self-test` | `53/53` |
+| `python proposals/atom-grammar/check_grammar.py --self-test --node-name-grammar 2` | `62/62` (53 at the first measurement; the node-name grammar version 2 added 9) |
+| `python proposals/atom-grammar/check_grammar.py --self-test` (no version) | refused with `NODE_NAME_GRAMMAR_VERSION_MISSING`: the version has no default |
+| a consumer check: the published checker (version 2 bound) against the published `name-vectors/node-name.yaml` | 28 names and 15 binding cases, 0 mismatches |
 
-The files they read are all in the list: the four vector suites, `access_policy.py`, `schemas/atomic/access.yaml`, `schemas/aggregate/policy-surface.yaml` (the access tools) and `instance-grammar.schema.yaml` (the grammar). What they need from outside the repository are Python packages, not files of it: `PyYAML` and `jsonschema` (the standard library otherwise). Those are not part of the published surface; a consumer that runs the tools installs them (the toolchain lock `requirements.txt` is excluded by decision). Running the grammar over compositions needs those compositions as input (the examples are excluded); its self-test does not.
+The files they read are all in the list: the four access vector suites, `access_policy.py`, `schemas/atomic/access.yaml`, `schemas/aggregate/policy-surface.yaml` (the access tools), `instance-grammar.schema.yaml` and, since the node-name grammar, `schemas/atomic/shape.yaml` (it declares the version the checker binds), and the node-name vectors. What they need from outside the repository are Python packages, not files of it: `PyYAML` and `jsonschema` (the standard library otherwise). Those are not part of the published surface; a consumer that runs the tools installs them (the toolchain lock `requirements.txt` is excluded by decision). Running the grammar over compositions needs those compositions as input (the examples are excluded); its self-test does not.
+
+## Amendment of 2026-11-20: the node-name vectors
+
+Decision of the owner (review of the implementation of D1, cic-primitives #41, merged as `a3390419f70a8032305c04a1fab261c3c8e86d0f`), applied by the pull request that adds the path to `project.yaml`:
+
+| Path | Decision | Reason |
+|---|---|---|
+| `proposals/atom-grammar/name-vectors/node-name.yaml` | **INCLUDE** | normative conformance data of the node-name grammar (four verdicts per name, the version-binding cases), the same class as the access golden vectors; it states what the published checker must give |
+| `proposals/atom-grammar/check_name_vectors.py` | **EXCLUDE** in its present form | a repository-specific gate: it needs the git history of the pinned V1 commit, a historical fixture (`tests/fixtures/forms-pin-73ae469.yaml`), the release schema drafts, the committed Forms measurement and the Go and Rust runners of the evidence directory; none of them is in the published surface, so it cannot run inside the package |
+
+If an independent conformance runner that works inside the published package is made later, its publication may be justified; that is a separate decision. No release and no tag is created by this amendment, and the grammar files that were already published (`check_grammar.py`, `instance-grammar.schema.yaml`, `shape.yaml`) change their digests in the next release, as any changed published file does.
 
 ## Pin and devel
 
@@ -161,5 +175,5 @@ All twelve Forms-pinned files are in the approved set. The pin commit `73ae469` 
 ## What the list does not do
 
 * It does not make a consumer's requirement part of the producer: nothing here reads a consumer's pins.
-* It is explicit: a new file is not in the release until it is added. The compiler change (#26) refuses a release whose published schemas are not all listed (`spec_not_in_artifacts`), so a forgotten schema cannot be left out of the manifest; the other 17 files of the list have no such cross-check.
+* It is explicit: a new file is not in the release until it is added. The compiler change (#26) refuses a release whose published schemas are not all listed (`spec_not_in_artifacts`), so a forgotten schema cannot be left out of the manifest; the other 18 files of the list have no such cross-check.
 * It is a list of paths in a commit. The approval of its content is not the authorization of a release; signing and publication stay on hold.
