@@ -75,7 +75,7 @@ def sandbox_files(extra=(), without=()):
     import test_compiler as tc
     repo = ROOT
     files = [
-        ("schemas/atomic/shape.yaml", (tc._META.format(name="Shape", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n").encode(), "100644"),
+        ("schemas/atomic/shape.yaml", (tc._META.format(name="Shape", version="v0.1.dev") + "spec:\n  kind: AtomicPrimitive\n  fields: {a: 1}\n  node_name_grammar: {version: 2}\n").encode(), "100644"),     # the pin declares its node-name grammar version, as the real Shape does
         ("schemas/examples/c.yaml", (tc._META.format(name="Example", version="v0.1.dev") + tc._GOOD_COMPOSITION.lstrip("\n")).encode(), "100644"),
         ("schemas/index.yaml", (repo / "schemas" / "index.yaml").read_bytes(), "100644"),
         ("md.meta.schema.yaml", (repo / "md.meta.schema.yaml").read_bytes(), "100644"),

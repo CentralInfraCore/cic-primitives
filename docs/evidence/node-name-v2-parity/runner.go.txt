@@ -1,0 +1,55 @@
+// Evidence tool: the node-name verdict of version 2 as Go applies it. It does NOT hard-code the rule: it applies the rule it is given (rule.json, exported from the
+// grammar file) to the names it is given (names.json, exported from the vectors): JSON Schema semantics, as the checker applies them: a minimum length in
+// characters, a pattern that must match (a search, anchored by the pattern's own ^ and $) and a pattern that must NOT match. Standard library only.
+// Put it as main.go in a module that requires nothing: go run . names.json rule.json     Output: one line `id|accept` or `id|refuse` per name.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"unicode/utf8"
+)
+
+type rule struct {
+	MinLength  int    `json:"min_length"`
+	Pattern    string `json:"pattern"`
+	NotPattern string `json:"not_pattern"`
+}
+
+func main() {
+	var names []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	var r rule
+	b, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(b, &names); err != nil {
+		panic(err)
+	}
+	b, err = os.ReadFile(os.Args[2])
+	if err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(b, &r); err != nil {
+		panic(err)
+	}
+	if r.Pattern == "" || r.NotPattern == "" || len(names) == 0 {
+		fmt.Fprintln(os.Stderr, "an empty rule or no names: refusing to produce an empty result")
+		os.Exit(2)
+	}
+	pat := regexp.MustCompile(r.Pattern)
+	not := regexp.MustCompile(r.NotPattern)
+	for _, n := range names {
+		ok := utf8.RuneCountInString(n.Name) >= r.MinLength && pat.MatchString(n.Name) && !not.MatchString(n.Name)
+		v := "refuse"
+		if ok {
+			v = "accept"
+		}
+		fmt.Printf("%s|%s\n", n.ID, v)
+	}
+}

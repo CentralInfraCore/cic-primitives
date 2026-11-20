@@ -309,7 +309,7 @@ def extract_rule():
 def c8_go_rust():
     out = []
     rule_file = PARITY / "rule.json"
-    for f in ("rule.json", "go-output.txt", "rust-output.txt", "runner.go.txt", "runner.rs.txt"):
+    for f in ("rule.json", "names.json", "export_inputs.py", "go-output.txt", "rust-output.txt", "runner.go.txt", "runner.rs.txt"):
         if not (PARITY / f).exists():
             out.append("the committed %s is missing (docs/evidence/node-name-v2-parity/)" % f)
     if out:
@@ -318,6 +318,8 @@ def c8_go_rust():
     if rule != extract_rule():
         out.append("rule.json (what the runners were given) differs from the rule in the grammar file: %s vs %s" % (rule, extract_rule()))
     names = vectors()["names"]
+    if json.loads((PARITY / "names.json").read_text(encoding="utf-8")) != [{"id": n["id"], "name": n["name"]} for n in names]:
+        out.append("names.json (what the runners were given) differs from the names of the vector file")
     want = {n["id"]: n["v2"] for n in names}
     seen = {}
     for label in ("go", "rust"):
@@ -401,12 +403,13 @@ def seeded_faults():
         ("shape.yaml declares version 1", lambda t: edit(t / "schemas/atomic/shape.yaml", lambda s: sub1(s, r"node_name_grammar:\s*\n\s*version:\s*2", "node_name_grammar:\n    version: 1")), {"C3"}),
         ("a document key node_name_grammar is no longer looked for", lambda t: edit(t / ag / "check_grammar.py", lambda s: sub1(s, r"\n\s*check_no_version_key\(doc, \"\$\", out\)", "")), {"C4"}),
         ("the pinned digest of the V1 checker is altered", lambda t: edit(t / "tests/fixtures/forms-pin-73ae469.yaml", lambda s: sub1(s, r"(check_grammar\.py\n\s*sha256: )[0-9a-f]{8}", r"\g<1>00000000")), {"C5", "C6"}),
-        ("a v2 verdict of the vector file is flipped", flip("N06", "v2"), {"C1", "C2", "C8"}),
+        ("a v2 verdict of the vector file is flipped", flip("N06", "v2"), {"C2", "C8"}),
         ("a v1_checker verdict of the vector file is flipped", flip("N23", "v1_checker"), {"C1", "C5"}),
         ("the createdBy row is removed from the vector file", vec(lambda d: d.update(names=[r for r in d["names"] if r["name"] != "createdBy"])), {"C1"}),
         ("a Go verdict is altered", lambda t: edit(t / "docs/evidence/node-name-v2-parity/go-output.txt", lambda s: sub1(s, r"N06\|accept", "N06|refuse")), {"C8"}),
         ("the Rust output differs from the Go output", lambda t: edit(t / "docs/evidence/node-name-v2-parity/rust-output.txt", lambda s: sub1(s, r"N22\|refuse", "N22|accept")), {"C8"}),
         ("the rule the runners were given is narrowed", lambda t: edit(t / "docs/evidence/node-name-v2-parity/rule.json", lambda s: sub1(s, r"a-zA-Z0-9_", "a-z0-9_")), {"C8"}),
+        ("the names the runners were given are altered", lambda t: edit(t / "docs/evidence/node-name-v2-parity/names.json", lambda s: sub1(s, r"createdBy", "createdby")), {"C8"}),
         ("a Go line is duplicated", lambda t: edit(t / "docs/evidence/node-name-v2-parity/go-output.txt", lambda s: s + s.splitlines()[0] + "\n"), {"C8"}),
     ]
 

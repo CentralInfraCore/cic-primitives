@@ -867,6 +867,11 @@ def run_pledge():
     print(f"\n  \033[93mNext step: commit commitment.yaml, then run 'make release'.\033[0m")
 
 
+# The node-name grammar version this tool (the processing context of a release) expects the pinned grammar to declare
+# (proposals/atom-grammar, schemas/atomic/shape.yaml spec.node_name_grammar.version). It is bound to the pin's; a difference refuses the release.
+NODE_NAME_GRAMMAR_CONTEXT = 2
+
+
 def run_grammar_gate():
     """Refuses to release a composition the atom grammar rejects.
 
@@ -891,9 +896,10 @@ def run_grammar_gate():
     grammar = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(grammar)
-        validator = grammar.load_schema()
+        validator = grammar.load_schema(node_name_grammar=NODE_NAME_GRAMMAR_CONTEXT)
     except Exception as e:
-        print(f"\033[91m✗ ERROR: cannot load the atom grammar: {e}\033[0m")
+        code = getattr(e, "code", None)
+        print(f"\033[91m✗ ERROR: cannot load the atom grammar: {(code + ': ') if code else ''}{e}\033[0m")
         sys.exit(1)
 
     # The grammar's own self-test runs FIRST. CI runs it separately, so this

@@ -453,8 +453,12 @@ def test_dependency_yaml_is_the_one_optional_input(tmp_path, monkeypatch):
 def test_a_symbolic_link_for_a_schema_file_is_refused(tmp_path, monkeypatch, capsys):
     root, _v, _c, calls = sup.release_sandbox(C, tmp_path, monkeypatch)
     fx._git(root, "update-index", "--assume-unchanged", SHAPE)
+    # the link's target keeps the stand-in Shape's content (plus a comment, so the bytes still differ from the commit), so it still declares the node-name grammar version the grammar gate binds (decision D1): the
+    # refusal under test is the link, not a missing pin
+    target = root.parent / (root.name + "-linked-shape-target.yaml")      # outside the checkout: the worktree guard must see only the link
+    target.write_bytes((root / SHAPE).read_bytes() + b"# the bytes behind the link differ from the committed ones\n")
     (root / SHAPE).unlink()
-    (root / SHAPE).symlink_to(root / "schemas" / "examples" / "c.yaml")
+    (root / SHAPE).symlink_to(target)
     refused_for(root, monkeypatch, capsys, calls, SHAPE)
 
 

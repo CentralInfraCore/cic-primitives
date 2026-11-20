@@ -18,10 +18,17 @@ additionalProperties: false
 
 properties:
   # ── identity of the node within its parent ──────────────────────────────────
+  # Node-name grammar, version 2 (cic-primitives #39, decision D1; docs/en/GRAMMAR-NODE-NAME-PROFILE-DESIGN.md). The rule is a FULL match of `pattern`, and a
+  # name contains no line feed: the second keyword is what makes the verdict identical in every regular-expression flavor (Python's `$` also matches before a
+  # final line feed, Go's RE2 and the Rust regex crate do not). Upper-case and lower-case letters are different identities: nothing normalizes a name.
+  # The version is a property of the pinned grammar (schemas/atomic/shape.yaml, spec.node_name_grammar.version) and of the processing context, never a key of a
+  # document. Version 1 was `^[a-z][a-z0-9_]*$`; it lives on in the pin cic-primitives-73ae469-6a188078 and is not defined by this file.
   name:
     type: string
     minLength: 1
-    pattern: "^[a-z][a-z0-9_]*$"
+    pattern: "^[a-z][a-zA-Z0-9_]*$"
+    not:
+      pattern: "\\n"
 
   description:
     type: string

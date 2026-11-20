@@ -1,0 +1,29 @@
+Historical release records: unchanged. Base devel 3b9d32b61f3642d4961623c09480a638c06d1b48.
+
+== the four record blobs, read from the tags, against the digests of the merged plan (docs/en/RELEASE-CONTRACT-GENERALIZATION-PLAN.md section 2) ==
+OK   6963dc26a9b342d3455fcb1b24363c118b450184a886d3a89a68b3db33008016  primitives/@v0.1.4:release/cic-primitives-v0.1.4.yaml
+OK   284e44bfcf62d79f782d6cae359c4c99ef2f5297f6f71dcea52a95d28b8c4456  primitives/@v0.1.5:release/cic-primitives-v0.1.5.yaml
+OK   955fab2d6d9638c773f29fbe97a3279f9f10b9539c4e3e79957df0acef9a57a6  primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml
+OK   e5d8268aede0d24f02e60a151099a2fdc7615172ed3105b0a05b6b5d19addf63  primitives/@v0.2.1:release/cic-primitives-v0.2.1.yaml
+
+== paths changed by this pull request under release/, the record contract, the record schema, the reference verifier, the compiler's hash and signing code ==
+(none listed above = none changed)
+
+== the one change to tools/compiler.py ==
+ 1 file changed, 8 insertions(+), 2 deletions(-)
++# The node-name grammar version this tool (the processing context of a release) expects the pinned grammar to declare
++# (proposals/atom-grammar, schemas/atomic/shape.yaml spec.node_name_grammar.version). It is bound to the pin's; a difference refuses the release.
++NODE_NAME_GRAMMAR_CONTEXT = 2
++
++
+-        validator = grammar.load_schema()
++        validator = grammar.load_schema(node_name_grammar=NODE_NAME_GRAMMAR_CONTEXT)
+-        print(f"\033[91m✗ ERROR: cannot load the atom grammar: {e}\033[0m")
++        code = getattr(e, "code", None)
++        print(f"\033[91m✗ ERROR: cannot load the atom grammar: {(code + ': ') if code else ''}{e}\033[0m")
+
+== the yardstick of the envelope 3 conformance and the record conformance tests ==
+338 passed in 44.40s
+
+== the verification of a record does not read the grammar ==
+references in tools/release_record_conformance.py: 0

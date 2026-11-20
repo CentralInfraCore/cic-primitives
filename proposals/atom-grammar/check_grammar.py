@@ -27,6 +27,15 @@ import yaml
 from jsonschema import Draft202012Validator
 
 SCHEMA_PATH = Path(__file__).with_name("instance-grammar.schema.yaml")
+# The pinned schema declares which node-name grammar it reads (schemas/atomic/shape.yaml, spec.node_name_grammar.version). Resolved, so a symlinked
+# proposals/atom-grammar (the compiler's tests) still finds the repository's schemas.
+SHAPE_PATH = Path(__file__).resolve().parents[2] / "schemas" / "atomic" / "shape.yaml"
+
+# Node-name grammar versions (decision D1, docs/en/GRAMMAR-NODE-NAME-PROFILE-DESIGN.md): 1 is the rule of the pin cic-primitives-73ae469-6a188078, 2 the rule
+# of this file. This checker implements 2 only: version 1 is the pinned older checker, not a mode of this one.
+NODE_NAME_GRAMMAR_VERSIONS_KNOWN = (1, 2)
+NODE_NAME_GRAMMAR_IMPLEMENTED = 2
+VERSION_KEY = "node_name_grammar"
 
 # Certificate patterns that count as an adapter identity for C1. The adapter is
 # the only writer of observed state; anything else writing it means the field
@@ -43,6 +52,42 @@ SCALAR_PY_TYPES = {
     "number": (int, float),
     "bytes": str,
 }
+
+
+class GrammarVersionError(Exception):
+    """A node-name grammar version that is missing, unknown or in conflict. `code` is one of three distinct identifiers; there is no default."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+def pinned_node_name_version(shape_path=None):
+    """The version the pinned grammar declares (shape.yaml, spec.node_name_grammar.version), exactly as written; None when it declares none."""
+    try:
+        with Path(shape_path or SHAPE_PATH).open() as fh:
+            shape = yaml.safe_load(fh)
+    except OSError:
+        return None
+    block = ((shape or {}).get("spec") or {}).get(VERSION_KEY)
+    return block.get("version") if isinstance(block, dict) else None
+
+
+def bind_node_name_grammar(context_version, pin_version):
+    """Bind the processing context's expected version to the pin's. Both are required: there is no default to 1 or 2.
+
+    MISSING when either is absent; UNKNOWN when either is not one of the known integers (the string "2", the float 2.0, true and 3 are all unknown: a boolean
+    is not an integer here); CONFLICT when they differ. Returns the bound version.
+    """
+    for source, v in (("context", context_version), ("pin", pin_version)):
+        if v is None:
+            raise GrammarVersionError("NODE_NAME_GRAMMAR_VERSION_MISSING", f"the {source} supplies no node-name grammar version (there is no default)")
+    for source, v in (("context", context_version), ("pin", pin_version)):
+        if isinstance(v, bool) or not isinstance(v, int) or v not in NODE_NAME_GRAMMAR_VERSIONS_KNOWN:
+            raise GrammarVersionError("NODE_NAME_GRAMMAR_VERSION_UNKNOWN", f"the {source} names the node-name grammar version {v!r}; known: {list(NODE_NAME_GRAMMAR_VERSIONS_KNOWN)}")
+    if context_version != pin_version:
+        raise GrammarVersionError("NODE_NAME_GRAMMAR_VERSION_CONFLICT", f"the context expects node-name grammar version {context_version}, the pinned grammar declares {pin_version}")
+    return pin_version
 
 
 class Finding:
@@ -736,9 +781,27 @@ def check_shape_references(doc, out: list[Finding]) -> None:
 # Driver
 # ──────────────────────────────────────────────────────────────────────────────
 
-def load_schema():
+def load_schema(node_name_grammar=None, shape_path=None):
+    """The validator of the instance grammar, with the node-name grammar version BOUND: the caller's expected version against the pin's. No default."""
+    bound = bind_node_name_grammar(node_name_grammar, pinned_node_name_version(shape_path))
+    if bound != NODE_NAME_GRAMMAR_IMPLEMENTED:
+        raise GrammarVersionError("NODE_NAME_GRAMMAR_VERSION_CONFLICT",
+                                  f"this checker implements node-name grammar version {NODE_NAME_GRAMMAR_IMPLEMENTED} only; version {bound} is the pinned older checker")
     with SCHEMA_PATH.open() as fh:
         return Draft202012Validator(yaml.safe_load(fh))
+
+
+def check_no_version_key(obj, path: str, out: list[Finding]) -> None:
+    """The node-name grammar version is a property of the pinned grammar, never a key of a document: a key of that name anywhere is a finding."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == VERSION_KEY:
+                out.append(Finding("S0", f"{path}.{k}", "the node-name grammar version is a property of the pinned grammar and of the processing "
+                                   "context, never a key of a document"))
+            check_no_version_key(v, f"{path}.{k}", out)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            check_no_version_key(v, f"{path}[{i}]", out)
 
 
 def check_document(doc, validator) -> list[Finding]:
@@ -758,6 +821,7 @@ def check_document(doc, validator) -> list[Finding]:
         check_reference_target(node, path, out)
     check_duplicate_names(doc, "$", out)
     check_shape_references(doc, out)
+    check_no_version_key(doc, "$", out)
     check_address_key_fields(doc, "$", out)
     return out
 
@@ -767,6 +831,15 @@ def check_document(doc, validator) -> list[Finding]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 MUST_REJECT = {
+    # node-name grammar version 2 (decision D1): a full match, a lower-case first letter, no line feed
+    "a node name with a line feed after a valid name (version 2: no line feed in a name)": {
+        "name": "abc\n", "shape_type": "opaque"},
+    "a node name that starts with an upper-case letter": {
+        "name": "CreatedBy", "shape_type": "opaque"},
+    "a node name with a hyphen": {
+        "name": "created-by", "shape_type": "opaque"},
+    "an empty node name": {
+        "name": "", "shape_type": "opaque"},
     "scalar without scalar_type": {
         "name": "a", "shape_type": "scalar", "role": "config"},
     "scalar carrying composite fields": {
@@ -845,6 +918,15 @@ MUST_REJECT = {
 # Fixtures that must be rejected but are documents, not bare nodes: the defect
 # is the absence of a member, so they only exist at a real node position.
 MUST_REJECT_DOCS = {
+    "the node-name grammar version as a key of a node": {
+        "spec": {"config_surface": {"nodes": [
+            {"name": "a", "shape_type": "opaque", "node_name_grammar": 2}]}}},
+    "the node-name grammar version as a key of the spec": {
+        "spec": {"node_name_grammar": 2, "config_surface": {"nodes": [
+            {"name": "a", "shape_type": "opaque"}]}}},
+    "the node-name grammar version as a key of the surface": {
+        "spec": {"config_surface": {"node_name_grammar": 2, "nodes": [
+            {"name": "a", "shape_type": "opaque"}]}}},
     "an observed value that simply omits its role": {
         "spec": {"state_surface": {"nodes": [
             {"name": "power_state", "shape_type": "scalar", "scalar_type": "string",
@@ -1048,6 +1130,11 @@ MUST_ACCEPT_DOCS = {
 }
 
 MUST_ACCEPT = {
+    # node-name grammar version 2: lowerCamelCase and snake_case, case is identity
+    "a lowerCamelCase node name (the field of the released records)": {
+        "name": "createdBy", "shape_type": "opaque"},
+    "a mixed node name with digits and an underscore": {
+        "name": "aB_c9", "shape_type": "opaque"},
     "access with the symbol and an explicit empty list": {
         "name": "a", "shape_type": "scalar", "scalar_type": "string",
         "role": "config", "access": {"access": "inherit", "modify": []}},
@@ -1147,9 +1234,20 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("files", nargs="*", type=Path)
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--node-name-grammar", metavar="VERSION", default=None,
+                    help="the node-name grammar version the caller expects (required: there is no default; it must equal the version the pinned grammar "
+                         "declares, schemas/atomic/shape.yaml)")
     args = ap.parse_args()
 
-    validator = load_schema()
+    # The context's version is bound to the pin's before anything is checked. Text that is not a plain integer is passed on as text and refused as UNKNOWN.
+    version = args.node_name_grammar
+    if version is not None and re.fullmatch(r"0|[1-9][0-9]*", version):
+        version = int(version)
+    try:
+        validator = load_schema(node_name_grammar=version)
+    except GrammarVersionError as exc:
+        print(f"{exc.code}: {exc}", file=sys.stderr)
+        return 2
 
     if args.self_test:
         return self_test(validator)
