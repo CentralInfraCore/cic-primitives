@@ -35,7 +35,19 @@ Evidence: `docs/evidence/grammar-node-name-measurement/` (`README.md`; the Forms
 | R2 | `^[A-Za-z][A-Za-z0-9_]*$` | also PascalCase names | matches the widest reading of `shape.yaml` "CamelCase"; erodes the difference with Kind names |
 | R3 | R1 plus a style rule "consistent within the namespace" | as R1 | the style rule is cross-node: it is a lint, not a pattern; the lint is on hold (owner decision) |
 
-R1 is a pure **widening**: every name valid under the current rule stays valid. A bounded exhaustive check (alphabet `abZQ0_- \n` plus U+00E9, length 1 to 5: 111 110 strings) finds **no** name valid under the current rule and invalid under R1, and the 2 428 names that R1 adds **all contain an upper-case letter** (`name-rule-check.txt`; the check is mutation-tested: a rule that drops `_` and a rule that also admits `-` are both refused by `selftest_name_rule_check.py`). Consequences to accept with R1: names that differ only in case are distinct (`createdby` and `createdBy` can be siblings: the Form already treats them so), and look-alike names are not prevented (a lint question).
+**Three things that must not be confused** (review F1 of #40). The word "widening" is true of the **normative** rule only:
+
+| Name | V1 normative rule (full match) | V1 checker, as measured | V2 (R1 plus the line-feed guard) |
+|---|---|---|---|
+| `created_by` | accept | accept | accept |
+| `createdBy` | refuse | refuse | **accept** (the added language) |
+| `abc\n` | refuse | **accept** (a flavor defect of the checker) | **refuse** (a deliberate tightening, accepted as O3) |
+
+* **(a) R1 widens the normative V1 rule.** Every name valid under the V1 rule (a full match of `^[a-z][a-z0-9_]*$`) is valid under V2. A bounded exhaustive check (alphabet `abZQ0_- \n` plus U+00E9, length 1 to 5: 111 110 strings) finds **no** name valid under the V1 rule and invalid under R1, and the 2 428 names that R1 adds **all contain an upper-case letter** (`name-rule-check.txt`; the check is mutation-tested: a rule that drops `_` and a rule that also admits `-` are both refused by `selftest_name_rule_check.py`).
+* **(b) R1 is not a widening of the language the V1 checker actually accepts.** That language is the V1 rule plus **one line feed after a valid name** (`abc\n`; `abc\n\n` is refused: Python's `$` matches only before a final line feed). The same bounded check confirms this exactly (`name-rule-check.txt`, "the V1 checker's search language": 0 differences, 170 extra names in the bounded space; and no name the checker accepts is refused by V2 except those extra names), and it is mutation-tested too. V2 refuses those names.
+* **(c) The erroneous acceptances that V2 removes** are exactly (b)'s extra names: valid-name-plus-one-line-feed. No other name accepted by the V1 checker is refused by V2.
+
+**Case is identity.** Upper-case and lower-case letters make different names (`createdby` and `createdBy` are different fields and can be siblings: the Form already treats them so). **No normalization and no automatic renaming is allowed**, in the grammar, the checker, the Forms or any tool. Look-alike names are not prevented (a lint question; the lint is on hold).
 
 ## 4. The versioned profile (design)
 
@@ -51,32 +63,37 @@ Alternatives rejected: **M2**, two coexisting schema files (a second copy of a l
 ## 5. Compatibility: the existing profile, the historical records
 
 * **The existing profile is unchanged by construction.** Its identity is an immutable commit and manifest; the new profile lives in a new pin. Evidence to be produced by the implementation: the old pin's file digests (`manifest_sha256 6a188078...`) stay as they are, and the old vectors pass under context version 1 against the old file.
-* **Known divergence of version 1, recorded and not fixed here:** the checker accepts `abc\n` under version 1 (point 5) while the rule's text and the Go and Rust regexes reject it. Whether this is repaired in the checker (it narrows what version 1 accepts by one pathological name) or frozen is an owner decision (O3); version 2 closes it for the new profile either way.
+* **Known divergence of version 1, recorded and not fixed (decision O3):** the V1 checker accepts a valid name followed by one line feed (point 5, section 3 (b)) while the rule's text and the Go and Rust regexes refuse it. Version 1 stays unchanged: the divergence is documented, and the evidence tool asserts it (a change of the checker's behavior on `abc\n` fails `name_rule_check.py` on purpose, so it can only change consciously). Version 2 closes it.
 * **Historical release records, hashes and signatures are not touched.** The grammar governs **schemas** (compositions), not release records: no file under the records, no hash payload, no signature depends on the grammar; the field name `createdBy` stays as published. What changes is only the schema that describes the records (the release schema set, still draft). The release schemas under version 1 keep exactly three findings, all `createdBy` (recorded in cic-primitives #38); under version 2 they are expected to have none, which is the finalization gate.
 
 ## 6. Rust and Go parity
 
 * **Today:** parity holds, trivially: Rust and Go compile 15 of the 16 cases and refuse the empty name identically (`verification.txt`, byte-identical outputs), because neither enforces the pattern. The regular-expression engines agree as well (`namepat-*-output.txt`: 24 names, 4 patterns, byte-identical), including on the line feed.
-* **Under the new profile:** the parity obligation is on **verdicts**, not on implementation: the same vector file gives the same verdict in the Python checker, in a Go runner and in a Rust runner. Whether the Forms enforce the name rule at all is a separate Forms decision (they do not today); if they do, they enforce it **per profile** (a `NodeNameGrammar` feature of the profile table), never one rule for every pin. That Forms change, the new pin and the profile table entry are separate work packages (on hold).
+* **Under the new profile (V2): the parity of the actual name validation is mandatory.** The checker, a Go implementation and a Rust implementation must **actually validate names** (not only be shown to agree on a regular expression), and the same vector file gives the same verdict in all three. Whether the **Forms** validate names is a separate decision (they do not today); if they do, they validate **per profile** (a `NodeNameGrammar` feature of the profile table), never one rule for every pin. **Under V1 the Forms keep their current behavior** (they accept every non-empty name) **unless a separate, explicit compatibility decision says otherwise** (section 7). The Forms change, the new pin and the profile table entry are separate work packages (on hold).
 
 ## 7. Impact on Forms #166 and #167
 
 * **#166 (schema node keys and contract entries silently ignored).** Independent of names as long as its fix is limited to unknown keys and malformed contract entries. If the fix evaluates the **whole** grammar schema (it is `additionalProperties: false` and holds the name pattern in the same file), it would, under the current pin, refuse `createdBy` and make the release schemas uncompilable. **Ordering consequence:** the fix of #166 must be profile-aware, or must not start before the new pin exists. Recommended as an added condition of #166.
+  **Compatibility rule (review F2):** the fix of #166 must **not** start rejecting, under V1, names the Forms accept today (for example `a-b`, `1abc`, `Foo`). Rejecting them would be a compatibility change of the V1 behavior and must not happen unnoticed: it requires its own explicit decision, with the list of names that change verdict (the vector rows where the Forms' V1 verdict is accept and the V1 rule's verdict is refuse, section 8). The default is: the #166 fix does not enforce the name rule under V1.
 * **#167 (surface-level `validation` neither evaluated nor listed).** Independent. One interaction: the expression dialect of `must` (open point P2 of #38) must accept the names of the new profile (an upper-case letter inside an identifier).
 * Both need, when the new pin exists, a new entry in the Forms profile table and a `NodeNameGrammar` value for it; the pin change is on hold.
 * **Not reported:** the Forms' acceptance of names the grammar forbids (point 2) has no issue; the owner decides whether it joins #166.
 
 ## 8. Conformance vectors (design, nothing is implemented)
 
-One vector file is the **single source of verdicts**; each runner asserts it. A vector is `(name, v1, v2)`.
+One vector file is the **single source of verdicts**; each runner asserts it. A vector is `(name, v1_rule, v1_checker, v1_forms, v2)`: **four** verdicts, because the V1 behaviors differ and a single `v1` column would hide it. `v1_rule` is the normative V1 rule (a full match); `v1_checker` is the historical behavior of the pinned checker; `v1_forms` is the current behavior of the Forms (measured at `2f02a75`: every non-empty name is accepted); `v2` is the single, enforced verdict of the new profile (checker, Go and Rust alike).
 
-| Class | Names | v1 | v2 (R1) |
-|---|---|---|---|
-| valid in both | `a`, `abc_1`, `a_`, `created_by` | accept | accept |
-| valid in v2 only | `createdBy`, `aB_c9`, `a9B`, `aBC` | refuse | accept |
-| invalid in both | `A`, `CreatedBy`, `1abc`, `_x`, `a-b`, `a b`, `a.b`, `ét` (U+00E9), a Cyrillic look-alike, `a` followed by NUL, the empty name | refuse | refuse |
-| line feed | `abc\n`, `abc\n\n`, `a\nb`, `\nabc` | rule text: refuse; **the Python checker accepts `abc\n`** (O3) | refuse, in all three runners |
-| long | 300 characters | accept | accept |
+| Class | Names | v1_rule | v1_checker | v1_forms | v2 |
+|---|---|---|---|---|---|
+| valid in all | `a`, `abc_1`, `a_`, `created_by` | accept | accept | accept | accept |
+| valid in v2 only | `createdBy`, `aB_c9`, `a9B`, `aBC` | refuse | refuse | accept | accept |
+| invalid in the rule, accepted by the Forms | `A`, `CreatedBy`, `1abc`, `_x`, `a-b`, `a b`, `a.b`, `ét` (U+00E9), a Cyrillic look-alike, `a` followed by NUL | refuse | refuse | **accept** | refuse |
+| the empty name | (empty) | refuse | refuse | refuse | refuse |
+| one line feed after a valid name | `abc\n` | refuse | **accept** | accept | refuse |
+| other line feeds | `abc\n\n`, `a\nb`, `\nabc` | refuse | refuse | accept | refuse |
+| long | 300 characters | accept | accept | accept | accept |
+
+The rows where `v1_forms` is accept and `v1_rule` is refuse are the **list of names whose verdict would change if the Forms ever enforced the V1 rule**: that list is the content of the explicit compatibility decision of section 7. The two `v1_checker` / `v1_rule` differences (one row) are the documented divergence of O3.
 
 Runners: (a) the Python checker (`check_grammar.py`) on a one-node composition per name, (b) a Go runner (RE2), (c) a Rust runner (`regex`), (d) later and only if decided, the Forms. Further vectors: **version binding** (missing, unknown `"2"`/`true`/`3`, conflict: three distinct errors; a document with a `node_name_grammar` key is refused as an unknown key); **widening** (every v1-valid name is v2-valid: the bounded exhaustive check becomes a vector); **release schema set** (the composed schemas have the three findings under v1 and none under v2). **Mutation tests** of the vectors: a narrowed pattern, a dropped line-feed guard, a missing version check, a default to version 1, each must turn at least one vector red. **Historical vectors**: the old pin's vectors pass under context version 1 against the old file (a CI job on the pinned commit); the four records and their verification results are not re-run by this package because nothing they depend on changes (to be shown by an unchanged reference-verifier run in the implementation pull request).
 
@@ -84,16 +101,17 @@ Runners: (a) the Python checker (`check_grammar.py`) on a one-node composition p
 
 1. Owner decisions (section 10). 2. Implementation pull request in cic-primitives: the grammar change, the version binding in the checker, the vectors, the evidence (on hold until 1). 3. New grammar pin and Forms profile table entry, the Forms conformance (separate packages, on hold). 4. Only then: finalization of the release schemas, the derived JSON Schema (on hold).
 
-## 10. Decisions asked of the owner
+## 10. Decisions (accepted by the owner in the review of #40)
 
-| # | Question | Recommendation |
-|---|---|---|
-| O1 | the rule: R1, R2 or R1 plus a (later) style lint | R1 |
-| O2 | the mechanism: M1 (version bound to the pin, following `access-policy/1`) | M1 |
-| O3 | the version-1 checker accepts `abc\n`: repair it or freeze it | record, do not repair in this package; version 2 closes it |
-| O4 | where the version is declared: `schemas/atomic/shape.yaml` `spec.node_name_grammar.version` | as proposed |
-| O5 | whether the Forms' acceptance of grammar-forbidden names joins #166 | yes, as a related observation |
-| O6 | #166's fix must be profile-aware (section 7) | yes |
+| # | Decision |
+|---|---|
+| O1 | the rule is R1, `^[a-z][a-zA-Z0-9_]*$`, as a **full match** |
+| O2 | the mechanism is M1: the version is bound to the pin and to the processing context |
+| O3 | version 1 stays unchanged; the line-feed defect of the V1 checker is documented, not repaired; V2 refuses it (a deliberate tightening) |
+| O4 | the version is declared as `spec.node_name_grammar.version` in `schemas/atomic/shape.yaml` |
+| O5 | the Forms' acceptance of grammar-forbidden names is recorded in #166 |
+| O6 | the fix of #166 must be profile-aware (mandatory) |
+| | no `createdBy` exception; case is identity: no normalization, no automatic renaming |
 
 ## 11. Not verified
 

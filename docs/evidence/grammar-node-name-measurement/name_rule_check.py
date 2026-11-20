@@ -5,14 +5,40 @@ usage: name_rule_check.py <names.json> <patterns.json> <go-pat-output> <rust-pat
 Exit 0 only if Go and Rust agree on every (pattern, name) and every claim stated in the output holds."""
 import itertools, json, os, re, subprocess, sys, tempfile
 names = json.load(open(sys.argv[1])); pats = json.load(open(sys.argv[2]))
-go = open(sys.argv[3]).read().splitlines(); rs = open(sys.argv[4]).read().splitlines()
 problems = []
-if go != rs:
+
+def parse(path, label):
+    """The exact inventory of one raw output: one line `pattern|index|true` or `...|false` for EVERY (pattern, name index) and nothing else.
+    A malformed line, an unknown pattern or index, a value other than true/false, a duplicate and a missing pair are each a problem."""
+    got = {}
+    for n, line in enumerate(open(path, encoding="utf-8").read().splitlines(), 1):
+        f = line.split("|")
+        if len(f) != 3:
+            problems.append("%s line %d is malformed (%d fields): %r" % (label, n, len(f), line[:60])); continue
+        p, i, m = f
+        if p not in pats:
+            problems.append("%s line %d names an unknown pattern %r" % (label, n, p)); continue
+        if not (i.isascii() and i.isdigit() and int(i) < len(names) and str(int(i)) == i):
+            problems.append("%s line %d names an unknown name index %r" % (label, n, i)); continue
+        if m not in ("true", "false"):
+            problems.append("%s line %d has the verdict %r, which is not true or false" % (label, n, m)); continue
+        if (p, int(i)) in got:
+            problems.append("%s line %d repeats (%s, %s)" % (label, n, p, i)); continue
+        got[(p, int(i))] = (m == "true")
+    for p in pats:
+        for i in range(len(names)):
+            if (p, i) not in got:
+                problems.append("%s misses the pair (%s, %d)" % (label, p, i))
+    return got
+
+go_tab, rs_tab = parse(sys.argv[3], "go"), parse(sys.argv[4], "rust")
+if problems:
+    for p in problems[:20]: print("PROBLEM: " + p)
+    print("RESULT: INCONSISTENT")
+    sys.exit(1)
+if go_tab != rs_tab:
     problems.append("Go and Rust differ on (pattern, name)")
-tab = {}
-for line in go:
-    p, i, m = line.split("|"); tab[(p, int(i))] = (m == "true")
-assert len(tab) == len(pats) * len(names), "incomplete table"
+tab = go_tab
 import jsonschema
 def js(p, n):   # the way the pinned checker applies a pattern: jsonschema (Draft 2020-12), re.search
     return jsonschema.Draft202012Validator({"type": "string", "minLength": 1, "pattern": pats[p]}).is_valid(n)
@@ -60,6 +86,12 @@ for n in ["abc", "createdBy", "abc\n"]:
         r = subprocess.run([sys.executable, chk, f], capture_output=True, text=True)
     res[n] = r.returncode
     print("  %-12s exit %d  %s" % (json.dumps(n)[1:-1], r.returncode, "accepted" if r.returncode == 0 else "refused"))
+# the documented behavior of the V1 checker (design section 2, point 5; decision O3: recorded, not repaired). A change of ANY of the three results fails
+# this check on purpose: the document states it, so a change must be a conscious, documented one.
+DOCUMENTED_V1_CHECKER = {"abc": 0, "createdBy": 1, "abc\n": 0}
+for n, want in DOCUMENTED_V1_CHECKER.items():
+    if res[n] != want:
+        problems.append("the V1 checker's documented behavior changed for %r: exit %d, documented %d (the design document must be revisited)" % (n, res[n], want))
 if res["abc"] != 0 or res["createdBy"] == 0:
     problems.append("the checker does not behave as the baseline of the design assumes (abc accepted, createdBy refused)")
 print("  => a name with a trailing line feed is %s by the current checker" % ("ACCEPTED" if res["abc\n"] == 0 else "refused"))
@@ -84,6 +116,24 @@ pair_bad = [s for s in ("".join(t) for L in range(1, 6) for t in itertools.produ
             if (bool(re.search(A_BOUNDED, s)) and "\n" not in s) != bool(new.fullmatch(s))]
 print("  (A searched, and no line feed) differs from a full match of A: %d strings (must be none)" % len(pair_bad))
 if pair_bad: problems.append("the pair (A, not LF) is not a full match in the bounded space")
+# the V1 checker's actual language (re.search of the V1 pattern) is the V1 rule plus ONE line feed after a valid name; V2 refuses exactly those extra names
+OLD_BOUNDED = os.environ.get("NAME_RULE_BOUNDED_OLD", pats["OLD"])     # test hook of selftest_name_rule_check.py only
+oldb = re.compile(OLD_BOUNDED)
+lang_bad = []; extra = 0; v2_refuses_other = []
+for L in range(1, 6):
+    for t in itertools.product(alpha, repeat=L):
+        s_ = "".join(t)
+        checker = bool(re.search(OLD_BOUNDED, s_))
+        rule = bool(oldb.fullmatch(s_))
+        plus_lf = s_.endswith("\n") and bool(oldb.fullmatch(s_[:-1]))
+        if checker != (rule or plus_lf): lang_bad.append(s_)
+        if checker and not rule: extra += 1
+        v2 = bool(new.fullmatch(s_)) and "\n" not in s_
+        if checker and not v2 and not plus_lf: v2_refuses_other.append(s_)
+print("the V1 checker's search language = the V1 rule plus one line feed after a valid name, bounded exhaustive: %d differences (must be none); the extra names: %d" % (len(lang_bad), extra))
+print("names the V1 checker accepts and V2 refuses, other than that extra language (must be none): %d" % len(v2_refuses_other))
+if lang_bad: problems.append("the V1 checker's search language is not the V1 rule plus one line feed after a valid name")
+if v2_refuses_other: problems.append("V2 refuses a name the V1 checker accepts that is not a valid name plus one line feed")
 if bad_widen or bad_added: problems.append("rule A is not a pure widening that only adds upper-case letters after the first character")
 print()
 for p in problems: print("PROBLEM: " + p)

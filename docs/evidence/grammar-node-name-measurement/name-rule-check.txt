@@ -91,5 +91,7 @@ bounded exhaustive check, alphabet abZQ0_- \n\u00e9, length 1..5: 111110 strings
   names valid under OLD but not under A (must be none): 0
   names valid under A but not under OLD: 2428; of those without an upper-case letter (must be none): 0
   (A searched, and no line feed) differs from a full match of A: 0 strings (must be none)
+the V1 checker's search language = the V1 rule plus one line feed after a valid name, bounded exhaustive: 0 differences (must be none); the extra names: 170
+names the V1 checker accepts and V2 refuses, other than that extra language (must be none): 0
 
 RESULT: CONSISTENT
