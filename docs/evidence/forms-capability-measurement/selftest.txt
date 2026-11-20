@@ -10,4 +10,11 @@ a document line for a refused schema, in both                  -> refused (as ex
 outputs that differ by one line                                -> refused (as expected)
 outputs that differ by one character                           -> refused (as expected)
 one output empty                                               -> refused (as expected)
-12 of 12 checks as expected
+F4.2 raw bytes differ, equal after a lossy decode              -> refused (as expected)
+F4.2 the same invalid UTF-8 in both                            -> refused (as expected)
+F4.2 equal after line-end normalisation only                   -> refused (as expected)
+F4.3 a malformed compile result counted as a refusal           -> refused (as expected)
+F4.3 a case that must compile was refused                      -> refused (as expected)
+F4.3 the case that must be refused compiled                    -> refused (as expected)
+F4.3 the refusal has another code than expected                -> refused (as expected)
+19 of 19 checks as expected

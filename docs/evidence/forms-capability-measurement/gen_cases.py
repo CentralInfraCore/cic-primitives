@@ -18,8 +18,11 @@ def schema(nodes):
     return HEAD + "".join("      " + l + "\n" for l in nodes.strip("\n").split("\n"))
 S = lambda n, extra="": "- {name: %s, shape_type: scalar, scalar_type: string%s}" % (n, extra)
 cases = {}
-def case(cid, desc, nodes, docs):
+REFUSED = {}   # case id -> the reason code the Form must refuse the schema with (an expected refusal)
+def case(cid, desc, nodes, docs, refused=None):
     cases[cid] = (desc, schema(nodes), docs)
+    if refused:
+        REFUSED[cid] = refused
 
 case("K01_mandatory", "mandatory scalar", S("a", ", mandatory: true"), {
   "pos_present": "a: x\n", "neg_absent": "{}\n"})
@@ -54,8 +57,8 @@ case("K07_min_items", "list with min_items 1", LIST % "min_items: 1", {
   "pos_one": "files:\n  - {path: a, digest: d}\n", "neg_empty": "files: []\n", "neg_absent": "{}\n"})
 case("K07b_min_items_2", "list with min_items 2", LIST % "min_items: 2", {
   "pos_two": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n", "neg_one": "files:\n  - {path: a, digest: d}\n"})
-case("K08_max_items", "schema attempts max_items: 1 (an unknown schema key)", LIST % "max_items: 1", {
-  "pos_one": "files:\n  - {path: a, digest: d}\n", "neg_two": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n"})
+case("K08_max_items", "schema attempts max_items: 1 (declared by the grammar, refused by the Form)", LIST % "max_items: 1", {
+  "pos_one": "files:\n  - {path: a, digest: d}\n", "neg_two": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n"}, refused="SCHEMA_SHAPE_UNSUPPORTED")
 COMP = """- name: c
   shape_type: composite
   mandatory: true
@@ -142,7 +145,7 @@ case("K19b_ordered_false", "ordered: false on a list", LIST % "ordered: false", 
 if INVENTORY:
     # the machine inventory of what the generator defines: one line per case and per document
     for cid, (desc, sch, docs) in sorted(cases.items()):
-        print("%s|-" % cid)
+        print("%s|-|compile=%s" % (cid, ("ERR[%s]" % REFUSED[cid]) if cid in REFUSED else "OK"))
         for name in sorted(docs):
             print("%s|%s" % (cid, name))
     sys.exit(0)

@@ -9,21 +9,27 @@ committed cases directory equals it, and then checks that EACH output accounts f
 
   * every inventory case has exactly one compile line;
   * where the schema compiled, every document has exactly one document line (stage parse or validate);
-  * where the schema was refused, the documents are NOT RUN, and that is counted and named, not dropped;
+  * the compile result is well formed ('OK|unevaluated=...' or 'ERR[CODE] ...') and is exactly the outcome the inventory expects (a case that must
+    compile and was refused, or that must be refused and compiled, or was refused with another code, is a problem);
+  * where the schema was refused as expected, the documents are NOT RUN, and that is counted and named, not dropped;
   * no line for an unknown case or document, no duplicate, no document line for a refused schema.
 
 Exit 0 only when both outputs are complete AND byte-identical AND the accounting of the two is equal."""
-import os, subprocess, sys, collections
+import os, re, subprocess, sys, collections
 
 def inventory(gen):
     out = subprocess.run([sys.executable, gen, "--inventory"], capture_output=True, check=True, text=True).stdout
     inv = collections.OrderedDict()
+    expect = {}
     for line in out.splitlines():
-        case, doc = line.split("|", 1)
+        parts = line.split("|")
+        case, doc = parts[0], parts[1]
         inv.setdefault(case, [])
-        if doc != "-":
+        if doc == "-":
+            expect[case] = parts[2].split("=", 1)[1]
+        else:
             inv[case].append(doc)
-    return inv
+    return inv, expect
 
 def disk(cases_dir):
     d = {}
@@ -32,7 +38,7 @@ def disk(cases_dir):
         d[case] = docs
     return d
 
-def account(name, data, inv):
+def account(name, data, inv, expect):
     """Returns (problems, accounting)."""
     problems = []
     if not data:
@@ -63,7 +69,17 @@ def account(name, data, inv):
         if stage != "compile":
             problems.append("%s: the first line of %s is not a compile line" % (name, case))
             continue
-        if result.startswith("OK"):
+        ok_form = re.match(r"^OK\|unevaluated=[^|]*$", result)
+        err_form = re.match(r"^ERR\[([A-Z0-9_]+)\]( .*)?$", result)
+        if not ok_form and not err_form:
+            problems.append("%s: the compile result of %s is neither 'OK|unevaluated=...' nor 'ERR[CODE] ...': %r" % (name, case, result))
+            continue
+        want = expect[case]
+        got = "OK" if ok_form else "ERR[%s]" % err_form.group(1)
+        if got != want:
+            problems.append("%s: %s compiled as %s, the inventory expects %s" % (name, case, got, want))
+            continue
+        if ok_form:
             acc["compile_ok"] += 1
             for doc in docs:
                 got = seen.get((case, doc), [])
@@ -88,21 +104,29 @@ def main():
     cases_dir, go_path, rust_path = sys.argv[1:4]
     quiet = "--quiet" in sys.argv
     gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen_cases.py")
-    inv = inventory(gen)
+    inv, expect = inventory(gen)
     problems = []
     if disk(cases_dir) != dict(inv):
         problems.append("the cases directory does not equal the generator inventory")
-    go = open(go_path, "rb").read().decode("utf-8", "replace") if os.path.exists(go_path) else ""
-    rs = open(rust_path, "rb").read().decode("utf-8", "replace") if os.path.exists(rust_path) else ""
+    # the RAW bytes are compared; a decode is only for the accounting and is strict (an invalid byte is a problem, never replaced)
+    raw = {}
+    for name, path in (("go", go_path), ("rust", rust_path)):
+        raw[name] = open(path, "rb").read() if os.path.exists(path) else b""
     accs = {}
-    for name, data in (("go", go), ("rust", rs)):
-        p, a = account(name, data, inv)
+    for name in ("go", "rust"):
+        try:
+            data = raw[name].decode("utf-8")
+        except UnicodeDecodeError as e:
+            problems.append("%s: the output is not valid UTF-8 (%s)" % (name, e))
+            accs[name] = None
+            continue
+        p, a = account(name, data, inv, expect)
         problems += p
         accs[name] = a
     if accs["go"] is not None and accs["rust"] is not None and accs["go"] != accs["rust"]:
         problems.append("the accounting of the two outputs differs")
-    if go.encode() != rs.encode():
-        problems.append("the two outputs are not byte-identical")
+    if raw["go"] != raw["rust"]:
+        problems.append("the two outputs are not byte-identical (raw bytes compared)")
     if not quiet:
         print("inventory (generator): %d cases, %d documents" % (len(inv), sum(len(v) for v in inv.values())))
         for name in ("go", "rust"):
