@@ -1,0 +1,35 @@
+// Evidence tool: how Go's regexp (RE2) applies the candidate name patterns to the names. One line per pattern and name: pattern|index|match.
+// Put it as main.go in a module that requires nothing but the standard library; usage: go run . names.json patterns.json
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"sort"
+)
+
+func main() {
+	var names []string
+	var pats map[string]string
+	b, _ := os.ReadFile(os.Args[1])
+	if err := json.Unmarshal(b, &names); err != nil {
+		panic(err)
+	}
+	b, _ = os.ReadFile(os.Args[2])
+	if err := json.Unmarshal(b, &pats); err != nil {
+		panic(err)
+	}
+	keys := make([]string, 0, len(pats))
+	for k := range pats {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		re := regexp.MustCompile(pats[k])
+		for i, n := range names {
+			fmt.Printf("%s|%d|%v\n", k, i, re.MatchString(n))
+		}
+	}
+}

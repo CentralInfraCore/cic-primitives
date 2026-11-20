@@ -1,0 +1,7 @@
+the real inputs                                                    -> accepted (as expected)
+Go and Rust outputs differ in one line                             -> refused (as expected)
+the Go output is truncated (an incomplete table)                   -> refused (as expected)
+a rule that is not a pure widening (the underscore dropped)        -> refused (as expected)
+a rule that also adds names without an upper-case letter ('-')     -> refused (as expected)
+the checker is replaced by one that accepts every name             -> refused (as expected)
+6 of 6 checks as expected

@@ -1,0 +1,95 @@
+jsonschema 4.19.2 | python 3.14.4
+(py-js = jsonschema pattern, i.e. re.search; py-full = re.fullmatch; go/rust = RE2 / regex crate, unanchored-at-newline `$`)
+name           rule  py-js   py-full  go   rust 
+a              A     True    True     True True 
+abc_1          A     True    True     True True 
+a_             A     True    True     True True 
+created_by     A     True    True     True True 
+createdBy      A     True    True     True True 
+CreatedBy      A     False   False    False False
+A              A     False   False    False False
+aB_c9          A     True    True     True True 
+aBC            A     True    True     True True 
+a9B            A     True    True     True True 
+1abc           A     False   False    False False
+_x             A     False   False    False False
+a-b            A     False   False    False False
+a b            A     False   False    False False
+a.b            A     False   False    False False
+\u00e9t        A     False   False    False False
+abc\n          A     True    False    False False
+abc\n\n        A     False   False    False False
+a\nb           A     False   False    False False
+\nabc          A     False   False    False False
+(empty)        A     False   False    False False
+a\u0000        A     False   False    False False
+\u0430bc       A     False   False    False False
+createdby      A     True    True     True True 
+a              C     True    True     True True 
+abc_1          C     True    True     True True 
+a_             C     True    True     True True 
+created_by     C     True    True     True True 
+createdBy      C     True    True     True True 
+CreatedBy      C     True    True     True True 
+A              C     True    True     True True 
+aB_c9          C     True    True     True True 
+aBC            C     True    True     True True 
+a9B            C     True    True     True True 
+1abc           C     False   False    False False
+_x             C     False   False    False False
+a-b            C     False   False    False False
+a b            C     False   False    False False
+a.b            C     False   False    False False
+\u00e9t        C     False   False    False False
+abc\n          C     True    False    False False
+abc\n\n        C     False   False    False False
+a\nb           C     False   False    False False
+\nabc          C     False   False    False False
+(empty)        C     False   False    False False
+a\u0000        C     False   False    False False
+\u0430bc       C     False   False    False False
+createdby      C     True    True     True True 
+a              OLD   True    True     True True 
+abc_1          OLD   True    True     True True 
+a_             OLD   True    True     True True 
+created_by     OLD   True    True     True True 
+createdBy      OLD   False   False    False False
+CreatedBy      OLD   False   False    False False
+A              OLD   False   False    False False
+aB_c9          OLD   False   False    False False
+aBC            OLD   False   False    False False
+a9B            OLD   False   False    False False
+1abc           OLD   False   False    False False
+_x             OLD   False   False    False False
+a-b            OLD   False   False    False False
+a b            OLD   False   False    False False
+a.b            OLD   False   False    False False
+\u00e9t        OLD   False   False    False False
+abc\n          OLD   True    False    False False
+abc\n\n        OLD   False   False    False False
+a\nb           OLD   False   False    False False
+\nabc          OLD   False   False    False False
+(empty)        OLD   False   False    False False
+a\u0000        OLD   False   False    False False
+\u0430bc       OLD   False   False    False False
+createdby      OLD   True    True     True True 
+
+flavor differences (rule, name, py-js, py-full, go=rust):
+   A "abc\n" True False False
+   C "abc\n" True False False
+   OLD "abc\n" True False False
+
+the pair (rule, and NOT a line feed anywhere) equals a full match in Python search, Python fullmatch, Go and Rust for every listed name and for the rules OLD, A, C: yes
+
+the pinned grammar's own checker (check_grammar.py) on a one-node composition:
+  abc          exit 0  accepted
+  createdBy    exit 1  refused
+  abc\n        exit 0  accepted
+  => a name with a trailing line feed is ACCEPTED by the current checker
+
+bounded exhaustive check, alphabet abZQ0_- \n\u00e9, length 1..5: 111110 strings
+  names valid under OLD but not under A (must be none): 0
+  names valid under A but not under OLD: 2428; of those without an upper-case letter (must be none): 0
+  (A searched, and no line feed) differs from a full match of A: 0 strings (must be none)
+
+RESULT: CONSISTENT

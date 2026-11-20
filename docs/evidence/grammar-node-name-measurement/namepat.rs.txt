@@ -1,0 +1,15 @@
+// Evidence tool: how the Rust `regex` crate applies the candidate name patterns to the names. One line per pattern and name: pattern|index|match.
+// Put it as rust/examples/namepat.rs in the Forms checkout (it already depends on `regex` and `serde_json`); usage: cargo run -q --example namepat -- names.json patterns.json
+use std::collections::BTreeMap;
+
+fn main() {
+    let a: Vec<String> = std::env::args().collect();
+    let names: Vec<String> = serde_json::from_str(&std::fs::read_to_string(&a[1]).unwrap()).unwrap();
+    let pats: BTreeMap<String, String> = serde_json::from_str(&std::fs::read_to_string(&a[2]).unwrap()).unwrap();
+    for (k, p) in &pats {
+        let re = regex::Regex::new(p).unwrap();
+        for (i, n) in names.iter().enumerate() {
+            println!("{}|{}|{}", k, i, re.is_match(n));
+        }
+    }
+}
