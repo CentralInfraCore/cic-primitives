@@ -1,0 +1,17 @@
+spec:
+  config_surface:
+    aggregate_ref: cic:core:ConfigSurface@v0.2.0
+    nodes:
+    - name: createdby
+      shape_type: scalar
+      scalar_type: string
+      mandatory: true
+    - name: createdBy
+      shape_type: scalar
+      scalar_type: string
+      mandatory: true
+  identity:
+    atomic_ref: cic:core:Identity@v0.2.0
+    kind: NameProbe
+    namespace: cic:probe
+    version: v0.0.1

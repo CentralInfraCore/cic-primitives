@@ -1,0 +1,6 @@
+inventory (generator): 16 cases, 48 documents
+go: cases 16; schema compiled 15, refused 1; documents total 48, run 45, NOT RUN 3
+  not run (schema refused): K13_empty, 3 documents: SCHEMA_INVALID@$[0]
+rust: cases 16; schema compiled 15, refused 1; documents total 48, run 45, NOT RUN 3
+  not run (schema refused): K13_empty, 3 documents: SCHEMA_INVALID@$[0]
+RESULT: COMPLETE AND IDENTICAL (every case and document accounted for in both outputs; byte for byte equal)

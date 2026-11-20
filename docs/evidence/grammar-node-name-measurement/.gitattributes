@@ -1,0 +1,2 @@
+# The cases are byte-exact evidence (a CRLF document, a byte order mark): git must not convert them.
+cases/** -text
