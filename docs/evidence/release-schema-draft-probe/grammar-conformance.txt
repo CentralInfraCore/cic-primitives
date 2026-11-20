@@ -11,7 +11,7 @@ self-test: 53/53
 == primitive-release.yaml
 ✓ docs/design/release-schemas/primitive-release.yaml  (9 node)
 == module-release.yaml
-✓ docs/design/release-schemas/module-release.yaml  (0 node)
+✓ docs/design/release-schemas/module-release.yaml  (1 node)
 == composed-PrimitiveRelease.yaml
 ✗ composed-PrimitiveRelease.yaml  (43 node, 3 finding)
   [S2] $.spec.config_surface.nodes.createdBy
@@ -21,7 +21,7 @@ self-test: 53/53
   [S2] $.spec.config_surface.nodes.release.createdBy
       'createdBy' does not match '^[a-z][a-z0-9_]*$'
 == composed-ModuleRelease.yaml
-✗ composed-ModuleRelease.yaml  (35 node, 3 finding)
+✗ composed-ModuleRelease.yaml  (36 node, 3 finding)
   [S2] $.spec.config_surface.nodes.createdBy
       'createdBy' does not match '^[a-z][a-z0-9_]*$'
   [S2] $.spec.config_surface.nodes.release

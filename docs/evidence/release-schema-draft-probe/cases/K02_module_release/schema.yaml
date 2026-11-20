@@ -189,6 +189,10 @@ spec:
         shape_type: scalar
         scalar_type: string
         mandatory: true
+    - name: name
+      shape_type: scalar
+      scalar_type: string
+      mandatory: true
     validation:
     - type: must
       expression: kind = 'ModuleRelease'

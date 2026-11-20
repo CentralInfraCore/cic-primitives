@@ -1,4 +1,5 @@
 kind: ModuleRelease
+name: PLACEHOLDER-module-name
 version: 0.2.1
 timestamp: '2026-11-02T18:57:58.061912+00:00'
 validity:

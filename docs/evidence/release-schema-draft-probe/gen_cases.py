@@ -17,6 +17,8 @@ def mod(f):
 def module_record():
     d = copy.deepcopy(base)
     d["kind"] = "ModuleRelease"
+    items = list(d.items())
+    d = dict(items[:1] + [("name", "PLACEHOLDER-module-name")] + items[1:])   # ModuleRelease-specific member (review #38 P5.1)
     del d["specs"]
     for k in ("dependency_lock_sha256", "grammar_sha256", "grammar_schema_sha256"):
         del d["provenance"][k]
@@ -39,6 +41,7 @@ case("K01_primitive_release", "the composed PrimitiveRelease schema against the 
   "neg_missing_source_commit": mod(lambda d: d["provenance"].pop("source_commit")),
   "neg_unknown_top_field": mod(lambda d: d.update(extra="x")),
   "neg_unknown_provenance_field": mod(lambda d: d["provenance"].update(foo="x")),
+  "neg_module_name_in_primitive_record": mod(lambda d: d.update(name="x")),
   "neg_duplicate_artifact_path": mod(lambda d: d["artifacts"]["files"].insert(1, copy.deepcopy(d["artifacts"]["files"][0]))),
   "neg_empty_files": mod(lambda d: d["artifacts"].update(files=[])),
   "neg_missing_specs": mod(lambda d: d.pop("specs")),
@@ -57,6 +60,9 @@ case("K02_module_release", "the composed ModuleRelease schema against a ModuleRe
   "neg_specs_present": mdump(lambda d: d.update(specs=copy.deepcopy(base["specs"]))),
   "neg_primitive_provenance_field": mdump(lambda d: d["provenance"].update(grammar_sha256="x")),
   "neg_missing_kind": mdump(lambda d: d.pop("kind")),
+  "neg_missing_name": mdump(lambda d: d.pop("name")),
+  "neg_name_not_a_string": mdump(lambda d: d.update(name=7)),
+  "inf_name_differs_from_descriptor_identity": mdump(lambda d: d.update(name="another-module")),
   "inf_kind_is_primitive_release": mdump(lambda d: d.update(kind="PrimitiveRelease")),
   "inf_required_wasm_path_absent": mdump(lambda d: d["artifacts"].update(files=[f for f in d["artifacts"]["files"] if f["path"] != "module/module.wasm"])),
   "inf_required_descriptor_path_absent": mdump(lambda d: d["artifacts"].update(files=[f for f in d["artifacts"]["files"] if f["path"] != "project.yaml"])),

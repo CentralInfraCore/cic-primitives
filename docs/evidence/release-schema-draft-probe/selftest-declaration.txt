@@ -10,10 +10,23 @@ a further requirement (owner of artifact_order) removed        -> refused (as ex
 every further requirement removed (empty list)                 -> refused (as expected)  [5: the further_requirements list is missing or empty]
 a global admission requirement (G01) removed                   -> refused (as expected)  [5: the reason 'duplicate_key' has no owner in the declaration (a norma]
 G02 weakened: no 2^53-1 over the whole tree                    -> refused (as expected)  [5: G02 must state the 2^53-1 bound over the whole tree including opaqu]
-an implemented requirement with an empty reason list           -> refused (as expected)  [4: C01 has the status implemented and no reason: an executor must be n]
+an implemented requirement with an empty reason list           -> refused (as expected)  [4: C01 has owner 'none' with status 'implemented' (not_implemented req]
 not_implemented without a note                                 -> refused (as expected)  [4: C01 is not_implemented without a note saying why and what interim c]
 implemented claimed for a plan-only reason                     -> refused (as expected)  [4: G02 claims implemented for 'value_type_unsupported', which the refe]
-an unknown status word                                         -> refused (as expected)  [4: C01 has the status 'done' (allowed: ['implemented', 'implemented_dr]
+an unknown status word                                         -> refused (as expected)  [4: C01 has owner 'none' with status 'done' (not_implemented requires o]
+F2.1: the owner removed from G02                               -> refused (as expected)  [4: G02 has no owner (every requirement names who executes it, or 'none]
+F2.1: the owner of a contract entry removed                    -> refused (as expected)  [4: C05 has no owner (every requirement names who executes it, or 'none]
+F2.1: an owner that does not exist                             -> refused (as expected)  [4: V03 names the owner 'the_verifier_team' (allowed: ['composition', ']
+F2.1: an empty owner                                           -> refused (as expected)  [4: V03 names the owner '' (allowed: ['composition', 'producer', 'verif]
+F2.1: owner none on an implemented requirement                 -> refused (as expected)  [4: V03 has owner 'none' with status 'implemented' (not_implemented req]
+F2.1: not_implemented that still names an executor             -> refused (as expected)  [4: C01 has owner 'verifier' with status 'not_implemented' (not_impleme]
+F2.1: not_implemented that still names reasons                 -> refused (as expected)  [4: C01 is not_implemented but names reasons ['artifact_order']]
+F2.1: the composition reason owned by the verifier             -> refused (as expected)  [4: G04 names the owner 'verifier' for the reason 'schema_field_collisi]
+F2.1: a producer reason owned by the verifier                  -> refused (as expected)  [4: P01 names the owner 'verifier' for the reason 'declaration_required]
+F2.1: a verifier reason owned by the composition               -> refused (as expected)  [4: V03 names the owner 'composition' for the reason 'artifact_order', ]
+P5.1: the module name requirement (V08) removed                -> refused (as expected)  [5: the reason 'module_identity_mismatch' has no owner in the declarati]
+P5.2: the producer requirement (P01) removed                   -> refused (as expected)  [5: the reason 'declaration_required_path_missing' has no owner in the ]
+a requirement downgraded to not_implemented loses its reason's owner -> refused (as expected)  [5: the reason 'artifact_order' has no owner in the declaration (a norm]
 the same contract entry twice in a part (would overwrite)      -> refused (as expected)  [1: the parts declare ('common', '$.version', 'pattern', "'^(0|[1-9][0-]
 the Form no longer lists a node of the probe                   -> refused (as expected)  [3: K01_primitive_release: the Form lists ['$.version'], the nodes decl]
 the probe output lacks the compile line of a kind              -> refused (as expected)  [3: no compile line for K02_module_release in the probe output]
@@ -28,4 +41,4 @@ composition: a duplicate nested name inside the kind part              -> refuse
 composition: a kind part with a different aggregate_ref                -> refused, as expected
 composition: a kind part with an unknown config_surface key            -> refused, as expected
 composition: a kind part ADDS a field to provenance (merged by path)   -> merged as expected
-30 of 30 checks as expected
+43 of 43 checks as expected

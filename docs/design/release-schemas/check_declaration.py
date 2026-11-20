@@ -18,6 +18,10 @@ PLAN_REASONS = {"kind_missing", "kind_unsupported", "kind_schema_violation", "sc
 A_REASONS = {"reading_differs", "reading_key_differs", "reading_structure_differs", "reading_value_differs", "duplicate_key", "key_not_string",
              "value_type_unsupported", "alias_forbidden", "merge_key_forbidden", "tag_forbidden", "multiple_documents", "encoding_form"}
 BLOB_REASONS = {"artifact_absent", "artifact_digest_mismatch", "artifact_not_regular"}
+MODULE_REASONS = {"module_identity_mismatch"}          # proposed by this draft (review #38 P5.1), not yet named by the plan
+PRODUCER_REASONS = {"declaration_required_path_missing"}   # the module release plan: a producer-side refusal
+COMPOSITION_REASONS = {"schema_field_collision"}
+OWNERS = {"verifier", "producer", "composition"}      # who executes; "none" is only for not_implemented
 problems = []
 
 def node_contracts(nodes, path):
@@ -91,11 +95,20 @@ for case, kind in cases.items():
 doc = open(os.path.join(HERE, "..", "..", "en", "RELEASE-RECORD-CONTRACT.md"), encoding="utf-8").read()
 table = set(re.findall(r"^\| `([a-z_]+)` \|", doc, re.M))
 IMPLEMENTED = table | BLOB_REASONS          # reasons the reference verifier makes today
-PLANNED = PLAN_REASONS | A_REASONS           # named by the generalization plan, no code yet
+PLANNED = PLAN_REASONS | A_REASONS | MODULE_REASONS | PRODUCER_REASONS           # named by the generalization plan, no code yet
 inventory = IMPLEMENTED | PLANNED
 STATUSES = {"implemented", "planned", "not_implemented", "implemented_draft"}
 owned = {}
-def account(rid, status, reasons, note):
+def expected_owner(reason):
+    return "composition" if reason in COMPOSITION_REASONS else "producer" if reason in PRODUCER_REASONS else "verifier"
+def account(rid, owner, status, reasons, note):
+    # the executor: explicit, valid, and consistent with the status and with the kind of reason
+    if owner is None:
+        problems.append("4: %s has no owner (every requirement names who executes it, or 'none' with the status not_implemented)" % rid); return
+    if owner != "none" and owner not in OWNERS:
+        problems.append("4: %s names the owner %r (allowed: %s, or none for not_implemented)" % (rid, owner, sorted(OWNERS))); return
+    if (status == "not_implemented") != (owner == "none"):
+        problems.append("4: %s has owner %r with status %r (not_implemented requires owner none, and only it may have owner none): a not_implemented requirement is never an executed check" % (rid, owner, status)); return
     if status not in STATUSES:
         problems.append("4: %s has the status %r (allowed: %s)" % (rid, status, sorted(STATUSES))); return
     if status == "not_implemented":
@@ -111,27 +124,33 @@ def account(rid, status, reasons, note):
             problems.append("4: %s claims implemented for %r, which the reference verifier does not make" % (rid, r))
         if status == "planned" and r in IMPLEMENTED:
             problems.append("4: %s says planned for %r, which the reference verifier already makes" % (rid, r))
+        if owner != expected_owner(r):
+            problems.append("4: %s names the owner %r for the reason %r, which only a %s executes" % (rid, owner, r, expected_owner(r))); continue
         owned.setdefault(r, []).append(rid)
 for e in declared["contracts"]:
-    account(e["id"], e["verifier"].get("status"), e["verifier"]["reasons"], e["verifier"].get("note"))
+    account(e["id"], e["verifier"].get("owner"), e["verifier"].get("status"), e["verifier"]["reasons"], e["verifier"].get("note"))
 for sect in ("further_requirements", "global_requirements"):
     items = declared.get(sect)
     if not items:
         problems.append("5: the %s list is missing or empty" % sect); continue
     for e in items:
-        account(e["id"], e.get("status"), e.get("reasons") or [], e.get("note") or e.get("text"))
+        account(e["id"], e.get("owner"), e.get("status"), e.get("reasons") or [], e.get("note") or e.get("text"))
 all_ids = [e["id"] for s in ("contracts", "further_requirements", "global_requirements") for e in declared.get(s) or []]
 if len(all_ids) != len(set(all_ids)):
     problems.append("5: duplicate requirement ids across the declaration")
 for r in sorted(inventory - set(owned)):
     problems.append("5: the reason %r has no owner in the declaration (a normative check would be silently absent)" % r)
-for g in ("G01", "G02", "G03"):
-    if g not in {e["id"] for e in declared.get("global_requirements") or []}:
-        problems.append("5: the global admission requirement %s is missing" % g)
+have = {e["id"] for s in ("further_requirements", "global_requirements") for e in declared.get(s) or []}
+for g in ("G01", "G02", "G03", "V08", "V09", "P01"):
+    if g not in have:
+        problems.append("5: the required requirement %s is missing (G01-G03 admission profile; V08, V09, P01 the module release decisions of review #38 P5)" % g)
 g2 = [e for e in declared.get("global_requirements") or [] if e["id"] == "G02"]
 if g2 and not ("2^53" in g2[0].get("text", "") and "opaque" in g2[0].get("text", "")):
     problems.append("5: G02 must state the 2^53-1 bound over the whole tree including opaque members")
 node_n = sum(1 for k in from_decl if k[1] != "surface")
+n_exec = sum(1 for s in ("contracts", "further_requirements", "global_requirements") for e in declared[s] if (e["verifier"] if s == "contracts" else e)["status"] != "not_implemented")
+n_none = sum(1 for s in ("contracts", "further_requirements", "global_requirements") for e in declared[s]) - n_exec
+print("requirements with an executor %d, declared not_implemented (no check runs) %d" % (n_exec, n_none))
 print("contracts declared %d (node level %d, surface level %d); further requirements %d; global requirements %d; known reasons %d, all owned" % (len(from_decl), node_n, len(from_decl) - node_n, len(declared["further_requirements"]), len(declared["global_requirements"]), len(inventory)))
 for k, v in listed.items():
     print("the Form lists %d unevaluated nodes for %s" % (len(v), k))

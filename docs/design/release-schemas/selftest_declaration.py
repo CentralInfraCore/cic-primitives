@@ -44,6 +44,21 @@ run("an implemented requirement with an empty reason list", decl(lambda d: d["co
 run("not_implemented without a note", decl(lambda d: d["contracts"][0]["verifier"].update(note="")))
 run("implemented claimed for a plan-only reason", decl(lambda d: [e for e in d["global_requirements"] if e["id"] == "G02"][0].update(status="implemented")))
 run("an unknown status word", decl(lambda d: d["contracts"][0]["verifier"].update(status="done")))
+def further(i):
+    return lambda d: [e for s in ("further_requirements", "global_requirements") for e in d[s] if e["id"] == i][0]
+run("F2.1: the owner removed from G02", decl(lambda d: further("G02")(d).pop("owner")))
+run("F2.1: the owner of a contract entry removed", decl(lambda d: d["contracts"][4]["verifier"].pop("owner")))
+run("F2.1: an owner that does not exist", decl(lambda d: further("V03")(d).update(owner="the_verifier_team")))
+run("F2.1: an empty owner", decl(lambda d: further("V03")(d).update(owner="")))
+run("F2.1: owner none on an implemented requirement", decl(lambda d: further("V03")(d).update(owner="none")))
+run("F2.1: not_implemented that still names an executor", decl(lambda d: d["contracts"][0]["verifier"].update(owner="verifier")))
+run("F2.1: not_implemented that still names reasons", decl(lambda d: d["contracts"][0]["verifier"].update(reasons=["artifact_order"])))
+run("F2.1: the composition reason owned by the verifier", decl(lambda d: further("G04")(d).update(owner="verifier")))
+run("F2.1: a producer reason owned by the verifier", decl(lambda d: further("P01")(d).update(owner="verifier")))
+run("F2.1: a verifier reason owned by the composition", decl(lambda d: further("V03")(d).update(owner="composition")))
+run("P5.1: the module name requirement (V08) removed", decl(lambda d: d["further_requirements"].remove(further("V08")(d))))
+run("P5.2: the producer requirement (P01) removed", decl(lambda d: d["further_requirements"].remove(further("P01")(d))))
+run("a requirement downgraded to not_implemented loses its reason's owner", decl(lambda d: further("V03")(d).update(status="not_implemented", owner="none", reasons=[], note="x")))
 def dup_contract(d):
     n = d["spec"]["config_surface"]["nodes"][1]
     n["contract"] = n["contract"] + n["contract"]

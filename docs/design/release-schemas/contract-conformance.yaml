@@ -18,6 +18,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier; the form of 'version' is checked by release.schema.yaml today
@@ -31,6 +32,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier; checked by release.schema.yaml (format date-time) today
@@ -44,6 +46,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier
@@ -57,6 +60,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier
@@ -70,6 +74,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - envelope_mismatch
@@ -86,6 +91,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - source_commit_missing
@@ -101,6 +107,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - artifact_manifest_digest_form
@@ -115,6 +122,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - artifact_digest_form
@@ -129,6 +137,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - envelope_mismatch
@@ -145,6 +154,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - build_hash_mismatch
@@ -159,6 +169,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - signature_invalid
@@ -174,6 +185,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not read by the reference verifier; the counter-signature is verified over release.build_hash
@@ -187,6 +199,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: verifier
     status: implemented
     reasons:
     - countersign_invalid
@@ -201,6 +214,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier
@@ -214,6 +228,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier
@@ -227,6 +242,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier
@@ -240,6 +256,7 @@ contracts:
   form:
     status: unevaluated
   verifier:
+    owner: none
     status: not_implemented
     reasons: []
     note: not checked by the reference verifier
@@ -253,6 +270,7 @@ contracts:
   form:
     status: not_reported
   verifier:
+    owner: verifier
     status: planned
     reasons:
     - kind_missing
@@ -268,6 +286,7 @@ contracts:
   form:
     status: not_reported
   verifier:
+    owner: verifier
     status: planned
     reasons:
     - kind_missing
@@ -283,6 +302,7 @@ contracts:
   form:
     status: not_reported
   verifier:
+    owner: verifier
     status: planned
     reasons:
     - kind_schema_violation
@@ -297,6 +317,7 @@ contracts:
   form:
     status: not_reported
   verifier:
+    owner: verifier
     status: planned
     reasons:
     - kind_schema_violation
@@ -349,6 +370,26 @@ further_requirements:
   reasons:
   - build_hash_mismatch
   note: recomputation of the build hash over the covered members (the pattern C-entry only checks the form)
+- id: V08
+  owner: verifier
+  status: planned
+  reasons:
+  - module_identity_mismatch
+  note: 'ModuleRelease only (review #38 P5.1): the top-level ''name'' of the record must equal the identity of the authenticated module descriptor (project.yaml, bound through artifacts.files). The reason identifier is a proposal of this draft, not yet
+    named by the plan.'
+- id: V09
+  owner: verifier
+  status: planned
+  reasons:
+  - kind_schema_violation
+  note: 'ModuleRelease only (review #38 P5.2): module/module.wasm and project.yaml must each appear exactly once in the authenticated artifact list; a missing or duplicated one is refused even when the record is cryptographically valid (the signature proves
+    the content, not the semantic completeness of the module release). Further artifacts are allowed. No duplicate pointer members in the envelope.'
+- id: P01
+  owner: producer
+  status: planned
+  reasons:
+  - declaration_required_path_missing
+  note: 'ModuleRelease only (review #38 P5.2, module release plan): the producer refuses a declaration that lacks module/module.wasm or project.yaml before emitting a record.'
 global_requirements:
 - id: G01
   scope: whole record, admission profile A (plan section 5)
