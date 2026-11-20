@@ -1,0 +1,90 @@
+# DRAFT: the common part of an envelope 3 release record (every record kind). Not final: see docs/en/RELEASE-SCHEMA-SET-DESIGN.md (D1 blocks finalization).
+spec:
+  identity:
+    atomic_ref: "cic:core:Identity@v0.2.0"
+    kind: ReleaseEnvelope3Common
+    namespace: "cic:release"
+    version: v0.0.1
+  config_surface:
+    aggregate_ref: "cic:core:ConfigSurface@v0.2.0"
+    nodes:
+      - {name: kind, shape_type: scalar, scalar_type: string, mandatory: true}
+      - name: version
+        shape_type: scalar
+        scalar_type: string
+        mandatory: true
+        contract: [{type: pattern, expression: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'}]
+      - name: timestamp
+        shape_type: scalar
+        scalar_type: string
+        mandatory: true
+        contract: [{type: pattern, expression: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'}]
+      - name: validity
+        shape_type: composite
+        mandatory: true
+        fields:
+          - name: from
+            shape_type: scalar
+            scalar_type: string
+            mandatory: true
+            contract: [{type: pattern, expression: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'}]
+          - name: until
+            shape_type: scalar
+            scalar_type: string
+            mandatory: true
+            contract: [{type: pattern, expression: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'}]
+      - name: createdBy
+        shape_type: composite
+        mandatory: true
+        fields:
+          - {name: name, shape_type: scalar, scalar_type: string, mandatory: true}
+          - {name: email, shape_type: scalar, scalar_type: string, mandatory: true}
+          - {name: certificate, shape_type: scalar, scalar_type: string, mandatory: true}
+      - name: provenance
+        shape_type: composite
+        mandatory: true
+        fields:
+          - {name: envelope, shape_type: scalar, scalar_type: integer, mandatory: true, contract: [{type: range, expression: '3..3'}]}
+          - {name: source_commit, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^[0-9a-f]{40}$'}]}
+      - name: artifacts
+        shape_type: composite
+        mandatory: true
+        fields:
+          - {name: manifest_digest, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^sha256:[0-9a-f]{64}$'}]}
+          - name: files
+            shape_type: collection
+            collection_variant: list
+            mandatory: true
+            min_items: 1
+            item_fields:
+              - {name: path, shape_type: scalar, scalar_type: string, role: key}
+              - {name: digest, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^sha256:[0-9a-f]{64}$'}]}
+      - name: release
+        shape_type: composite
+        mandatory: true
+        fields:
+          - {name: envelope, shape_type: scalar, scalar_type: integer, mandatory: true, contract: [{type: range, expression: '3..3'}]}
+          - name: createdBy
+            shape_type: composite
+            mandatory: true
+            fields:
+              - {name: name, shape_type: scalar, scalar_type: string, mandatory: true}
+              - {name: email, shape_type: scalar, scalar_type: string, mandatory: true}
+              - {name: certificate, shape_type: scalar, scalar_type: string, mandatory: true}
+          - {name: build_hash, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^[A-Za-z0-9+/]{43}=$'}]}
+          - {name: sign, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^vault:v1:.+$'}]}
+      - name: cic_countersign
+        shape_type: composite
+        optional: true
+        fields:
+          - name: authority
+            shape_type: composite
+            mandatory: true
+            fields:
+              - {name: name, shape_type: scalar, scalar_type: string, mandatory: true}
+              - {name: certificate, shape_type: scalar, scalar_type: string, mandatory: true}
+              - {name: root_certificate, shape_type: scalar, scalar_type: string, mandatory: true}
+          - {name: signed_payload, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: enum, expression: [build_hash]}]}
+          - {name: sign, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^vault:v1:.+$'}]}
+          - {name: workflow, shape_type: scalar, scalar_type: string, mandatory: true}
+          - {name: ts, shape_type: scalar, scalar_type: string, mandatory: true}

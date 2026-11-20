@@ -1,0 +1,29 @@
+# DRAFT: the kind part of PrimitiveRelease. Adds members; the composite 'provenance' here carries ONLY the kind's own fields (merged by path, see composition.yaml).
+spec:
+  identity:
+    atomic_ref: "cic:core:Identity@v0.2.0"
+    kind: PrimitiveReleaseKindPart
+    namespace: "cic:release"
+    version: v0.0.1
+  config_surface:
+    aggregate_ref: "cic:core:ConfigSurface@v0.2.0"
+    nodes:
+      - name: provenance
+        shape_type: composite
+        mandatory: true
+        fields:
+          - {name: dependency_lock_sha256, shape_type: scalar, scalar_type: string, mandatory: true, nullable: true, contract: [{type: pattern, expression: '^[A-Za-z0-9+/]{43}=$'}]}
+          - {name: grammar_sha256, shape_type: scalar, scalar_type: string, mandatory: true, nullable: true, contract: [{type: pattern, expression: '^[A-Za-z0-9+/]{43}=$'}]}
+          - {name: grammar_schema_sha256, shape_type: scalar, scalar_type: string, mandatory: true, nullable: true, contract: [{type: pattern, expression: '^[A-Za-z0-9+/]{43}=$'}]}
+      - name: specs
+        shape_type: collection
+        collection_variant: list
+        mandatory: true
+        min_items: 1
+        item_fields:
+          - {name: id, shape_type: scalar, scalar_type: string, mandatory: true}
+          - {name: source_path, shape_type: scalar, scalar_type: string, role: key}
+          - {name: meta_hash, shape_type: scalar, scalar_type: string, mandatory: true, contract: [{type: pattern, expression: '^[A-Za-z0-9+/]{43}=$'}]}
+          - {name: spec, shape_type: opaque, mandatory: true}
+    validation:
+      - {type: must, expression: "kind = 'PrimitiveRelease'"}

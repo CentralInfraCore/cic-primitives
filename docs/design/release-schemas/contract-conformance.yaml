@@ -1,0 +1,431 @@
+# DRAFT: the machine-checkable conformance declaration of the contracts declared in the release schema parts.
+# Layers (D2): the normative schema says WHAT must hold; the Form says what it CAN evaluate (status below, measured); the verifier says which further
+# checks it makes (reason identifiers of docs/en/RELEASE-RECORD-CONTRACT.md section 11 and the generalization plan); evidence says what shows the check ran.
+# The evaluation status lives ONLY here, never in the schema parts. Checked by check_declaration.py against the parts and the probe output.
+# Every normative requirement has a named owner and an explicit status (implemented | planned | not_implemented | implemented_draft); a requirement with no executor is
+# declared not_implemented, never left silent. further_requirements = rules a schema cannot express as a contract; global_requirements = whole-record rules.
+# check_declaration.py accounts for every known reason identifier: one with no owner here is an error.
+form_basis:
+  forms_commit: 2f02a75592a4b0894a3b76891e9ba3741479a7c5
+  grammar_profile: cic-primitives-73ae469-6a188078
+  evidence: docs/evidence/release-schema-draft-probe/
+contracts:
+- id: C01
+  part: common
+  location: $.version
+  type: pattern
+  expression: ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier; the form of 'version' is checked by release.schema.yaml today
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C02
+  part: common
+  location: $.timestamp
+  type: pattern
+  expression: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier; checked by release.schema.yaml (format date-time) today
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C03
+  part: common
+  location: $.validity.from
+  type: pattern
+  expression: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C04
+  part: common
+  location: $.validity.until
+  type: pattern
+  expression: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C05
+  part: common
+  location: $.provenance.envelope
+  type: range
+  expression: 3..3
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - envelope_mismatch
+    - envelope_unsupported
+    - envelope_too_old
+    note: the envelope checks of the contract (envelope 3 only)
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C06
+  part: common
+  location: $.provenance.source_commit
+  type: pattern
+  expression: ^[0-9a-f]{40}$
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - source_commit_missing
+    - source_commit_form
+    note: source_commit_missing covers the absent case
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C07
+  part: common
+  location: $.artifacts.manifest_digest
+  type: pattern
+  expression: ^sha256:[0-9a-f]{64}$
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - artifact_manifest_digest_form
+    note: artifact_manifest_mismatch recomputes it
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C08
+  part: common
+  location: $.artifacts.files[].digest
+  type: pattern
+  expression: ^sha256:[0-9a-f]{64}$
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - artifact_digest_form
+    note: artifact_digest_mismatch (blob layer) compares it with the blob
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C09
+  part: common
+  location: $.release.envelope
+  type: range
+  expression: 3..3
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - envelope_mismatch
+    - envelope_unsupported
+    - envelope_too_old
+    note: the envelope checks of the contract (envelope 3 only)
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C10
+  part: common
+  location: $.release.build_hash
+  type: pattern
+  expression: ^[A-Za-z0-9+/]{43}=$
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - build_hash_mismatch
+    note: a malformed value cannot equal the recomputed hash
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C11
+  part: common
+  location: $.release.sign
+  type: pattern
+  expression: ^vault:v1:.+$
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - signature_invalid
+    note: the signature check
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C12
+  part: common
+  location: $.cic_countersign.signed_payload
+  type: enum
+  expression:
+  - build_hash
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not read by the reference verifier; the counter-signature is verified over release.build_hash
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C13
+  part: common
+  location: $.cic_countersign.sign
+  type: pattern
+  expression: ^vault:v1:.+$
+  form:
+    status: unevaluated
+  verifier:
+    owner: verifier
+    status: implemented
+    reasons:
+    - countersign_invalid
+    note: the counter-signature check
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C14
+  part: primitive-release
+  location: $.provenance.dependency_lock_sha256
+  type: pattern
+  expression: ^[A-Za-z0-9+/]{43}=$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C15
+  part: primitive-release
+  location: $.provenance.grammar_sha256
+  type: pattern
+  expression: ^[A-Za-z0-9+/]{43}=$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C16
+  part: primitive-release
+  location: $.provenance.grammar_schema_sha256
+  type: pattern
+  expression: ^[A-Za-z0-9+/]{43}=$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C17
+  part: primitive-release
+  location: $.specs[].meta_hash
+  type: pattern
+  expression: ^[A-Za-z0-9+/]{43}=$
+  form:
+    status: unevaluated
+  verifier:
+    owner: none
+    status: not_implemented
+    reasons: []
+    note: not checked by the reference verifier
+  evidence:
+    planned_vector_class: common envelope / kind (conformance vector plan, section 8)
+- id: C18
+  part: primitive-release
+  location: surface
+  type: must
+  expression: kind = 'PrimitiveRelease'
+  form:
+    status: not_reported
+  verifier:
+    owner: verifier
+    status: planned
+    reasons:
+    - kind_missing
+    - kind_unsupported
+    note: the kind dispatch of the plan (section 3)
+  evidence:
+    planned_vector_class: kind (conformance vector plan, section 8)
+- id: C19
+  part: module-release
+  location: surface
+  type: must
+  expression: kind = 'ModuleRelease'
+  form:
+    status: not_reported
+  verifier:
+    owner: verifier
+    status: planned
+    reasons:
+    - kind_missing
+    - kind_unsupported
+    note: the kind dispatch of the plan (section 3)
+  evidence:
+    planned_vector_class: kind (conformance vector plan, section 8)
+- id: C20
+  part: module-release
+  location: surface
+  type: must
+  expression: count(artifacts/files[path = 'module/module.wasm']) = 1
+  form:
+    status: not_reported
+  verifier:
+    owner: verifier
+    status: planned
+    reasons:
+    - kind_schema_violation
+    note: a kind's own semantic check; the producer-side counterpart is declaration_required_path_missing (module release plan)
+  evidence:
+    planned_vector_class: kind (conformance vector plan, section 8)
+- id: C21
+  part: module-release
+  location: surface
+  type: must
+  expression: count(artifacts/files[path = 'project.yaml']) = 1
+  form:
+    status: not_reported
+  verifier:
+    owner: verifier
+    status: planned
+    reasons:
+    - kind_schema_violation
+    note: a kind's own semantic check; the producer-side counterpart is declaration_required_path_missing (module release plan)
+  evidence:
+    planned_vector_class: kind (conformance vector plan, section 8)
+further_requirements:
+- id: V01
+  owner: verifier
+  status: implemented
+  reasons:
+  - artifact_path_form
+  - artifact_path_duplicate
+  note: the path form of contract section 7 and path uniqueness; a regular expression of unspecified flavor would not carry the form
+- id: V02
+  owner: verifier
+  status: implemented
+  reasons:
+  - artifacts_missing
+  note: artifacts or artifacts.files absent or empty (also a Form min_items 1 / mandatory matter; the verifier is the named executor of the reason)
+- id: V03
+  owner: verifier
+  status: implemented
+  reasons:
+  - artifact_order
+  note: sorted by the UTF-8 bytes of the path; not the grammar's 'ordered' flag
+- id: V04
+  owner: verifier
+  status: implemented
+  reasons:
+  - artifact_manifest_mismatch
+  note: recomputation of the manifest digest
+- id: V05
+  owner: verifier
+  status: implemented
+  reasons:
+  - artifact_absent
+  - artifact_digest_mismatch
+  - artifact_not_regular
+  note: the blob layer
+- id: V06
+  owner: verifier
+  status: implemented
+  reasons:
+  - spec_source_path_duplicate
+  note: 'PrimitiveRelease-specific: two specs entries share a source_path (the Form''s list key identity is a separate, partial executor; the reason belongs to the verifier)'
+- id: V07
+  owner: verifier
+  status: implemented
+  reasons:
+  - build_hash_mismatch
+  note: recomputation of the build hash over the covered members (the pattern C-entry only checks the form)
+- id: V08
+  owner: verifier
+  status: planned
+  reasons:
+  - module_identity_mismatch
+  note: 'ModuleRelease only (review #38 P5.1): the top-level ''name'' of the record must equal the identity of the authenticated module descriptor (project.yaml, bound through artifacts.files). The reason identifier is a proposal of this draft, not yet
+    named by the plan.'
+- id: V09
+  owner: verifier
+  status: planned
+  reasons:
+  - kind_schema_violation
+  note: 'ModuleRelease only (review #38 P5.2): module/module.wasm and project.yaml must each appear exactly once in the authenticated artifact list; a missing or duplicated one is refused even when the record is cryptographically valid (the signature proves
+    the content, not the semantic completeness of the module release). Further artifacts are allowed. No duplicate pointer members in the envelope.'
+- id: P01
+  owner: producer
+  status: planned
+  reasons:
+  - declaration_required_path_missing
+  note: 'ModuleRelease only (review #38 P5.2, module release plan): the producer refuses a declaration that lacks module/module.wasm or project.yaml before emitting a record.'
+global_requirements:
+- id: G01
+  scope: whole record, admission profile A (plan section 5)
+  owner: verifier
+  status: planned
+  reasons:
+  - reading_differs
+  - reading_key_differs
+  - reading_structure_differs
+  - reading_value_differs
+  - duplicate_key
+  - key_not_string
+  text: 'Interpretation identity: every required reader derives the same typed value tree (keys, structure, type and value of every node, including the inside of opaque members); keys are strings only.'
+- id: G02
+  scope: whole record, admission profile A
+  owner: verifier
+  status: planned
+  reasons:
+  - value_type_unsupported
+  text: 'Closed value domain over the WHOLE value tree, opaque member contents included: null, boolean, integer with absolute value at most 2^53-1, string. Not only the declared integer fields. OPEN (P7): the plan names no separate reason for an out-of-range
+    integer; value_type_unsupported is used until the owner decides.'
+- id: G03
+  scope: raw parse, admission profile A
+  owner: verifier
+  status: planned
+  reasons:
+  - alias_forbidden
+  - merge_key_forbidden
+  - tag_forbidden
+  - multiple_documents
+  - encoding_form
+  text: Pre-tree rules on the raw parse, before any tree is built (plan section 5).
+- id: G04
+  scope: composition
+  owner: composition
+  status: implemented_draft
+  reasons:
+  - schema_field_collision
+  text: 'Composition adds fields only; an overlap, an attribute conflict or a duplicate name is an error. Executed by the draft compose.py (not a production tool); owner of the rule: the release contract (P3).'

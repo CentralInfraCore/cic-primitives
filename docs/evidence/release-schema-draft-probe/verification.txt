@@ -1,0 +1,4 @@
+inventory (generator): 4 cases, 30 documents
+go: cases 4; schema compiled 4, refused 0; documents total 30, run 30, NOT RUN 0
+rust: cases 4; schema compiled 4, refused 0; documents total 30, run 30, NOT RUN 0
+RESULT: COMPLETE AND IDENTICAL (every case and document accounted for in both outputs; byte for byte equal)

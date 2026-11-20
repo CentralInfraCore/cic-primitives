@@ -1,0 +1,7 @@
+requirements with an executor 26, declared not_implemented (no check runs) 9
+contracts declared 21 (node level 17, surface level 4); further requirements 10; global requirements 4; known reasons 37, all owned
+the Form lists 17 unevaluated nodes for K01_primitive_release
+the Form lists 13 unevaluated nodes for K02_module_release
+the Form lists 13 unevaluated nodes for K03_primitive_record_against_module_schema
+the Form lists 17 unevaluated nodes for K04_module_record_against_primitive_schema
+RESULT: CONSISTENT

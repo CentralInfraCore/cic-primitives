@@ -1,0 +1,16 @@
+# DRAFT: the kind part of ModuleRelease. One ModuleRelease-specific member, 'name' (review #38 P5.1: part of the signed identity of the release, equal to the identity of
+# the authenticated module descriptor; not in the common envelope, absent from PrimitiveRelease records). The shipped descriptor and the WASM bytes are bound through artifacts.files.
+spec:
+  identity:
+    atomic_ref: "cic:core:Identity@v0.2.0"
+    kind: ModuleReleaseKindPart
+    namespace: "cic:release"
+    version: v0.0.1
+  config_surface:
+    aggregate_ref: "cic:core:ConfigSurface@v0.2.0"
+    nodes:
+      - {name: name, shape_type: scalar, scalar_type: string, mandatory: true}
+    validation:
+      - {type: must, expression: "kind = 'ModuleRelease'"}
+      - {type: must, expression: "count(artifacts/files[path = 'module/module.wasm']) = 1"}
+      - {type: must, expression: "count(artifacts/files[path = 'project.yaml']) = 1"}
