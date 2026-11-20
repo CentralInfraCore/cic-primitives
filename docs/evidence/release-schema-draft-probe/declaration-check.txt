@@ -1,4 +1,4 @@
-contracts declared 21 (node level 17, surface level 4); verifier-only checks 7; known reasons 20
+contracts declared 21 (node level 17, surface level 4); further requirements 7; global requirements 4; known reasons 35, all owned
 the Form lists 17 unevaluated nodes for K01_primitive_release
 the Form lists 13 unevaluated nodes for K02_module_release
 the Form lists 13 unevaluated nodes for K03_primitive_record_against_module_schema

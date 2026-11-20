@@ -33,8 +33,21 @@ run("a contract added to a part and not declared", part("common.yaml", lambda d:
 run("an evaluation status inside a schema part", part("common.yaml", lambda d: d["spec"]["config_surface"]["nodes"][1]["contract"][0].update(status="unevaluated")))
 run("a node-level entry declared with the wrong status", decl(lambda d: d["contracts"][0]["form"].update(status="evaluated")))
 run("a surface-level entry declared unevaluated", decl(lambda d: [e for e in d["contracts"] if e["location"] == "surface"][0]["form"].update(status="unevaluated")))
-run("an unknown verifier reason", decl(lambda d: d["contracts"][0]["verifier"].update(reasons=["no_such_reason"])))
-run("an empty verifier-only list", decl(lambda d: d.update(verifier_only=[])))
+run("an unknown verifier reason", decl(lambda d: [e for e in d["contracts"] if e["id"] == "C05"][0]["verifier"].update(reasons=["no_such_reason"])))
+def gone(sect, i):
+    return decl(lambda d: d[sect].pop(i))
+run("a further requirement (owner of artifact_order) removed", decl(lambda d: d["further_requirements"].remove([e for e in d["further_requirements"] if e["id"] == "V03"][0])))
+run("every further requirement removed (empty list)", decl(lambda d: d.update(further_requirements=[])))
+run("a global admission requirement (G01) removed", decl(lambda d: d["global_requirements"].remove([e for e in d["global_requirements"] if e["id"] == "G01"][0])))
+run("G02 weakened: no 2^53-1 over the whole tree", decl(lambda d: [e for e in d["global_requirements"] if e["id"] == "G02"][0].update(text="integers are checked")))
+run("an implemented requirement with an empty reason list", decl(lambda d: d["contracts"][0]["verifier"].update(status="implemented", reasons=[])))
+run("not_implemented without a note", decl(lambda d: d["contracts"][0]["verifier"].update(note="")))
+run("implemented claimed for a plan-only reason", decl(lambda d: [e for e in d["global_requirements"] if e["id"] == "G02"][0].update(status="implemented")))
+run("an unknown status word", decl(lambda d: d["contracts"][0]["verifier"].update(status="done")))
+def dup_contract(d):
+    n = d["spec"]["config_surface"]["nodes"][1]
+    n["contract"] = n["contract"] + n["contract"]
+run("the same contract entry twice in a part (would overwrite)", part("common.yaml", dup_contract))
 run("the Form no longer lists a node of the probe", lambda p: None, probe_mut=lambda t: t.replace("$.version,", "", 1))
 run("the probe output lacks the compile line of a kind", lambda p: None, probe_mut=lambda t: "\n".join(l for l in t.split("\n") if not l.startswith("K02_module_release|-|compile")))
 # composition
@@ -42,7 +55,7 @@ sys.path.insert(0, HERE)
 import compose as C
 common = yaml.safe_load(open(os.path.join(HERE, "common.yaml")))
 def comp_part(nodes):
-    return {"spec": {"config_surface": {"nodes": nodes, "validation": []}}}
+    return {"spec": {"identity": {}, "config_surface": {"aggregate_ref": common["spec"]["config_surface"]["aggregate_ref"], "nodes": nodes, "validation": []}}}
 def comp_fails(label, nodes):
     try:
         C.compose_parts(common, comp_part(nodes), "X"); failed = False
@@ -54,8 +67,29 @@ def comp_fails(label, nodes):
 comp_fails("composition: a kind part redefines the common node 'kind'", [{"name": "kind", "shape_type": "scalar", "scalar_type": "string"}])
 comp_fails("composition: a kind part redefines provenance.source_commit", [{"name": "provenance", "shape_type": "composite", "fields": [{"name": "source_commit", "shape_type": "scalar", "scalar_type": "string"}]}])
 comp_fails("composition: a kind part replaces a composite by a scalar", [{"name": "artifacts", "shape_type": "scalar", "scalar_type": "string"}])
+def prov(**kw):
+    return [dict({"name": "provenance", "shape_type": "composite", "fields": [{"name": "extra", "shape_type": "scalar", "scalar_type": "string"}]}, **kw)]
+cprov = [n for n in common["spec"]["config_surface"]["nodes"] if n["name"] == "provenance"][0]
+comp_fails("composition: the kind part relaxes the composite (mandatory differs)", prov(mandatory=not cprov.get("mandatory", False)))
+comp_fails("composition: the kind part adds a contract to the common composite", prov(contract=[{"type": "must", "expression": "true()"}]))
+comp_fails("composition: the kind part adds an optional flag the common lacks", prov(optional=True))
+comp_fails("composition: a duplicate field name inside the kind part", [{"name": "a", "shape_type": "scalar", "scalar_type": "string"}, {"name": "a", "shape_type": "scalar", "scalar_type": "string"}])
+comp_fails("composition: a duplicate nested name inside the kind part", [{"name": "g", "shape_type": "composite", "fields": [{"name": "x", "shape_type": "scalar", "scalar_type": "string"}, {"name": "x", "shape_type": "scalar", "scalar_type": "string"}]}])
 try:
-    out = C.compose_parts(common, comp_part([{"name": "provenance", "shape_type": "composite", "fields": [{"name": "extra", "shape_type": "scalar", "scalar_type": "string"}]}]), "X")
+    C.compose_parts(common, {"spec": {"identity": {}, "config_surface": {"aggregate_ref": "other", "nodes": [], "validation": []}}}, "X"); ok = False
+except C.Collision:
+    ok = True
+print("%-70s -> %s" % ("composition: a kind part with a different aggregate_ref", "refused, as expected" if ok else "ACCEPTED, UNEXPECTED"))
+results.append(ok)
+bad = {"spec": {"identity": {}, "config_surface": {"nodes": [], "validation": [], "extra_key": 1}}}
+try:
+    C.compose_parts(common, bad, "X"); ok = False
+except C.Collision:
+    ok = True
+print("%-70s -> %s" % ("composition: a kind part with an unknown config_surface key", "refused, as expected" if ok else "ACCEPTED, UNEXPECTED"))
+results.append(ok)
+try:
+    out = C.compose_parts(common, comp_part([dict({k: v for k, v in cprov.items() if k != "fields"}, **{"fields": [{"name": "extra", "shape_type": "scalar", "scalar_type": "string"}]})]), "X")
     names = [f["name"] for n in out["spec"]["config_surface"]["nodes"] if n["name"] == "provenance" for f in n["fields"]]
     ok = names == ["envelope", "source_commit", "extra"]
 except Exception:

@@ -7,13 +7,17 @@ usage: check_declaration.py <probe-output (go-output.txt)>
   3. the Form status is checked against the probe: the nodes the Form lists as unevaluated are exactly the nodes that declare a contract (surface-level
      validation entries are not nodes: status not_reported, and none is listed);
   4. every verifier reason is a reason of the contract (section 11 table) or one the generalization plan adds;
-  5. the verifier-only list is not empty.
+  5. every known reason identifier and every normative requirement has an owner with an explicit status (implemented | planned | not_implemented); the global
+     admission requirements (G01-G03, incl. the 2^53-1 bound over the whole tree) are present. A removed owner is an error.
 Exit 0 only if all hold."""
 import os, re, sys, yaml
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import compose as C
 PLAN_REASONS = {"kind_missing", "kind_unsupported", "kind_schema_violation", "schema_field_collision"}
+A_REASONS = {"reading_differs", "reading_key_differs", "reading_structure_differs", "reading_value_differs", "duplicate_key", "key_not_string",
+             "value_type_unsupported", "alias_forbidden", "merge_key_forbidden", "tag_forbidden", "multiple_documents", "encoding_form"}
+BLOB_REASONS = {"artifact_absent", "artifact_digest_mismatch", "artifact_not_regular"}
 problems = []
 
 def node_contracts(nodes, path):
@@ -39,6 +43,8 @@ for ents in parts.values():
         extra = set(c) - {"type", "expression", "error_message", "description"}
         if extra:
             problems.append("2: the contract at %s %s carries %s (an evaluation status belongs in the declaration only)" % (part, loc, sorted(extra)))
+        if key(part, loc, c) in from_parts:
+            problems.append("1: the parts declare %s twice (a duplicate would overwrite)" % (key(part, loc, c),))
         from_parts[key(part, loc, c)] = c
 ids = [e["id"] for e in declared["contracts"]]
 if len(ids) != len(set(ids)):
@@ -81,17 +87,52 @@ for case, kind in cases.items():
             problems.append("3: %s is declared unevaluated but the Form does not list %s for %s" % (e["id"], loc, kind))
         elif e["form"]["status"] != "unevaluated":
             problems.append("3: %s is a node-level entry and must have the status unevaluated" % e["id"])
-# 4. reasons
+# 4. reasons and ownership: every requirement has an explicit status; every known reason has an owner
 doc = open(os.path.join(HERE, "..", "..", "en", "RELEASE-RECORD-CONTRACT.md"), encoding="utf-8").read()
-known = set(re.findall(r"^\| `([a-z_]+)` \|", doc, re.M)) | PLAN_REASONS
+table = set(re.findall(r"^\| `([a-z_]+)` \|", doc, re.M))
+IMPLEMENTED = table | BLOB_REASONS          # reasons the reference verifier makes today
+PLANNED = PLAN_REASONS | A_REASONS           # named by the generalization plan, no code yet
+inventory = IMPLEMENTED | PLANNED
+STATUSES = {"implemented", "planned", "not_implemented", "implemented_draft"}
+owned = {}
+def account(rid, status, reasons, note):
+    if status not in STATUSES:
+        problems.append("4: %s has the status %r (allowed: %s)" % (rid, status, sorted(STATUSES))); return
+    if status == "not_implemented":
+        if reasons: problems.append("4: %s is not_implemented but names reasons %s" % (rid, reasons))
+        if not note: problems.append("4: %s is not_implemented without a note saying why and what interim check exists" % rid)
+        return
+    if not reasons:
+        problems.append("4: %s has the status %s and no reason: an executor must be named, or the status is not_implemented" % (rid, status)); return
+    for r in reasons:
+        if r not in inventory:
+            problems.append("4: %s names the reason %r, which is neither in the contract table nor named by the plan" % (rid, r)); continue
+        if status == "implemented" and r not in IMPLEMENTED:
+            problems.append("4: %s claims implemented for %r, which the reference verifier does not make" % (rid, r))
+        if status == "planned" and r in IMPLEMENTED:
+            problems.append("4: %s says planned for %r, which the reference verifier already makes" % (rid, r))
+        owned.setdefault(r, []).append(rid)
 for e in declared["contracts"]:
-    for r in e["verifier"]["reasons"]:
-        if r not in known:
-            problems.append("4: %s names the reason %r, which is neither in the contract table nor added by the plan" % (e["id"], r))
-if not declared.get("verifier_only"):
-    problems.append("5: the verifier-only list is empty")
+    account(e["id"], e["verifier"].get("status"), e["verifier"]["reasons"], e["verifier"].get("note"))
+for sect in ("further_requirements", "global_requirements"):
+    items = declared.get(sect)
+    if not items:
+        problems.append("5: the %s list is missing or empty" % sect); continue
+    for e in items:
+        account(e["id"], e.get("status"), e.get("reasons") or [], e.get("note") or e.get("text"))
+all_ids = [e["id"] for s in ("contracts", "further_requirements", "global_requirements") for e in declared.get(s) or []]
+if len(all_ids) != len(set(all_ids)):
+    problems.append("5: duplicate requirement ids across the declaration")
+for r in sorted(inventory - set(owned)):
+    problems.append("5: the reason %r has no owner in the declaration (a normative check would be silently absent)" % r)
+for g in ("G01", "G02", "G03"):
+    if g not in {e["id"] for e in declared.get("global_requirements") or []}:
+        problems.append("5: the global admission requirement %s is missing" % g)
+g2 = [e for e in declared.get("global_requirements") or [] if e["id"] == "G02"]
+if g2 and not ("2^53" in g2[0].get("text", "") and "opaque" in g2[0].get("text", "")):
+    problems.append("5: G02 must state the 2^53-1 bound over the whole tree including opaque members")
 node_n = sum(1 for k in from_decl if k[1] != "surface")
-print("contracts declared %d (node level %d, surface level %d); verifier-only checks %d; known reasons %d" % (len(from_decl), node_n, len(from_decl) - node_n, len(declared["verifier_only"]), len(known)))
+print("contracts declared %d (node level %d, surface level %d); further requirements %d; global requirements %d; known reasons %d, all owned" % (len(from_decl), node_n, len(from_decl) - node_n, len(declared["further_requirements"]), len(declared["global_requirements"]), len(inventory)))
 for k, v in listed.items():
     print("the Form lists %d unevaluated nodes for %s" % (len(v), k))
 for p in problems:

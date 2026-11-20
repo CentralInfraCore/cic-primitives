@@ -5,12 +5,27 @@ a contract added to a part and not declared                    -> refused (as ex
 an evaluation status inside a schema part                      -> refused (as expected)  [2: the contract at common $.version carries ['status'] (an evaluation ]
 a node-level entry declared with the wrong status              -> refused (as expected)  [3: C01 is a node-level entry and must have the status unevaluated]
 a surface-level entry declared unevaluated                     -> refused (as expected)  [3: C18 is a surface-level entry and must have the status not_reported]
-an unknown verifier reason                                     -> refused (as expected)  [4: C01 names the reason 'no_such_reason', which is neither in the cont]
-an empty verifier-only list                                    -> refused (as expected)  [5: the verifier-only list is empty]
+an unknown verifier reason                                     -> refused (as expected)  [4: C05 names the reason 'no_such_reason', which is neither in the cont]
+a further requirement (owner of artifact_order) removed        -> refused (as expected)  [5: the reason 'artifact_order' has no owner in the declaration (a norm]
+every further requirement removed (empty list)                 -> refused (as expected)  [5: the further_requirements list is missing or empty]
+a global admission requirement (G01) removed                   -> refused (as expected)  [5: the reason 'duplicate_key' has no owner in the declaration (a norma]
+G02 weakened: no 2^53-1 over the whole tree                    -> refused (as expected)  [5: G02 must state the 2^53-1 bound over the whole tree including opaqu]
+an implemented requirement with an empty reason list           -> refused (as expected)  [4: C01 has the status implemented and no reason: an executor must be n]
+not_implemented without a note                                 -> refused (as expected)  [4: C01 is not_implemented without a note saying why and what interim c]
+implemented claimed for a plan-only reason                     -> refused (as expected)  [4: G02 claims implemented for 'value_type_unsupported', which the refe]
+an unknown status word                                         -> refused (as expected)  [4: C01 has the status 'done' (allowed: ['implemented', 'implemented_dr]
+the same contract entry twice in a part (would overwrite)      -> refused (as expected)  [1: the parts declare ('common', '$.version', 'pattern', "'^(0|[1-9][0-]
 the Form no longer lists a node of the probe                   -> refused (as expected)  [3: K01_primitive_release: the Form lists ['$.version'], the nodes decl]
 the probe output lacks the compile line of a kind              -> refused (as expected)  [3: no compile line for K02_module_release in the probe output]
 composition: a kind part redefines the common node 'kind'              -> refused (as expected)
 composition: a kind part redefines provenance.source_commit            -> refused (as expected)
 composition: a kind part replaces a composite by a scalar              -> refused (as expected)
+composition: the kind part relaxes the composite (mandatory differs)   -> refused (as expected)
+composition: the kind part adds a contract to the common composite     -> refused (as expected)
+composition: the kind part adds an optional flag the common lacks      -> refused (as expected)
+composition: a duplicate field name inside the kind part               -> refused (as expected)
+composition: a duplicate nested name inside the kind part              -> refused (as expected)
+composition: a kind part with a different aggregate_ref                -> refused, as expected
+composition: a kind part with an unknown config_surface key            -> refused, as expected
 composition: a kind part ADDS a field to provenance (merged by path)   -> merged as expected
-15 of 15 checks as expected
+30 of 30 checks as expected
