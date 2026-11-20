@@ -1,9 +1,9 @@
-GREEN: pytest, CIC_REQUIRE_RELEASE_HISTORY=1 (the gate's setting), on top of the RED commit bf48c7e35fec96d2c530c719a8ff3214c4482f63.
+GREEN after the fix of review F1 of #41: pytest with CIC_REQUIRE_RELEASE_HISTORY=1 and CIC_REQUIRE_NAME_RUNNERS=1 (the gate's settings), on top of f878fc0.
 
 == tests/test_node_name_grammar.py ==
-.............................................................            [100%]
-61 passed in 31.87s
+..............................................................           [100%]
+62 passed in 12.63s
 
 == the whole suite (baseline on devel 3b9d32b with the same setting: 879 passed) ==
-....                                                                     [100%]
-940 passed in 173.57s (0:02:53)
+.....                                                                    [100%]
+941 passed in 136.30s (0:02:16)

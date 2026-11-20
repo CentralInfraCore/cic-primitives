@@ -147,14 +147,34 @@ def test_the_self_test_of_the_checker_covers_version_2():
 
 # --- the gate, its seeded faults, and the historical release records --------------------------------------------------------------------------------------
 def test_the_name_gate_passes():
+    """The gate, including C8: the Go and the Rust runner are built and run on inputs generated from the current files (review F1 of #41). In the gate
+    (CIC_REQUIRE_RELEASE_HISTORY=1, CIC_REQUIRE_NAME_RUNNERS=1) nothing may be NOT RUN."""
     r = run_py(GATE)
     assert r.returncode == 0, r.stdout[-1500:]
-    assert "NOT RUN" not in r.stdout or not REQUIRED
+    if REQUIRED or os.environ.get("CIC_REQUIRE_NAME_RUNNERS") == "1":
+        assert "NOT RUN" not in r.stdout, r.stdout[-800:]
+    assert "PASS     C8 Go and Rust parity" in r.stdout or (os.environ.get("CIC_REQUIRE_NAME_RUNNERS") != "1" and "NOT RUN" in r.stdout)
 
 
-def test_every_seeded_fault_turns_the_gate_red():
-    r = run_py(GATE, "--self-test")
-    assert r.returncode == 0, r.stdout[-2500:]
+def run_gate_with(**env):
+    return subprocess.run([sys.executable, str(GATE)], capture_output=True, text=True, cwd=ROOT, env=dict(os.environ, **env))
+
+
+def test_a_missing_toolchain_is_a_failure_where_the_runners_are_required():
+    r = run_gate_with(CIC_NAME_GO="/nonexistent/go", CIC_REQUIRE_NAME_RUNNERS="1")
+    assert r.returncode != 0
+    assert re.search(r"^FAIL\s+C8", r.stdout, re.M), r.stdout[-600:]
+    assert "CIC_REQUIRE_NAME_RUNNERS=1 but" in r.stdout
+
+
+def test_a_missing_toolchain_is_never_a_silent_pass_elsewhere():
+    r = run_gate_with(CIC_NAME_GO="/nonexistent/go", CIC_REQUIRE_NAME_RUNNERS="0")
+    assert re.search(r"^NOT RUN\s+C8", r.stdout, re.M), r.stdout[-600:]
+    assert "NOT RUN (" in r.stdout          # printed again in the summary: a skipped check proves nothing
+
+
+# The seeded faults of the gate (python proposals/atom-grammar/check_name_vectors.py --self-test) run in `make grammar.local`, like the access vectors' faults; they are not
+# repeated here: they rebuild the Go and Rust runners for every faulted copy, and the gate has a time budget.
 
 
 def test_the_historical_release_records_are_untouched():

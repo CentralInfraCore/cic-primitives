@@ -1,7 +1,7 @@
-// Evidence tool: the node-name verdict of version 2 as Go applies it. It does NOT hard-code the rule: it applies the rule it is given (rule.json, exported from the
-// grammar file) to the names it is given (names.json, exported from the vectors): JSON Schema semantics, as the checker applies them: a minimum length in
-// characters, a pattern that must match (a search, anchored by the pattern's own ^ and $) and a pattern that must NOT match. Standard library only.
-// Put it as main.go in a module that requires nothing: go run . names.json rule.json     Output: one line `id|accept` or `id|refuse` per name.
+// The node-name verdict of version 2 as Go applies it (reference validation, not a Forms integration). It does NOT hard-code the rule: it applies the rule it is given
+// (rule.json, exported from the grammar file by check_name_vectors.py) to the names it is given (names.json, exported from the vectors): JSON Schema semantics, as the
+// checker applies them: a minimum length in characters, a pattern that must match (a search, anchored by the pattern's own ^ and $) and a pattern that must NOT match.
+// Standard library only. The gate builds and runs it on every run: go run . names.json rule.json     Output: one line `id|accept` or `id|refuse` per name.
 package main
 
 import (

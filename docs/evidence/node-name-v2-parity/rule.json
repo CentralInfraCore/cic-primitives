@@ -1,5 +1,0 @@
-{
-"min_length": 1,
-"pattern": "^[a-z][a-zA-Z0-9_]*$",
-"not_pattern": "\\n"
-}

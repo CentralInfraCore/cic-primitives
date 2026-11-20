@@ -1,6 +1,6 @@
-// Evidence tool: the node-name verdict of version 2 as Rust (the `regex` crate) applies it. It applies the rule it is given (rule.json, exported from the grammar
-// file) to the names it is given (names.json, exported from the vectors): a minimum length in characters, a pattern that must match and a pattern that must NOT match.
-// Put it as rust/examples/nameverdict.rs in the Forms checkout (it depends on `regex` and `serde_json` already): cargo run -q --example nameverdict -- names.json rule.json
+// The node-name verdict of version 2 as Rust (the `regex` crate) applies it (reference validation, not a Forms integration). It applies the rule it is given (rule.json,
+// exported from the grammar file by check_name_vectors.py) to the names it is given (names.json, exported from the vectors): a minimum length in characters, a pattern
+// that must match and a pattern that must NOT match. The gate builds and runs it on every run: cargo run -q --locked -- names.json rule.json
 // Output: one line `id|accept` or `id|refuse` per name.
 use serde_json::Value;
 

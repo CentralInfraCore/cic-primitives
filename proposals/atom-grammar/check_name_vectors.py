@@ -17,10 +17,14 @@ Checks (a failing or crashing check is a FAIL; nothing is skipped silently):
   C6  the release schema set: the composed schemas have no finding under V2 and exactly the three `createdBy` findings under the pinned V1 checker
   C7  widening, bounded exhaustive, on the real V2 name sub-schema: V1-valid implies V2-valid, the added names all have an upper-case letter, and the
       sub-schema equals the reference function for every string
-  C8  Go and Rust: the committed outputs of the two runners (they apply the rule they READ from the grammar file) have the exact inventory, equal the v2
-      column and each other, and the rule they were given equals the grammar file's
+  C8  Go and Rust: the two runners (docs/evidence/node-name-v2-parity/go and rust: they apply the rule they are GIVEN to the names they are given) are BUILT AND RUN
+      on every run, on inputs generated from the current grammar file and the current vector file; the fresh output has the exact inventory, equals the v2 column
+      and the other runner's. Nothing recorded is trusted: a changed runner changes the result. Without a Go or a Rust toolchain C8 is NOT RUN, and with
+      CIC_REQUIRE_NAME_RUNNERS=1 (the gate) it is a FAIL.
 
 Without the history of the pinned V1 commit, C5 and C6 are NOT RUN: that is printed, and with CIC_REQUIRE_RELEASE_HISTORY=1 (the gate) it is a FAIL.
+check_name_vectors.py --export DIR writes the inputs of the runners (names.json, rule.json) from the real files.
+Environment: CIC_NAME_GO and CIC_NAME_CARGO name the go and cargo commands (default: go, cargo); CARGO_TARGET_DIR is honored.
 Dependencies: PyYAML, jsonschema, git. No network, no clock.
 """
 from __future__ import annotations
@@ -52,6 +56,9 @@ PARITY = ROOT / "docs" / "evidence" / "node-name-v2-parity"
 RELEASE_SCHEMAS = ROOT / "docs" / "design" / "release-schemas"
 GIT_DIR = os.environ.get("CIC_NAME_GATE_GIT_DIR") or str(ROOT / ".git")
 REQUIRE_HISTORY = os.environ.get("CIC_REQUIRE_RELEASE_HISTORY") == "1"
+REQUIRE_RUNNERS = os.environ.get("CIC_REQUIRE_NAME_RUNNERS") == "1"
+GO_CMD = os.environ.get("CIC_NAME_GO", "go")
+CARGO_CMD = os.environ.get("CIC_NAME_CARGO", "cargo")
 PIN = "cic-primitives-73ae469-6a188078"
 CLASSES = {"valid_all", "valid_v2_only", "invalid_all", "line_feed_checker_defect", "line_feed", "long"}
 VERDICTS = {"accept", "refuse"}
@@ -306,42 +313,78 @@ def extract_rule():
             "not_pattern": (name.get("not") or {}).get("pattern")}
 
 
+def export_inputs(out: Path):
+    """What the runners are given, generated from the CURRENT files: the names and ids of the vector file, the rule of the grammar file's name sub-schema."""
+    (out / "names.json").write_text(json.dumps([{"id": n["id"], "name": n["name"]} for n in vectors()["names"]], ensure_ascii=True) + "\n", encoding="utf-8")
+    (out / "rule.json").write_text(json.dumps(extract_rule()) + "\n", encoding="utf-8")
+
+
+def run_tool(cmd, cwd, env=None, timeout=900):
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=dict(os.environ, **(env or {})))
+
+
+def toolchain(cmd: str, version_args) -> str:
+    """The version line of a tool, or NotRun (a FAIL when the gate requires the runners) if it is absent."""
+    exe = shutil.which(cmd) or (cmd if os.path.exists(cmd) else None)
+    if exe is None:
+        if REQUIRE_RUNNERS:
+            raise AssertionError("CIC_REQUIRE_NAME_RUNNERS=1 but %r is not available" % cmd)
+        raise NotRun("%r is not available" % cmd)
+    r = subprocess.run([exe] + version_args, capture_output=True, text=True)
+    return (r.stdout or r.stderr).strip().splitlines()[0] if r.returncode == 0 else exe
+
+
+def parse_runner(label, text, want, out):
+    got = {}
+    for i, line in enumerate(text.splitlines(), 1):
+        f = line.split("|")
+        if len(f) != 2 or f[1] not in VERDICTS:
+            out.append("%s: output line %d is malformed or not accept/refuse: %r" % (label, i, line[:40])); continue
+        if f[0] not in want:
+            out.append("%s: output line %d names the unknown vector %r" % (label, i, f[0])); continue
+        if f[0] in got:
+            out.append("%s: output line %d repeats %s" % (label, i, f[0])); continue
+        got[f[0]] = f[1]
+    for k in want:
+        if k not in got:
+            out.append("%s: the output misses the vector %s" % (label, k))
+        elif got[k] != want[k]:
+            out.append("%s: %s is %s, the vector says %s" % (label, k, got[k], want[k]))
+    return got
+
+
 def c8_go_rust():
     out = []
-    rule_file = PARITY / "rule.json"
-    for f in ("rule.json", "names.json", "export_inputs.py", "go-output.txt", "rust-output.txt", "runner.go.txt", "runner.rs.txt"):
-        if not (PARITY / f).exists():
-            out.append("the committed %s is missing (docs/evidence/node-name-v2-parity/)" % f)
+    for rel in ("go/main.go", "go/go.mod", "rust/Cargo.toml", "rust/Cargo.lock", "rust/src/main.rs"):
+        if not (PARITY / rel).exists():
+            out.append("the runner source %s is missing (docs/evidence/node-name-v2-parity/)" % rel)
     if out:
         return out
-    rule = json.loads(rule_file.read_text(encoding="utf-8"))
-    if rule != extract_rule():
-        out.append("rule.json (what the runners were given) differs from the rule in the grammar file: %s vs %s" % (rule, extract_rule()))
-    names = vectors()["names"]
-    if json.loads((PARITY / "names.json").read_text(encoding="utf-8")) != [{"id": n["id"], "name": n["name"]} for n in names]:
-        out.append("names.json (what the runners were given) differs from the names of the vector file")
-    want = {n["id"]: n["v2"] for n in names}
-    seen = {}
-    for label in ("go", "rust"):
-        got = {}
-        for i, line in enumerate((PARITY / ("%s-output.txt" % label)).read_text(encoding="utf-8").splitlines(), 1):
-            f = line.split("|")
-            if len(f) != 2 or f[1] not in VERDICTS:
-                out.append("%s line %d is malformed or not accept/refuse: %r" % (label, i, line[:40])); continue
-            if f[0] not in want:
-                out.append("%s line %d names the unknown vector %r" % (label, i, f[0])); continue
-            if f[0] in got:
-                out.append("%s line %d repeats %s" % (label, i, f[0])); continue
-            got[f[0]] = f[1]
-        for k in want:
-            if k not in got:
-                out.append("%s misses the vector %s" % (label, k))
-            elif got[k] != want[k]:
-                out.append("%s: %s is %s, the vector says %s" % (label, k, got[k], want[k]))
-        seen[label] = got
-    if seen["go"] != seen["rust"]:
-        out.append("the Go and the Rust outputs differ")
-    return out
+    go_version = toolchain(GO_CMD, ["version"])
+    cargo_version = toolchain(CARGO_CMD, ["--version"])
+    work = Path(tempfile.mkdtemp(prefix="namerun-"))
+    try:
+        export_inputs(work)
+        want = {n["id"]: n["v2"] for n in vectors()["names"]}
+        names, rule = str(work / "names.json"), str(work / "rule.json")
+        results = {}
+        r = run_tool([GO_CMD, "run", ".", names, rule], PARITY / "go", env={"GOTOOLCHAIN": "local"})
+        if r.returncode != 0:
+            out.append("go: the runner failed (exit %d): %s" % (r.returncode, (r.stderr or r.stdout).strip()[:300]))
+        else:
+            results["go"] = parse_runner("go", r.stdout, want, out)
+        env = {"CARGO_TARGET_DIR": os.environ.get("CARGO_TARGET_DIR") or str(work / "target")}
+        r = run_tool([CARGO_CMD, "run", "-q", "--locked", "--manifest-path", str(PARITY / "rust" / "Cargo.toml"), "--", names, rule], PARITY / "rust", env=env)
+        if r.returncode != 0:
+            out.append("rust: the runner failed (exit %d): %s" % (r.returncode, (r.stderr or r.stdout).strip()[:300]))
+        else:
+            results["rust"] = parse_runner("rust", r.stdout, want, out)
+        if len(results) == 2 and results["go"] != results["rust"]:
+            out.append("the Go and the Rust outputs differ")
+        print("         (%s; %s; %d names; rule %s)" % (go_version, cargo_version, len(want), (work / "rule.json").read_text(encoding="utf-8").strip()))
+        return out
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 CHECKS = [("C1 vector file", c1_vector_file), ("C2 v2 through the real checker", c2_v2_checker), ("C3 version binding", c3_binding),
@@ -383,6 +426,7 @@ def edit(path: Path, f):
 def seeded_faults():
     """(label, mutate(tree), the checks that must turn red). Each fault is applied to a copy of the tree."""
     ag = "proposals/atom-grammar/"
+    PAR = "docs/evidence/node-name-v2-parity"
     def vec(f):
         def go(t):
             d = yaml.safe_load((t / ag / "name-vectors/node-name.yaml").read_text(encoding="utf-8"))
@@ -404,25 +448,28 @@ def seeded_faults():
         ("a document key node_name_grammar is no longer looked for", lambda t: edit(t / ag / "check_grammar.py", lambda s: sub1(s, r"\n\s*check_no_version_key\(doc, \"\$\", out\)", "")), {"C4"}),
         ("the pinned digest of the V1 checker is altered", lambda t: edit(t / "tests/fixtures/forms-pin-73ae469.yaml", lambda s: sub1(s, r"(check_grammar\.py\n\s*sha256: )[0-9a-f]{8}", r"\g<1>00000000")), {"C5", "C6"}),
         ("a v2 verdict of the vector file is flipped", flip("N06", "v2"), {"C2", "C8"}),
+        ("the Go runner accepts every name (the review's counterexample)", lambda t: edit(t / PAR / "go/main.go", lambda s: sub1(s, r"ok := (utf8\.RuneCountInString[^\n]*)", r"ok := true || (\1)")), {"C8"}, "go: N"),
+        ("the Go runner drops the start anchor of the rule it is given", lambda t: edit(t / PAR / "go/main.go", lambda s: sub1(s, r"pat\.MatchString\(n\.Name\)", "(pat.MatchString(n.Name) || regexp.MustCompile(r.Pattern[1:]).MatchString(n.Name))")), {"C8"}, "go: N"),
+        ("the Go runner hard-codes the V1 pattern instead of the rule it is given", lambda t: edit(t / PAR / "go/main.go", lambda s: sub1(s, r"regexp\.MustCompile\(r\.Pattern\)", 'regexp.MustCompile("^[a-z][a-z0-9_]*$")')), {"C8"}, "go: N"),
+        ("the Rust runner accepts every name", lambda t: edit(t / PAR / "rust/src/main.rs", lambda s: sub1(s, r"let ok = name\.chars\(\)[^\n]*", "let ok = true;")), {"C8"}, "rust: N"),
+        ("the Rust runner drops the start anchor of the rule it is given", lambda t: edit(t / PAR / "rust/src/main.rs", lambda s: sub1(s, r"pat\.is_match\(name\)", "regex::Regex::new(&pattern[1..]).unwrap().is_match(name)")), {"C8"}, "rust: N"),
+        ("the Rust runner prints nothing", lambda t: edit(t / PAR / "rust/src/main.rs", lambda s: sub1(s, r'println!\("\{\}\|\{\}", id, if ok \{ "accept" \} else \{ "refuse" \}\);', "let _ = (id, ok);")), {"C8"}, "rust: the output misses the vector"),
+        ("the Rust runner repeats a line", lambda t: edit(t / PAR / "rust/src/main.rs", lambda s: sub1(s, r'(println!\("\{\}\|\{\}", id, if ok \{ "accept" \} else \{ "refuse" \}\);)', r"\1\n        \1")), {"C8"}, "rust: output line"),
+        ("the Go runner reads another rule file than the one it is given", lambda t: edit(t / PAR / "go/main.go", lambda s: sub1(s, r"os\.Args\[2\]", "os.Args[1]")), {"C8"}, "go: the runner failed"),
         ("a v1_checker verdict of the vector file is flipped", flip("N23", "v1_checker"), {"C1", "C5"}),
         ("the createdBy row is removed from the vector file", vec(lambda d: d.update(names=[r for r in d["names"] if r["name"] != "createdBy"])), {"C1"}),
-        ("a Go verdict is altered", lambda t: edit(t / "docs/evidence/node-name-v2-parity/go-output.txt", lambda s: sub1(s, r"N06\|accept", "N06|refuse")), {"C8"}),
-        ("the Rust output differs from the Go output", lambda t: edit(t / "docs/evidence/node-name-v2-parity/rust-output.txt", lambda s: sub1(s, r"N22\|refuse", "N22|accept")), {"C8"}),
-        ("the rule the runners were given is narrowed", lambda t: edit(t / "docs/evidence/node-name-v2-parity/rule.json", lambda s: sub1(s, r"a-zA-Z0-9_", "a-z0-9_")), {"C8"}),
-        ("the names the runners were given are altered", lambda t: edit(t / "docs/evidence/node-name-v2-parity/names.json", lambda s: sub1(s, r"createdBy", "createdby")), {"C8"}),
-        ("a Go line is duplicated", lambda t: edit(t / "docs/evidence/node-name-v2-parity/go-output.txt", lambda s: s + s.splitlines()[0] + "\n"), {"C8"}),
     ]
 
 
 def copy_tree(dst: Path):
-    shutil.copytree(HERE, dst / "proposals/atom-grammar", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(HERE, dst / "proposals/atom-grammar", ignore=shutil.ignore_patterns("__pycache__"), copy_function=shutil.copy)   # fresh mtimes: cargo goes by mtime
     for rel in ("schemas/atomic/shape.yaml", "tests/fixtures/forms-pin-73ae469.yaml", "docs/design/release-schemas", "docs/evidence/grammar-node-name-measurement/go-output.txt",
                 "docs/evidence/node-name-v2-parity"):
         src = ROOT / rel
         target = dst / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         if src.is_dir():
-            shutil.copytree(src, target, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(src, target, ignore=shutil.ignore_patterns("__pycache__", "target"), copy_function=shutil.copy)
         elif src.exists():
             shutil.copy(src, target)
 
@@ -431,7 +478,7 @@ def run_in(tree: Path):
     env = dict(os.environ, CIC_NAME_GATE_GIT_DIR=GIT_DIR)
     r = subprocess.run([sys.executable, str(tree / "proposals/atom-grammar/check_name_vectors.py")], capture_output=True, text=True, env=env, timeout=900)
     red = {m.group(1) for m in re.finditer(r"^FAIL\s+(C\d)", r.stdout, re.M)}
-    return r.returncode, red, r.stdout[-400:]
+    return r.returncode, red, r.stdout
 
 
 def self_test() -> int:
@@ -443,7 +490,12 @@ def self_test() -> int:
         return 1
     print("\n--- every seeded fault must turn the gate red, in the named check ---")
     failures = 0
-    for label, mutate, expect in seeded_faults():
+    # one cargo target directory for the whole self-test: the runner crates are built once, a faulted runner is rebuilt alone
+    shared = tempfile.mkdtemp(prefix="namecargo-")
+    os.environ.setdefault("CARGO_TARGET_DIR", shared)
+    for fault in seeded_faults():
+        label, mutate, expect = fault[0], fault[1], fault[2]
+        needle = fault[3] if len(fault) > 3 else None
         tree = Path(tempfile.mkdtemp(prefix="namegate-"))
         try:
             copy_tree(tree)
@@ -452,14 +504,16 @@ def self_test() -> int:
             except AssertionError as e:
                 print("  \033[91mBROKEN FAULT\033[0m  %s: %s" % (label, e)); failures += 1; continue
             rc, red, tail = run_in(tree)
-            if rc != 0 and expect <= red:
+            if rc != 0 and expect <= red and (needle is None or needle in tail):
                 print("  \033[92mred\033[0m   %s  [%s]" % (label, ",".join(sorted(red))))
             else:
-                print("  \033[91mLEAKED\033[0m %s  (exit %d, red: %s, expected: %s)" % (label, rc, ",".join(sorted(red)) or "none", ",".join(sorted(expect))))
+                print("  \033[91mLEAKED\033[0m %s  (exit %d, red: %s, expected: %s%s)" % (label, rc, ",".join(sorted(red)) or "none", ",".join(sorted(expect)),
+                                                                                    "" if needle is None else ", and the output naming %r" % needle))
                 failures += 1
         finally:
             shutil.rmtree(tree, ignore_errors=True)
     total = len(seeded_faults())
+    shutil.rmtree(shared, ignore_errors=True)
     print("\nself-test: %d/%d seeded faults turned the gate red" % (total - failures, total))
     return 1 if failures else 0
 
@@ -467,7 +521,12 @@ def self_test() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--export", metavar="DIR", help="write the inputs of the Go and Rust runners (names.json, rule.json) from the real grammar and vector files, then stop")
     args = ap.parse_args()
+    if args.export:
+        Path(args.export).mkdir(parents=True, exist_ok=True)
+        export_inputs(Path(args.export))
+        return 0
     if args.self_test:
         return self_test()
     res = run_checks()

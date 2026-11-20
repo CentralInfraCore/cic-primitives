@@ -658,7 +658,7 @@ proposals/atom-grammar/
   access_policy.py               ← P0.4: az Access/PolicySurface referencia-modell
   check_access_vectors.py        ← P0.4: golden vektorok, szabályok, séma-szinkron, beültetett hibák
   access-vectors/                ← P0.4: pozitív és negatív vektorok
-  check_name_vectors.py          ← D1: a node-név grammatika 2. verziójának kapuja (vektorok, verziókötés, V1 regresszió, Go/Rust paritás, beültetett hibák)
+  check_name_vectors.py          ← D1: a node-név grammatika 2. verziójának kapuja (vektorok, verziókötés, V1 regresszió, a Go és a Rust referencia-runner tényleges építése és futtatása minden futásnál, beültetett hibák)
   name-vectors/                  ← D1: négy verdiktes vektorok (v1_rule, v1_checker, v1_forms, v2)
 ```
 

@@ -38,7 +38,7 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15      # was 10: the node-name gate builds the Go and the Rust runners and re-runs them for every seeded fault
 
     steps:
       - uses: actions/checkout@v4
@@ -77,3 +77,6 @@ jobs:
         run: make gate.local
         env:
           CIC_REQUIRE_RELEASE_HISTORY: "1"
+          # The node-name grammar gate builds and runs the Go and the Rust reference runners (docs/evidence/node-name-v2-parity), on every run: both toolchains
+          # are on the runner image; without them the check is a failure, never a skip.
+          CIC_REQUIRE_NAME_RUNNERS: "1"
