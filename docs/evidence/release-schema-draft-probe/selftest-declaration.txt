@@ -1,0 +1,16 @@
+the real set                                                   -> ACCEPTED (as expected)
+a declaration entry removed                                    -> refused (as expected)  [1: a contract of the parts is not declared: ('common', '$.version', 'p]
+a declaration entry duplicated                                 -> refused (as expected)  [1: duplicate ids in the declaration]
+a contract added to a part and not declared                    -> refused (as expected)  [1: a contract of the parts is not declared: ('common', '$.kind', 'patt]
+an evaluation status inside a schema part                      -> refused (as expected)  [2: the contract at common $.version carries ['status'] (an evaluation ]
+a node-level entry declared with the wrong status              -> refused (as expected)  [3: C01 is a node-level entry and must have the status unevaluated]
+a surface-level entry declared unevaluated                     -> refused (as expected)  [3: C18 is a surface-level entry and must have the status not_reported]
+an unknown verifier reason                                     -> refused (as expected)  [4: C01 names the reason 'no_such_reason', which is neither in the cont]
+an empty verifier-only list                                    -> refused (as expected)  [5: the verifier-only list is empty]
+the Form no longer lists a node of the probe                   -> refused (as expected)  [3: K01_primitive_release: the Form lists ['$.version'], the nodes decl]
+the probe output lacks the compile line of a kind              -> refused (as expected)  [3: no compile line for K02_module_release in the probe output]
+composition: a kind part redefines the common node 'kind'              -> refused (as expected)
+composition: a kind part redefines provenance.source_commit            -> refused (as expected)
+composition: a kind part replaces a composite by a scalar              -> refused (as expected)
+composition: a kind part ADDS a field to provenance (merged by path)   -> merged as expected
+15 of 15 checks as expected

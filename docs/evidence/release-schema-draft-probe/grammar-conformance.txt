@@ -1,0 +1,30 @@
+check_grammar.py (the pinned grammar's own checker, cic-primitives devel 01cb30b; its self-test:)
+self-test: 53/53
+== common.yaml
+✗ docs/design/release-schemas/common.yaml  (35 node, 3 finding)
+  [S2] $.spec.config_surface.nodes.createdBy
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+  [S2] $.spec.config_surface.nodes.release
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+  [S2] $.spec.config_surface.nodes.release.createdBy
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+== primitive-release.yaml
+✓ docs/design/release-schemas/primitive-release.yaml  (9 node)
+== module-release.yaml
+✓ docs/design/release-schemas/module-release.yaml  (0 node)
+== composed-PrimitiveRelease.yaml
+✗ composed-PrimitiveRelease.yaml  (43 node, 3 finding)
+  [S2] $.spec.config_surface.nodes.createdBy
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+  [S2] $.spec.config_surface.nodes.release
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+  [S2] $.spec.config_surface.nodes.release.createdBy
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+== composed-ModuleRelease.yaml
+✗ composed-ModuleRelease.yaml  (35 node, 3 finding)
+  [S2] $.spec.config_surface.nodes.createdBy
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+  [S2] $.spec.config_surface.nodes.release
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'
+  [S2] $.spec.config_surface.nodes.release.createdBy
+      'createdBy' does not match '^[a-z][a-z0-9_]*$'

@@ -1,0 +1,102 @@
+kind: PrimitiveRelease
+version: 0.2.1
+timestamp: '2026-11-02T18:57:58.061912+00:00'
+validity:
+  from: '2026-05-25'
+  until: '2027-05-25'
+createdBy:
+  name: PLACEHOLDER-NAME
+  email: placeholder@example.invalid
+  certificate: PLACEHOLDER-CERTIFICATE
+specs:
+- id: config-surface
+  source_path: schemas/aggregate/config-surface.yaml
+  meta_hash: ns/EvKhtlPqGtK3H8nirLYYoiyx1Z3VqW3RPogvSOZs=
+  spec:
+    placeholder: true
+- id: managed-entity
+  source_path: schemas/aggregate/managed-entity.yaml
+  meta_hash: c+9Ic2bRBKF0b58W70yeVU9xpKyPKG4TVilanZ2qdKA=
+  spec:
+    placeholder: true
+- id: operation-surface
+  source_path: schemas/aggregate/operation-surface.yaml
+  meta_hash: T7UNN8adgMsydc3/yumFDpSOCdqeqt4Grg4moZatb6w=
+  spec:
+    placeholder: true
+- id: policy-surface
+  source_path: schemas/aggregate/policy-surface.yaml
+  meta_hash: lubyHSdSrHYzL8jsCSYm/b9WyREDh1OD/+56DtijuPA=
+  spec:
+    placeholder: true
+- id: state-surface
+  source_path: schemas/aggregate/state-surface.yaml
+  meta_hash: qY9QsW16+lnIrdf4eymj25B0FQrtxeBPWhdgZAZ7wZI=
+  spec:
+    placeholder: true
+- id: access
+  source_path: schemas/atomic/access.yaml
+  meta_hash: KBoKXskcbgaL1QJjzUBw7o4qX4/dVZll5MTaKBhmffU=
+  spec:
+    placeholder: true
+- id: address
+  source_path: schemas/atomic/address.yaml
+  meta_hash: Z0iLfXRt5mn2S/UmICDFeX94AoGnkQrgjmdhG1sVarY=
+  spec:
+    placeholder: true
+- id: behavior
+  source_path: schemas/atomic/behavior.yaml
+  meta_hash: y2S1NS6Y4AiMiHhKoSQTxP/KzKv2dfaXu2Fx0Bw0dIM=
+  spec:
+    placeholder: true
+- id: contract
+  source_path: schemas/atomic/contract.yaml
+  meta_hash: L/z0zL6kN3/T3y+xoW1rPMJEiPImbZNVhIXvXOy7jS0=
+  spec:
+    placeholder: true
+- id: event
+  source_path: schemas/atomic/event.yaml
+  meta_hash: IzHhprOwIjcGM8cjlWgHWR4nzW58k/LInM+GX8uQDwA=
+  spec:
+    placeholder: true
+- id: identity
+  source_path: schemas/atomic/identity.yaml
+  meta_hash: o5V83SYNs9JowwFIFXGaXBqBfawKd/oo1Fs9wK2i5QI=
+  spec:
+    placeholder: true
+- id: role
+  source_path: schemas/atomic/role.yaml
+  meta_hash: cfwYWgv3i3ulezC96n+r2jcKY7XHPeHMRESu6k9nllk=
+  spec:
+    placeholder: true
+- id: shape
+  source_path: schemas/atomic/shape.yaml
+  meta_hash: P6+S9d1XqvOEBS6G/ioGrHysVFwm29E1nYx0/bCXvqc=
+  spec:
+    placeholder: true
+provenance:
+  envelope: 3
+  source_commit: 106965b8cea7cce2081beb77008753af21e68b46
+  dependency_lock_sha256: JNb4AcImrAYG70geG4iJN4LY7qZJL05aiCBGLynhP8M=
+  grammar_sha256: 7y1qbg9pLA6KksuBMCEZOokEy0Gnq8Dqg4cwsQZyY3U=
+  grammar_schema_sha256: OvJnzW5/C5MX5iv8uPDR0g73+bJ01wo8h1ON/2T9plc=
+artifacts:
+  manifest_digest: sha256:97c3301984ee44bcf5b285175f990aa08f16d001c7f4e8caa55f89cd3612cfea
+  files: []
+release:
+  envelope: 3
+  createdBy:
+    name: PLACEHOLDER-NAME
+    email: placeholder@example.invalid
+    certificate: PLACEHOLDER-CERTIFICATE
+  build_hash: HVazYxdg737P2bMy2Enkj5ej1VfF+TQ4pDub86G3p2s=
+  sign: vault:v1:PLACEHOLDER
+cic_countersign:
+  authority:
+    name: PLACEHOLDER-AUTHORITY
+    certificate: PLACEHOLDER-CERTIFICATE
+    root_certificate: PLACEHOLDER-CERTIFICATE
+  signed_payload: build_hash
+  sign: vault:v1:PLACEHOLDER
+  workflow: cic-primitives-release@v1
+  ts: '2026-11-02T18:58:57Z'

@@ -1,0 +1,17 @@
+# DRAFT: how a record kind's schema is composed from the common part and the kind part. The rules, not a tool.
+composition:
+  common: common.yaml
+  kinds:
+    PrimitiveRelease: {part: primitive-release.yaml}
+    ModuleRelease: {part: module-release.yaml}
+  rules:
+    - id: add_only
+      text: "A kind part adds members. It never removes, relaxes or redefines a common member."
+    - id: composite_merge_by_path
+      text: "A composite node with the same name at the same path in the common part and the kind part is merged by adding the kind's fields; every other overlap (the same leaf path in both) is a collision."
+    - id: collision_is_an_error
+      text: "A collision is a composition-time error (schema_field_collision), never a verification result."
+    - id: validation_concatenated
+      text: "The surface-level validation entries of the common part and of the kind part are concatenated; none is dropped."
+    - id: kind_constant
+      text: "The kind part declares the record kind as a surface-level 'must' contract; the common part declares none."

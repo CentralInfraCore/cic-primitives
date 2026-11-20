@@ -1,0 +1,97 @@
+kind: ModuleRelease
+version: 0.2.1
+timestamp: '2026-11-02T18:57:58.061912+00:00'
+validity:
+  from: '2026-05-25'
+  until: '2027-05-25'
+createdBy:
+  name: PLACEHOLDER-NAME
+  email: placeholder@example.invalid
+  certificate: PLACEHOLDER-CERTIFICATE
+provenance:
+  envelope: 3
+  source_commit: 106965b8cea7cce2081beb77008753af21e68b46
+artifacts:
+  manifest_digest: sha256:97c3301984ee44bcf5b285175f990aa08f16d001c7f4e8caa55f89cd3612cfea
+  files:
+  - path: LICENSE.md
+    digest: sha256:4fffcdac095c0623fefb8515ab80b3e9629c0febc454456cd08b3cdf3c941720
+  - path: dependency.yaml
+    digest: sha256:24d6f801c226ac0606ef481e1b88893782d8eea6492f4e5a8820462f29e13fc3
+  - path: docs/en/RELEASE-RECORD-CONTRACT.md
+    digest: sha256:a8f26e78046e50f573d7e577680ccc3208fab7da6335aed613d6115b17db42b6
+  - path: md.meta.schema.yaml
+    digest: sha256:2bc0fefc427632a02351ca2a6d526e8c30d56d25a2011825d5d4690b8c37ca1c
+  - path: module/module.wasm
+    digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - path: project.yaml
+    digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  - path: proposals/atom-grammar/P0-4-ACCESS-GRAMMAR.md
+    digest: sha256:bc90c0ee03b418485d3e5d8ebbe2db52b60f8181dd57d0762973eef053d33279
+  - path: proposals/atom-grammar/P0-4-MIGRATION.md
+    digest: sha256:b2a95bbee08c84aa4a2a88814617b630bb6dae0082ee4b1bbc258c0a27f76622
+  - path: proposals/atom-grammar/README.md
+    digest: sha256:3e5e335199815e1035511584bc610f0034bacdfe2ec9fdd7189b2af47f48a92b
+  - path: proposals/atom-grammar/access-vectors/expansion.yaml
+    digest: sha256:75445db8ca75595a0c3eea7cd9618c0dffb07f4759220e1969a686a6636ce63f
+  - path: proposals/atom-grammar/access-vectors/migration.yaml
+    digest: sha256:216427c5df859c3c1981da3cf37563dbe8201172caa400215e9e2a7c36ee6538
+  - path: proposals/atom-grammar/access-vectors/reading.yaml
+    digest: sha256:9d40a2bf3ff297fec5a496ac10c13908b951b1ea0f5aa397f0b16794044d5ef5
+  - path: proposals/atom-grammar/access-vectors/resolution.yaml
+    digest: sha256:2d5c485d85fe0fa25011b7b49136deb9f396596b63046ea8e2bb28a733961be0
+  - path: proposals/atom-grammar/access_policy.py
+    digest: sha256:62978692ec2e4987f62c666c667a18a272b7f9b15078aa2451cda9114e821e72
+  - path: proposals/atom-grammar/check_access_vectors.py
+    digest: sha256:cdde7d5f32fed62987acb67d54387584387a241ffd2a607dadbd6f9301e6ef9a
+  - path: proposals/atom-grammar/check_grammar.py
+    digest: sha256:ef2d6a6e0f692c0e8a92cb813021193a8904cb41a7abc0ea838730b106726375
+  - path: proposals/atom-grammar/instance-grammar.schema.yaml
+    digest: sha256:3af267cd6e7f0b9317e62bfcb8f0d1d20ef7f9b274d70a3c87538dff64fda657
+  - path: release.schema.yaml
+    digest: sha256:416dd2313cef854d11a1efdc98719992570d560df38bfdf5cec83881f54109f1
+  - path: schemas/aggregate/config-surface.yaml
+    digest: sha256:9ecfc4bca86d94fa86b4adc7f278ab2d86288b2c7567756a5b744fa20bd2399b
+  - path: schemas/aggregate/managed-entity.yaml
+    digest: sha256:73ef487366d104a1746f9f16ef4c9e554f71a4ac8f286e1356295a9d9daa74a0
+  - path: schemas/aggregate/operation-surface.yaml
+    digest: sha256:4fb50d37c69d80cb3275cdffcae9850e948e09da9eaade06ae0e26a196ad6fac
+  - path: schemas/aggregate/policy-surface.yaml
+    digest: sha256:96e6f21d2752ac76332fc8ec092626fdbf56c91103875383ffee7a0ed8a3b8f0
+  - path: schemas/aggregate/state-surface.yaml
+    digest: sha256:a98f50b16d7afa59c8add7f87b29a3db9074150aedc5e04f5a176064067bc192
+  - path: schemas/atomic/access.yaml
+    digest: sha256:281a0a5ec91c6e068bd50263cd4070ee8e2a5f8fdd559965e4c4da2818667df5
+  - path: schemas/atomic/address.yaml
+    digest: sha256:67488b7d746de669f64bf5262020c5797f780281a7910ae08e67611b5b156ab6
+  - path: schemas/atomic/behavior.yaml
+    digest: sha256:cb64b5352e98e0088c88784aa12413c4ffcaccabf675f697bb6171d01c347483
+  - path: schemas/atomic/contract.yaml
+    digest: sha256:2ffcf4ccbea4377fd3df2fb1a16d6b3cc24488f2266d93558485ef5cecbb8d2d
+  - path: schemas/atomic/event.yaml
+    digest: sha256:2331e1a6b3b022370633c723956807591e27cd6e7c93f2c89ccf865fcb900f00
+  - path: schemas/atomic/identity.yaml
+    digest: sha256:a3957cdd260db3d268c3014815719a5c1a817dac0a77fa28d45b3dc0ada2e502
+  - path: schemas/atomic/role.yaml
+    digest: sha256:71fc185a0bf78b7ba57b30bdea7fabda370a63b5c73de1cc4444aeea4f679659
+  - path: schemas/atomic/shape.yaml
+    digest: sha256:3faf92f5dd57aaf384052e86fe2a06ac7cac545c26dbd1359d8c74fdb097bea7
+  - path: schemas/index.yaml
+    digest: sha256:c83fba50a6da7f810c658d76f86acaeaaddf503292bcced12897d34c710bffaf
+release:
+  envelope: 3
+  createdBy:
+    name: PLACEHOLDER-NAME
+    email: placeholder@example.invalid
+    certificate: PLACEHOLDER-CERTIFICATE
+  build_hash: HVazYxdg737P2bMy2Enkj5ej1VfF+TQ4pDub86G3p2s=
+  sign: vault:v1:PLACEHOLDER
+cic_countersign:
+  authority:
+    name: PLACEHOLDER-AUTHORITY
+    certificate: PLACEHOLDER-CERTIFICATE
+    root_certificate: PLACEHOLDER-CERTIFICATE
+  signed_payload: build_hash
+  sign: vault:v1:PLACEHOLDER
+  workflow: cic-primitives-release@v1
+  ts: '2026-11-02T18:58:57Z'
