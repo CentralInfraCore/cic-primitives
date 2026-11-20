@@ -1,0 +1,81 @@
+RED, initial: pytest tests/test_node_name_grammar.py against the unchanged implementation (devel 3b9d32b), CIC_REQUIRE_RELEASE_HISTORY=1
+E                  - crashed: TypeError: load_schema() got an unexpected keyword argument 'node_name_grammar'
+E         PASS     C5 V1 regression (pinned files)
+E         FAIL     C6 release schema set
+E                  - crashed: TypeError: load_schema() got an unexpected keyword argument 'node_name_grammar'
+E         FAIL     C7 widening (bounded exhaustive)
+E                  - the V2 name sub-schema differs from the reference function for 2598 string(s), first 'aZ'
+E                  - 170 name(s) added by V2 have no upper-case letter, first 'a\n'
+E         FAIL     C8 Go and Rust parity
+E                  - the committed rule.json is missing (docs/evidence/node-name-v2-parity/)
+E                  - the committed go-output.txt is missing (docs/evidence/node-name-v2-parity/)
+E                  - the committed rust-output.txt is missing (docs/evidence/node-name-v2-parity/)
+E                  - the committed runner.go.txt is missing (docs/evidence/node-name-v2-parity/)
+E                  - the committed runner.rs.txt is missing (docs/evidence/node-name-v2-parity/)
+E         self-test: the real tree does not pass (C2 v2 through the real checker, C3 version binding, C4 no version key in a document, C6 release schema set, C7 widening (bounded exhaustive), C8 Go and Rust parity): the faults below would prove nothing
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/tmp/claude-1000/-home-sinkog-sync-claude-factory-CIC-workdir-jobs-relay-issue-queue-01-worksp...hema set, C7 widening (bounded exhaustive), C8 Go and Rust parity): the faults below would prove nothing\n", stderr='').returncode
+
+tests/test_node_name_grammar.py:157: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B01] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B02] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B03] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B04] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B05] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B06] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B07] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B08] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B09] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B10] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B11] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B12] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B13] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B14] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_binding_vectors[B15] - Attribute...
+FAILED tests/test_node_name_grammar.py::test_the_three_errors_are_distinct_codes
+FAILED tests/test_node_name_grammar.py::test_load_schema_has_no_implicit_default
+FAILED tests/test_node_name_grammar.py::test_the_command_line_has_no_default_either[None-NODE_NAME_GRAMMAR_VERSION_MISSING]
+FAILED tests/test_node_name_grammar.py::test_the_command_line_has_no_default_either[1-NODE_NAME_GRAMMAR_VERSION_CONFLICT]
+FAILED tests/test_node_name_grammar.py::test_the_command_line_has_no_default_either[3-NODE_NAME_GRAMMAR_VERSION_UNKNOWN]
+FAILED tests/test_node_name_grammar.py::test_the_command_line_has_no_default_either[two-NODE_NAME_GRAMMAR_VERSION_UNKNOWN]
+FAILED tests/test_node_name_grammar.py::test_the_command_line_has_no_default_either[2.0-NODE_NAME_GRAMMAR_VERSION_UNKNOWN]
+FAILED tests/test_node_name_grammar.py::test_the_command_line_with_the_bound_version_runs_the_self_test
+FAILED tests/test_node_name_grammar.py::test_no_caller_relies_on_a_default - ...
+FAILED tests/test_node_name_grammar.py::test_the_compiler_release_gate_supplies_the_context_version
+FAILED tests/test_node_name_grammar.py::test_the_pinned_grammar_declares_version_2_as_an_integer
+FAILED tests/test_node_name_grammar.py::test_a_document_key_is_refused_wherever_it_sits
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N01]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N02]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N03]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N04]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N05]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N06]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N07]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N08]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N09]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N10]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N11]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N12]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N13]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N14]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N15]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N16]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N17]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N18]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N19]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N20]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N21]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N22]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N23]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N24]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N25]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N26]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N27]
+FAILED tests/test_node_name_grammar.py::test_v2_verdict_of_the_real_checker[N28]
+FAILED tests/test_node_name_grammar.py::test_case_is_identity_the_checker_does_not_normalize
+FAILED tests/test_node_name_grammar.py::test_the_self_test_of_the_checker_covers_version_2
+FAILED tests/test_node_name_grammar.py::test_the_name_gate_passes - Assertion...
+FAILED tests/test_node_name_grammar.py::test_every_seeded_fault_turns_the_gate_red
+59 failed, 2 passed in 3.37s
