@@ -1,0 +1,14 @@
+RED for review F1 of #41: the counterexample of the review, run against the gate of commit f878fc0 (the head that was reviewed).
+Both runner sources are changed so that EVERY name is accepted (the Go runner: ok := true; the Rust runner: let ok = true); the committed outputs stay unchanged.
+Expected by the review: the gate still passes C8, because it never runs the runners.
+
+PASS     C1 vector file
+PASS     C2 v2 through the real checker
+PASS     C3 version binding
+PASS     C4 no version key in a document
+PASS     C5 V1 regression (pinned files)
+PASS     C6 release schema set
+PASS     C7 widening (bounded exhaustive)
+PASS     C8 Go and Rust parity
+
+name vectors: 8/8 checks pass

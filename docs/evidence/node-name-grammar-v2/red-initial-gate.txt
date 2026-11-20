@@ -1,0 +1,31 @@
+RED, initial: the vectors, the gate and the tests exist; the implementation does not. Base: devel 3b9d32b61f3642d4961623c09480a638c06d1b48 (unchanged check_grammar.py, instance-grammar.schema.yaml, shape.yaml).
+python 3.14.4 jsonschema 4.25.1
+
+== python proposals/atom-grammar/check_name_vectors.py ==
+PASS     C1 vector file
+FAIL     C2 v2 through the real checker
+         - crashed: TypeError: load_schema() got an unexpected keyword argument 'node_name_grammar'
+FAIL     C3 version binding
+         - crashed: AttributeError: module '_name_grammar_bind' has no attribute 'GrammarVersionError'
+FAIL     C4 no version key in a document
+         - crashed: TypeError: load_schema() got an unexpected keyword argument 'node_name_grammar'
+PASS     C5 V1 regression (pinned files)
+FAIL     C6 release schema set
+         - crashed: TypeError: load_schema() got an unexpected keyword argument 'node_name_grammar'
+FAIL     C7 widening (bounded exhaustive)
+         - the V2 name sub-schema differs from the reference function for 2598 string(s), first 'aZ'
+         - 170 name(s) added by V2 have no upper-case letter, first 'a\n'
+FAIL     C8 Go and Rust parity
+         - the committed rule.json is missing (docs/evidence/node-name-v2-parity/)
+         - the committed go-output.txt is missing (docs/evidence/node-name-v2-parity/)
+         - the committed rust-output.txt is missing (docs/evidence/node-name-v2-parity/)
+         - the committed runner.go.txt is missing (docs/evidence/node-name-v2-parity/)
+         - the committed runner.rs.txt is missing (docs/evidence/node-name-v2-parity/)
+
+name vectors: 2/8 checks pass, FAILED: C2 v2 through the real checker, C3 version binding, C4 no version key in a document, C6 release schema set, C7 widening (bounded exhaustive), C8 Go and Rust parity
+exit: 1
+
+== python proposals/atom-grammar/check_grammar.py --self-test --node-name-grammar 2 ==
+usage: check_grammar.py [-h] [--self-test] [files ...]
+check_grammar.py: error: unrecognized arguments: --node-name-grammar
+exit: 2

@@ -1,0 +1,56 @@
+GREEN after the fix of review F1 of #41: the working tree on top of f878fc0 (base devel 3b9d32b61f3642d4961623c09480a638c06d1b48). CIC_REQUIRE_RELEASE_HISTORY=1 and CIC_REQUIRE_NAME_RUNNERS=1 (the gate's settings); the Go and Rust toolchains ran in containers (go1.26.11, cargo/rustc 1.99.1).
+python 3.14.4 jsonschema 4.25.1
+
+== python proposals/atom-grammar/check_grammar.py --self-test --node-name-grammar 2 ==
+self-test: 62/62
+
+== python proposals/atom-grammar/check_name_vectors.py ==
+PASS     C1 vector file
+PASS     C2 v2 through the real checker
+PASS     C3 version binding
+PASS     C4 no version key in a document
+PASS     C5 V1 regression (pinned files)
+PASS     C6 release schema set
+PASS     C7 widening (bounded exhaustive)
+         (go version go1.26.11 linux/amd64; cargo 1.99.1 (5f94df478 2026-08-27); 28 names; rule {"min_length": 1, "pattern": "^[a-z][a-zA-Z0-9_]*$", "not_pattern": "\\n"})
+PASS     C8 Go and Rust parity
+
+name vectors: 8/8 checks pass
+exit: 0
+
+== python proposals/atom-grammar/check_name_vectors.py --self-test ==
+--- the real tree must pass ---
+PASS     C1 vector file
+PASS     C2 v2 through the real checker
+PASS     C3 version binding
+PASS     C4 no version key in a document
+PASS     C5 V1 regression (pinned files)
+PASS     C6 release schema set
+PASS     C7 widening (bounded exhaustive)
+         (go version go1.26.11 linux/amd64; cargo 1.99.1 (5f94df478 2026-08-27); 28 names; rule {"min_length": 1, "pattern": "^[a-z][a-zA-Z0-9_]*$", "not_pattern": "\\n"})
+PASS     C8 Go and Rust parity
+
+--- every seeded fault must turn the gate red, in the named check ---
+  red   the V2 pattern is narrowed back to the V1 pattern  [C2,C6,C7,C8]
+  red   the line-feed guard is dropped  [C2,C7,C8]
+  red   the V2 pattern also admits the hyphen  [C2,C7,C8]
+  red   the binding defaults to the pin when the context supplies nothing  [C3]
+  red   a boolean is accepted as a version  [C3]
+  red   a context that differs from the pin is not refused  [C3]
+  red   shape.yaml declares version 1  [C2,C3,C4,C6]
+  red   a document key node_name_grammar is no longer looked for  [C4]
+  red   the pinned digest of the V1 checker is altered  [C5,C6]
+  red   a v2 verdict of the vector file is flipped  [C2,C8]
+  red   the Go runner accepts every name (the review's counterexample)  [C8]
+  red   the Go runner drops the start anchor of the rule it is given  [C8]
+  red   the Go runner hard-codes the V1 pattern instead of the rule it is given  [C8]
+  red   the Rust runner accepts every name  [C8]
+  red   the Rust runner drops the start anchor of the rule it is given  [C8]
+  red   the Rust runner prints nothing  [C8]
+  red   the Rust runner repeats a line  [C8]
+  red   the Go runner reads another rule file than the one it is given  [C8]
+  red   a v1_checker verdict of the vector file is flipped  [C1,C5]
+  red   the createdBy row is removed from the vector file  [C1]
+
+self-test: 20/20 seeded faults turned the gate red
+exit: 0

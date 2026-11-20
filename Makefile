@@ -39,10 +39,12 @@ validate: grammar
 # gate. See proposals/atom-grammar/README.md.
 grammar:
 	@echo "--- Atom grammar: self-test ---"
-	@docker compose exec builder python proposals/atom-grammar/check_grammar.py --self-test
+	@docker compose exec builder python proposals/atom-grammar/check_grammar.py --self-test --node-name-grammar 2
+	@echo "--- Node-name grammar: vectors, binding, V1 regression, Go and Rust parity ---"
+	@docker compose exec builder python proposals/atom-grammar/check_name_vectors.py
 	@echo "--- Atom grammar: live compositions ---"
 	@docker compose exec builder sh -c \
-	  'python proposals/atom-grammar/check_grammar.py schemas/examples/*.yaml \
+	  'python proposals/atom-grammar/check_grammar.py --node-name-grammar 2 schemas/examples/*.yaml \
 	     $$(ls schemas/domain/*.yaml 2>/dev/null)'
 
 # =============================================================================
@@ -63,9 +65,12 @@ grammar.local:
 	@python3 proposals/atom-grammar/check_access_vectors.py
 	@python3 proposals/atom-grammar/check_access_vectors.py --self-test
 	@echo "--- Atom grammar: self-test ---"
-	@python3 proposals/atom-grammar/check_grammar.py --self-test
+	@python3 proposals/atom-grammar/check_grammar.py --self-test --node-name-grammar 2
 	@echo "--- Atom grammar: live compositions ---"
-	@python3 proposals/atom-grammar/check_grammar.py $(GRAMMAR_COMPOSITIONS)
+	@python3 proposals/atom-grammar/check_grammar.py --node-name-grammar 2 $(GRAMMAR_COMPOSITIONS)
+	@echo "--- Node-name grammar: vectors, binding, V1 regression, Go and Rust parity ---"
+	@python3 proposals/atom-grammar/check_name_vectors.py
+	@python3 proposals/atom-grammar/check_name_vectors.py --self-test
 
 # Does this tree still match the upstream tags its dependency.yaml claims?
 # NOT a prerequisite of validate — see the note in tools/check_provenance.py:

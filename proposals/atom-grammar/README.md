@@ -658,6 +658,8 @@ proposals/atom-grammar/
   access_policy.py               ← P0.4: az Access/PolicySurface referencia-modell
   check_access_vectors.py        ← P0.4: golden vektorok, szabályok, séma-szinkron, beültetett hibák
   access-vectors/                ← P0.4: pozitív és negatív vektorok
+  check_name_vectors.py          ← D1: a node-név grammatika 2. verziójának kapuja (vektorok, verziókötés, V1 regresszió, a Go és a Rust referencia-runner tényleges építése és futtatása minden futásnál, beültetett hibák)
+  name-vectors/                  ← D1: négy verdiktes vektorok (v1_rule, v1_checker, v1_forms, v2)
 ```
 
 **Kapuként** (ez fut a `make validate` előtt):
@@ -670,9 +672,18 @@ make validate         # a grammar az előfeltétele
 **Közvetlenül**, konténer nélkül — ez a fontosabb futtatási mód:
 
 ```bash
-python3 proposals/atom-grammar/check_grammar.py --self-test
-python3 proposals/atom-grammar/check_grammar.py schemas/examples/kubernetes-pod.yaml
+python3 proposals/atom-grammar/check_grammar.py --self-test --node-name-grammar 2
+python3 proposals/atom-grammar/check_grammar.py --node-name-grammar 2 schemas/examples/kubernetes-pod.yaml
+python3 proposals/atom-grammar/check_name_vectors.py              # a node-név grammatika kapuja
+python3 proposals/atom-grammar/check_name_vectors.py --self-test  # + minden beültetett hibának pirosra kell fordítania
 ```
+
+**A node-név grammatika verziója (D1).** A `name` szabálya verziózott: az **1. verzió** a `^[a-z][a-z0-9_]*$` (a `cic-primitives-73ae469-6a188078` pin),
+a **2. verzió** a `^[a-z][a-zA-Z0-9_]*$` **teljes illeszkedéssel és soremelés nélkül** (`createdBy` érvényes). A verzió a **pinelt grammatika** tulajdona
+(`schemas/atomic/shape.yaml`, `spec.node_name_grammar.version`) és a **feldolgozási kontextusé**, nem dokumentumkulcs; a kontextusnak meg kell adnia
+(`--node-name-grammar N`, `load_schema(node_name_grammar=N)`), **nincs default**; hiányzó, ismeretlen és eltérő verzió három külön hiba
+(`NODE_NAME_GRAMMAR_VERSION_MISSING`, `_UNKNOWN`, `_CONFLICT`). A kis- és nagybetű különböző identitás: semmi nem normalizál. Terv és indoklás:
+`docs/en/GRAMMAR-NODE-NAME-PROFILE-DESIGN.md`; a régi (1. verziós) viselkedést a kapu a pin git-objektumain védi (`check_name_vectors.py`, C5).
 
 A `check_grammar.py` **PyYAML + jsonschema**, konténer nélkül fut, mert egy
 grammatika, amit csak a saját pipeline-ja tud futtatni, nem ellenőrizhető

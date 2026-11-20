@@ -18,6 +18,18 @@ metadata:
 spec:
   kind: AtomicPrimitive
 
+  # ── The node-name grammar version this pin reads ────────────────────────────
+  node_name_grammar:
+    version: 2
+    description: >
+      The version of the node-name rule this schema pin reads (proposals/atom-grammar/instance-grammar.schema.yaml, property `name`; design:
+      docs/en/GRAMMAR-NODE-NAME-PROFILE-DESIGN.md). It is a property of the pinned grammar, not a key of any document: a document never declares it (a
+      `node_name_grammar` key anywhere in a composition is a finding). The processing context supplies the version it expects and it must equal this one;
+      a missing version is NODE_NAME_GRAMMAR_VERSION_MISSING (there is no default), a value that is not one of the known integers 1 and 2 is
+      NODE_NAME_GRAMMAR_VERSION_UNKNOWN, a difference is NODE_NAME_GRAMMAR_VERSION_CONFLICT. Version 1 is `^[a-z][a-z0-9_]*$` and lives on in the pin
+      cic-primitives-73ae469-6a188078; version 2 is `^[a-z][a-zA-Z0-9_]*$` as a full match with no line feed. Changing the version is a new grammar identity,
+      never a silent change.
+
   # ── Where the normative form lives ──────────────────────────────────────────
   normative_form:
     ref: proposals/atom-grammar/README.md
@@ -85,7 +97,10 @@ spec:
     properties:
       name:
         type: string
-        description: Field name — CamelCase or snake_case, consistent within the namespace
+        description: >
+          Field name: a lower-case first letter, then letters (either case), digits and underscores, as a full match, no line feed (node-name grammar
+          version 2, declared below). lowerCamelCase and snake_case are both valid; case is identity, so two names that differ only in case are two fields and
+          nothing normalizes a name. Consistency of the style within a namespace is not enforced by the pattern.
       shape_type:
         type: string
         description: >

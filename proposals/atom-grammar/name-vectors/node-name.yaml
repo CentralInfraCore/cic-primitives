@@ -1,0 +1,344 @@
+# Golden vectors of the node-name grammar (cic-primitives #39, decision D1; design: docs/en/GRAMMAR-NODE-NAME-PROFILE-DESIGN.md).
+# FOUR verdicts per name, because the V1 behaviors differ and one column would hide it:
+#   v1_rule     the normative V1 rule, a full match of the V1 pattern
+#   v1_checker  the historical behavior of the pinned V1 checker (commit 73ae469): it accepts ONE line feed after a valid name (a flavor defect, decision O3)
+#   v1_forms    the behavior of the Forms (cic-primitive-forms 2f02a75, measured: docs/evidence/grammar-node-name-measurement/); `unmeasured` when no case exists
+#   v2          the single enforced verdict of version 2 (R1 as a full match, and no line feed): checker, Go and Rust alike
+# The v1 columns are derived by check_name_vectors.py from the V1 pattern and compared (a hand edit cannot move them); the v2 column is run through the real checker.
+# The rows where v1_forms is accept and v1_rule is refuse are the names whose verdict would change if the Forms ever enforced the V1 rule: the list of the explicit
+# compatibility decision of the design (section 7).
+vectors_format: 1
+node_name_grammar:
+  v1_rule: ^[a-z][a-z0-9_]*$
+  v2_rule:
+    pattern: ^[a-z][a-zA-Z0-9_]*$
+    not_pattern: \n
+    full_match: true
+  versions_known:
+  - 1
+  - 2
+names:
+- id: N01
+  name: a
+  class: valid_all
+  v1_rule: accept
+  v1_checker: accept
+  v1_forms: accept
+  forms_case: K01_lower
+  v2: accept
+- id: N02
+  name: abc_1
+  class: valid_all
+  v1_rule: accept
+  v1_checker: accept
+  v1_forms: unmeasured
+  forms_case: null
+  v2: accept
+- id: N03
+  name: a_
+  class: valid_all
+  v1_rule: accept
+  v1_checker: accept
+  v1_forms: unmeasured
+  forms_case: null
+  v2: accept
+- id: N04
+  name: created_by
+  class: valid_all
+  v1_rule: accept
+  v1_checker: accept
+  v1_forms: accept
+  forms_case: K02_snake
+  v2: accept
+- id: N05
+  name: a9
+  class: valid_all
+  v1_rule: accept
+  v1_checker: accept
+  v1_forms: unmeasured
+  forms_case: null
+  v2: accept
+- id: N06
+  name: createdBy
+  class: valid_v2_only
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K03_camel
+  v2: accept
+- id: N07
+  name: aB_c9
+  class: valid_v2_only
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K15_mixed
+  v2: accept
+- id: N08
+  name: a9B
+  class: valid_v2_only
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: accept
+- id: N09
+  name: aBC
+  class: valid_v2_only
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: accept
+- id: N10
+  name: xA
+  class: valid_v2_only
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: accept
+- id: N11
+  name: A
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K05_upper_single
+  v2: refuse
+- id: N12
+  name: CreatedBy
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K04_pascal
+  v2: refuse
+- id: N13
+  name: 1abc
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K06_digit_first
+  v2: refuse
+- id: N14
+  name: _x
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K07_underscore_first
+  v2: refuse
+- id: N15
+  name: a-b
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K08_hyphen
+  v2: refuse
+- id: N16
+  name: a b
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K09_space
+  v2: refuse
+- id: N17
+  name: a.b
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K10_dot
+  v2: refuse
+- id: N18
+  name: "\xE9t"
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: accept
+  forms_case: K11_non_ascii
+  v2: refuse
+- id: N19
+  name: "\u0430bc"
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N20
+  name: "a\0"
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N21
+  name: ''
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: refuse
+  forms_case: K13_empty
+  v2: refuse
+- id: N22
+  name: "abc\r"
+  class: invalid_all
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N23
+  name: 'abc
+
+    '
+  class: line_feed_checker_defect
+  v1_rule: refuse
+  v1_checker: accept
+  v1_forms: accept
+  forms_case: K12_trailing_newline
+  v2: refuse
+- id: N24
+  name: 'abc
+
+
+    '
+  class: line_feed
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N25
+  name: 'a
+
+    b'
+  class: line_feed
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N26
+  name: '
+
+    abc'
+  class: line_feed
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N27
+  name: 'createdBy
+
+    '
+  class: line_feed
+  v1_rule: refuse
+  v1_checker: refuse
+  v1_forms: unmeasured
+  forms_case: null
+  v2: refuse
+- id: N28
+  name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  class: long
+  v1_rule: accept
+  v1_checker: accept
+  v1_forms: accept
+  forms_case: K14_long
+  v2: accept
+binding:
+- id: B01
+  description: the context and the pin agree
+  context: 2
+  pin: 2
+  expect: ok
+- id: B02
+  description: the context supplies no version
+  context: null
+  pin: 2
+  expect: NODE_NAME_GRAMMAR_VERSION_MISSING
+- id: B03
+  description: the pin declares no version
+  context: 2
+  pin: null
+  expect: NODE_NAME_GRAMMAR_VERSION_MISSING
+- id: B04
+  description: neither supplies one (no default to 1 or 2)
+  context: null
+  pin: null
+  expect: NODE_NAME_GRAMMAR_VERSION_MISSING
+- id: B05
+  description: the context expects version 1, the pin declares 2
+  context: 1
+  pin: 2
+  expect: NODE_NAME_GRAMMAR_VERSION_CONFLICT
+- id: B06
+  description: the context expects 2, the pin declares 1
+  context: 2
+  pin: 1
+  expect: NODE_NAME_GRAMMAR_VERSION_CONFLICT
+- id: B07
+  description: an unknown integer (3) from the context
+  context: 3
+  pin: 2
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B08
+  description: zero from the context
+  context: 0
+  pin: 2
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B09
+  description: the string "2" from the context
+  context:
+    str: '2'
+  pin: 2
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B10
+  description: true from the context (a boolean is not the integer 1)
+  context: true
+  pin: 1
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B11
+  description: the float 2.0 from the context
+  context:
+    float: 2.0
+  pin: 2
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B12
+  description: the string "2" declared by the pin
+  context: 2
+  pin:
+    str: '2'
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B13
+  description: an unknown integer (3) declared by the pin
+  context: 2
+  pin: 3
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B14
+  description: true declared by the pin
+  context: true
+  pin: true
+  expect: NODE_NAME_GRAMMAR_VERSION_UNKNOWN
+- id: B15
+  description: both name the known version 1 (the binding is pure; the implemented rule is checked at load time)
+  context: 1
+  pin: 1
+  expect: ok
+document_keys:
+- id: D01
+  description: a node carries the key node_name_grammar
+  where: node
+- id: D02
+  description: the key sits in the spec of the composition
+  where: spec
+- id: D03
+  description: the key sits in the config_surface
+  where: config_surface
