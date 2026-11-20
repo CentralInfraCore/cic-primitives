@@ -1,0 +1,18 @@
+Publication of the node-name vectors: the published package measured. Commit 7e3a453326fa32e1d21590c16b62a39859ee49de (31 declared paths; base devel a3390419f70a8032305c04a1fab261c3c8e86d0f).
+python 3.14.4 jsonschema 4.25.1
+
+== python tests/published_package.py 7e3a453326fa32e1d21590c16b62a39859ee49de ==
+a directory with ONLY the 31 declared files of 7e3a453 (python -I)
+exit 0  check_access_vectors.py                                                     187 cases, 0 failure(s)
+exit 0  check_access_vectors.py --self-test                                         self-test: 50/50 seeded faults detected
+exit 0  check_grammar.py --self-test --node-name-grammar 2                          self-test: 62/62
+exit 2  check_grammar.py --self-test (no version: must refuse)                      NODE_NAME_GRAMMAR_VERSION_MISSING: the context supplies no node-name grammar version (there is no default)
+exit 0  consumer check of name-vectors/node-name.yaml with the published checker    28 names and 15 binding cases of the published vectors, 0 mismatch(es) []
+
+== the declaration, count and the new path ==
+31 paths; True ; check_name_vectors in the list: False
+
+== negative control 1: the package WITHOUT the published vectors file: the consumer check must fail ==
+exit 1  FileNotFoundError: [Errno 2] No such file or directory: 'proposals/atom-grammar/name-vectors/node-name.yaml'
+negative control 2: the package WITHOUT schemas/atomic/shape.yaml (the pin that declares the version): the self-test must refuse
+exit 2  NODE_NAME_GRAMMAR_VERSION_MISSING: the pin supplies no node-name grammar version (there is no default)
