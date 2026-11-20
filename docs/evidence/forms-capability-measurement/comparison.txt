@@ -1,3 +1,0 @@
-go-output.txt   bytes=8309 lines=160 sha256=0ce05b45d7ec6b10b9a1cb7cb23b4f3395660c05ba287fa0b6de0d7e8843fdc7
-rust-output.txt bytes=8309 lines=160 sha256=0ce05b45d7ec6b10b9a1cb7cb23b4f3395660c05ba287fa0b6de0d7e8843fdc7
-RESULT: IDENTICAL (byte for byte)

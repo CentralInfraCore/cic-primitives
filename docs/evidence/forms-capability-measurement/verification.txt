@@ -1,0 +1,6 @@
+inventory (generator): 34 cases, 128 documents
+go: cases 34; schema compiled 33, refused 1; documents total 128, run 126, NOT RUN 2
+  not run (schema refused): K08_max_items, 2 documents: SCHEMA_SHAPE_UNSUPPORTED@$.files.max_items
+rust: cases 34; schema compiled 33, refused 1; documents total 128, run 126, NOT RUN 2
+  not run (schema refused): K08_max_items, 2 documents: SCHEMA_SHAPE_UNSUPPORTED@$.files.max_items
+RESULT: COMPLETE AND IDENTICAL (every case and document accounted for in both outputs; byte for byte equal)

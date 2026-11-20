@@ -1,0 +1,13 @@
+the real pair                                                  -> ACCEPTED (as expected)
+two EMPTY outputs (byte-identical)                             -> refused (as expected)
+two outputs truncated by 5 lines, identically                  -> refused (as expected)
+two outputs without the final newline, identically             -> refused (as expected)
+a whole case missing from both, identically                    -> refused (as expected)
+one document missing from both, identically                    -> refused (as expected)
+a duplicated line in both                                      -> refused (as expected)
+an unknown case in both                                        -> refused (as expected)
+a document line for a refused schema, in both                  -> refused (as expected)
+outputs that differ by one line                                -> refused (as expected)
+outputs that differ by one character                           -> refused (as expected)
+one output empty                                               -> refused (as expected)
+12 of 12 checks as expected

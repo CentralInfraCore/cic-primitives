@@ -2,7 +2,8 @@
 """Generates the capability cases: one schema and a few documents per capability.
 Document prefix: pos_ = a conforming document, neg_ = a document the record contract needs refused, inf_ = recorded, no expectation."""
 import os, sys
-OUT = sys.argv[1]
+INVENTORY = sys.argv[1] == "--inventory"
+OUT = None if INVENTORY else sys.argv[1]
 HEAD = """spec:
   identity:
     atomic_ref: "cic:core:Identity@v0.2.0"
@@ -138,6 +139,13 @@ case("K19a_ordered_true", "ordered: true on a list (the grammar's flag that the 
   "inf_sorted": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n", "inf_unsorted": "files:\n  - {path: b, digest: d}\n  - {path: a, digest: d}\n"})
 case("K19b_ordered_false", "ordered: false on a list", LIST % "ordered: false", {
   "inf_sorted": "files:\n  - {path: a, digest: d}\n  - {path: b, digest: d}\n", "inf_unsorted": "files:\n  - {path: b, digest: d}\n  - {path: a, digest: d}\n"})
+if INVENTORY:
+    # the machine inventory of what the generator defines: one line per case and per document
+    for cid, (desc, sch, docs) in sorted(cases.items()):
+        print("%s|-" % cid)
+        for name in sorted(docs):
+            print("%s|%s" % (cid, name))
+    sys.exit(0)
 for cid, (desc, sch, docs) in sorted(cases.items()):
     d = os.path.join(OUT, cid, "docs")
     os.makedirs(d, exist_ok=True)
