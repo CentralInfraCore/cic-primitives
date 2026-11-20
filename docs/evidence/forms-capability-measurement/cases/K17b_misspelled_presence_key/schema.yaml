@@ -1,0 +1,10 @@
+spec:
+  identity:
+    atomic_ref: "cic:core:Identity@v0.2.0"
+    kind: CapProbe
+    namespace: "cic:release"
+    version: v0.0.1
+  config_surface:
+    aggregate_ref: "cic:core:ConfigSurface@v0.2.0"
+    nodes:
+      - {name: a, shape_type: scalar, scalar_type: string, mandatry: true}

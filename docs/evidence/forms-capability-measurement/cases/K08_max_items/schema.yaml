@@ -1,0 +1,17 @@
+spec:
+  identity:
+    atomic_ref: "cic:core:Identity@v0.2.0"
+    kind: CapProbe
+    namespace: "cic:release"
+    version: v0.0.1
+  config_surface:
+    aggregate_ref: "cic:core:ConfigSurface@v0.2.0"
+    nodes:
+      - name: files
+        shape_type: collection
+        collection_variant: list
+        mandatory: true
+        max_items: 1
+        item_fields:
+          - {name: path, shape_type: scalar, scalar_type: string, role: key}
+          - {name: digest, shape_type: scalar, scalar_type: string, mandatory: true}
