@@ -58,6 +58,14 @@ run("F2.1: a producer reason owned by the verifier", decl(lambda d: further("P01
 run("F2.1: a verifier reason owned by the composition", decl(lambda d: further("V03")(d).update(owner="composition")))
 run("P5.1: the module name requirement (V08) removed", decl(lambda d: d["further_requirements"].remove(further("V08")(d))))
 run("P5.2: the producer requirement (P01) removed", decl(lambda d: d["further_requirements"].remove(further("P01")(d))))
+# decision P7: integer_out_of_range is refused by the producer AND, independently, by the verifier
+run("P7: the producer requirement (P02) removed", decl(lambda d: d["further_requirements"].remove(further("P02")(d))))
+run("P7: integer_out_of_range removed from G02 (no verifier executor)", decl(lambda d: further("G02")(d).update(reasons=["value_type_unsupported"])))
+run("P7: value_type_unsupported removed from G02 (a type error has no owner)", decl(lambda d: further("G02")(d).update(reasons=["integer_out_of_range"])))
+run("P7: G02 no longer says the verifier checks independently", decl(lambda d: further("G02")(d).update(text=further("G02")(d)["text"].replace("independently", "together with"))))
+run("P7: the new reason owned by the composition", decl(lambda d: further("P02")(d).update(owner="composition")))
+run("P7: P02 downgraded to not_implemented (the producer check silently absent)", decl(lambda d: further("P02")(d).update(status="not_implemented", owner="none", reasons=[], note="x")))
+run("P7: the verifier executor is the producer (G02 owned by the producer)", decl(lambda d: further("G02")(d).update(owner="producer")))
 run("a requirement downgraded to not_implemented loses its reason's owner", decl(lambda d: further("V03")(d).update(status="not_implemented", owner="none", reasons=[], note="x")))
 def dup_contract(d):
     n = d["spec"]["config_surface"]["nodes"][1]

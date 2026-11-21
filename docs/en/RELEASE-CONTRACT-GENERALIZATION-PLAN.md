@@ -62,7 +62,7 @@ Rules of the layering:
 
 | Layer | Order | Reasons |
 |---|---|---|
-| (under A only) parse | 0 | pre-tree rules, `key_not_string`, `value_type_unsupported`, `reading_differs` (section 5): they run on the raw parse before the record layer; under H they do not exist |
+| (under A only) parse | 0 | pre-tree rules, `key_not_string`, `value_type_unsupported`, `integer_out_of_range`, `reading_differs` (section 5): they run on the raw parse before the record layer; under H they do not exist |
 | record | 1 to 3 | `envelope_mismatch`, `envelope_unsupported`, `envelope_too_old` |
 | record | 4, 5 | `kind_missing`, `kind_unsupported` (**new**, after the envelope checks, so an old-envelope record is still refused as `envelope_too_old` first) |
 | record | 6 to 14 | `source_commit_missing`, `source_commit_form`, `artifacts_missing`, `artifact_path_form`, `artifact_path_duplicate`, `artifact_order`, `artifact_digest_form`, `artifact_manifest_digest_form`, `artifact_manifest_mismatch` |
@@ -130,7 +130,7 @@ The hash covers the tree that **the defining reader** derives from the record by
 
 A difference is refused with `reading_differs`, naming the dimension (`reading_key_differs`, `reading_structure_differs`, `reading_value_differs`) and the path of the first node that differs. The check runs on the bytes of the file as shipped, not on a re-serialization of the tree.
 
-**Closed domain (A only).** The domain of a record under A is null, boolean, integer (absolute value at most 2^53 - 1) and string. A float, a date, a timestamp, a binary or any other type is refused (`value_type_unsupported`) before any comparison. The closed domain narrows what is compared; it does not replace the comparison (a boolean read as a string stays inside the domain and still differs), which was the finding of review F1 of the fit survey. Records verified under H are not subject to it.
+**Closed domain (A only).** The domain of a record under A is null, boolean, integer in the range -(2^53 - 1) .. +(2^53 - 1) inclusive, and string. A float, a date, a timestamp, a binary or any other type is refused (`value_type_unsupported`) before any comparison. **An integer outside the range is refused with its own reason, `integer_out_of_range`** (decision P7, owner, 2026-11-21: a type error and a range error are two distinct events). The check covers the **whole value tree**, the contents of opaque members included, not only the declared integer fields. It is made by the **producer** (it refuses to emit such a record) **and by the verifier**, and the verifier checks **independently**: it never relies on the producer's result. Decided, not implemented: the reference verifier does not yet make the profile A checks. The closed domain narrows what is compared; it does not replace the comparison (a boolean read as a string stays inside the domain and still differs), which was the finding of review F1 of the fit survey. Records verified under H are not subject to it.
 
 **The existing records.** They are not rewritten. Their A-conformance is **measured and reported** (first vector of each, section 8); it never changes their H verdict. Measured so far on the raw bytes of the four: no anchor, alias, tag, merge key, comment, second document or non-string key; only strings, integers, booleans and one null (PyYAML side). If a measured real record differs under A, work stops and the owner decides; there is no automatic exception, and none is decided by an implementer (O2, accepted).
 ## 6. Backward compatibility and the two profiles
