@@ -80,6 +80,17 @@ run("F1: G02 stripped of the reason, a decoy verifier entry names it", decl(both
 run("F1: G02 owned by the producer", decl(lambda d: further("G02")(d).update(owner="producer")), needle="G02 must be owned by the verifier")
 run("F1: G02 downgraded to not_implemented, a decoy verifier entry names the reason", decl(both(lambda d: further("G02")(d).update(status="not_implemented", owner="none", reasons=[], note="x"), decoy("verifier"))), needle="G02 must be owned by the verifier")
 run("F1: P02 removed, a decoy producer entry names the reason", decl(both(lambda d: d["further_requirements"].remove(further("P02")(d)), decoy("producer"))), needle="P02 is missing")
+# review #45 F1.1: the section is part of the binding; moving G02 to another section must not skip its checks
+def move(i, src, dst):
+    def f(d):
+        e = [x for x in d[src] if x["id"] == i][0]; d[src].remove(e); d[dst].append(e)
+    return f
+run("F1.1: G02 moved to further_requirements", decl(move("G02", "global_requirements", "further_requirements")), needle="G02 must be in global_requirements")
+run("F1.1: G02 moved, stripped of the reason, a decoy verifier entry names it", decl(both(move("G02", "global_requirements", "further_requirements"), lambda d: further("G02")(d).update(reasons=["value_type_unsupported"]), decoy("verifier"))), needle="G02 must name both")
+run("F1.1: G02 moved, the independence statement removed", decl(both(move("G02", "global_requirements", "further_requirements"), lambda d: further("G02")(d).update(text=further("G02")(d)["text"].replace("independently", "together with")))), needle="independently of the producer")
+run("F1.1: G02 moved, the 2^53 statement weakened", decl(both(move("G02", "global_requirements", "further_requirements"), lambda d: further("G02")(d).update(text="integers are checked independently"))), needle="G02 must state the 2^53-1 bound")
+run("F1.1: G02 not_implemented, a decoy verifier entry names the reason", decl(both(lambda d: further("G02")(d).update(status="not_implemented", owner="none", reasons=[], note="x"), decoy("verifier"))), needle="G02 must be planned or implemented")
+run("F1.1: P02 moved to global_requirements", decl(move("P02", "further_requirements", "global_requirements")), needle="P02 must be in further_requirements")
 run("a requirement downgraded to not_implemented loses its reason's owner", decl(lambda d: further("V03")(d).update(status="not_implemented", owner="none", reasons=[], note="x")))
 def dup_contract(d):
     n = d["spec"]["config_surface"]["nodes"][1]

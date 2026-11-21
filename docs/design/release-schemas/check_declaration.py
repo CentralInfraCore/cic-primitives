@@ -152,6 +152,15 @@ for g in ("G01", "G02", "G03", "V08", "V09", "P01", "P02"):
         problems.append("5: the required requirement %s is missing (G01-G03 admission profile; V08, V09, P01 the module release decisions of review #38 P5; P02 the producer side of the integer range, decision P7)" % g)
 # review #45 F1: the shared reason is bound to the requirement IDENTIFIERS, so that no other entry can stand in for them
 byid = {e["id"]: e for s in ("further_requirements", "global_requirements") for e in declared.get(s) or []}
+# review #45 F1.1: the SECTION is part of the binding; every check below reads the same entry, found by identifier
+in_global = {e["id"] for e in declared.get("global_requirements") or []}
+in_further = {e["id"] for e in declared.get("further_requirements") or []}
+if "G02" in byid and "G02" not in in_global:
+    problems.append("5: G02 must be in global_requirements (the closed domain is a whole-record rule), not in further_requirements")
+if "P02" in byid and "P02" not in in_further:
+    problems.append("5: P02 must be in further_requirements (the producer side is a rule a schema cannot express), not in global_requirements")
+if "G02" in byid and byid["G02"].get("status") not in ("planned", "implemented"):
+    problems.append("5: G02 must be planned or implemented, not %r: a not_implemented closed domain is no executor" % (byid["G02"].get("status"),))
 if "G02" in byid and byid["G02"].get("owner") != "verifier":
     problems.append("5: G02 must be owned by the verifier (decision P7: the verifier checks the closed domain independently), not %r" % (byid["G02"].get("owner"),))
 if "P02" in byid:
@@ -161,7 +170,7 @@ if "P02" in byid:
         problems.append("5: P02 must name the reason integer_out_of_range (another entry naming it does not stand in for P02)")
     if byid["P02"].get("status") not in ("planned", "implemented"):
         problems.append("5: P02 must be planned or implemented, not %r: a not_implemented producer check is no executor" % (byid["P02"].get("status"),))
-g2 = [e for e in declared.get("global_requirements") or [] if e["id"] == "G02"]
+g2 = [byid["G02"]] if "G02" in byid else []   # by identifier, from either section (F1.1): a G02 moved to another section is not skipped
 if g2 and not ("2^53" in g2[0].get("text", "") and "opaque" in g2[0].get("text", "")):
     problems.append("5: G02 must state the 2^53-1 bound over the whole tree including opaque members")
 if g2 and "independent" not in g2[0].get("text", ""):

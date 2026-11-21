@@ -33,7 +33,7 @@ For each point: what is undecided, what depends on it, what it blocks, and what 
 ### P7: reason for an out-of-range integer: DECIDED
 
 * **Decision (owner, 2026-11-21): option B.** The final reason is `integer_out_of_range`; the permitted range is -(2^53-1) .. +(2^53-1) inclusive; the check is made by the producer and by the verifier, and the verifier checks independently and never relies on the producer's result; it covers the whole value tree, opaque contents included; the historical profile H is unchanged. A value of another type keeps `value_type_unsupported`.
-* **Recorded in:** the generalization plan (closed domain, EN and HU), the declaration (G02 names both reasons and states the independence; the new requirement P02 is the producer side), `check_declaration.py` (38 reasons; a shared reason needs both a verifier and a producer executor) and its self-test (14 new planted defects; since review #45 F1 G02 and P02 are bound to their identifiers and tested against a decoy entry).
+* **Recorded in:** the generalization plan (closed domain, EN and HU), the declaration (G02 names both reasons and states the independence; the new requirement P02 is the producer side), `check_declaration.py` (38 reasons; a shared reason needs both a verifier and a producer executor) and its self-test (20 new planted defects; since review #45 F1 and F1.1 G02 and P02 are bound to their identifiers and sections and tested against a decoy entry and a move to the other section).
 * **Not done:** any implementation (the reference verifier, the producer, vectors). The requirements are `planned`.
 
 ### P1: regular-expression flavor of `pattern`

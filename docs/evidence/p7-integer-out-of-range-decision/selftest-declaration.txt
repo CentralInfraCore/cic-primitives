@@ -40,6 +40,12 @@ F1: G02 stripped of the reason, a decoy verifier entry names it -> refused (as e
 F1: G02 owned by the producer                                  -> refused (as expected)  [4: G02 names the owner 'producer' for the reason 'value_type_unsupport]
 F1: G02 downgraded to not_implemented, a decoy verifier entry names the reason -> refused (as expected)  [5: the reason 'value_type_unsupported' has no owner in the declaration]
 F1: P02 removed, a decoy producer entry names the reason       -> refused (as expected)  [5: the required requirement P02 is missing (G01-G03 admission profile;]
+F1.1: G02 moved to further_requirements                        -> refused (as expected)  [5: G02 must be in global_requirements (the closed domain is a whole-re]
+F1.1: G02 moved, stripped of the reason, a decoy verifier entry names it -> refused (as expected)  [5: G02 must be in global_requirements (the closed domain is a whole-re]
+F1.1: G02 moved, the independence statement removed            -> refused (as expected)  [5: G02 must be in global_requirements (the closed domain is a whole-re]
+F1.1: G02 moved, the 2^53 statement weakened                   -> refused (as expected)  [5: G02 must be in global_requirements (the closed domain is a whole-re]
+F1.1: G02 not_implemented, a decoy verifier entry names the reason -> refused (as expected)  [5: the reason 'value_type_unsupported' has no owner in the declaration]
+F1.1: P02 moved to global_requirements                         -> refused (as expected)  [5: P02 must be in further_requirements (the producer side is a rule a ]
 a requirement downgraded to not_implemented loses its reason's owner -> refused (as expected)  [5: the reason 'artifact_order' has no owner in the declaration (a norm]
 the same contract entry twice in a part (would overwrite)      -> refused (as expected)  [1: the parts declare ('common', '$.version', 'pattern', "'^(0|[1-9][0-]
 the Form no longer lists a node of the probe                   -> refused (as expected)  [3: K01_primitive_release: the Form lists ['$.version'], the nodes decl]
@@ -55,4 +61,4 @@ composition: a duplicate nested name inside the kind part              -> refuse
 composition: a kind part with a different aggregate_ref                -> refused, as expected
 composition: a kind part with an unknown config_surface key            -> refused, as expected
 composition: a kind part ADDS a field to provenance (merged by path)   -> merged as expected
-57 of 57 checks as expected
+63 of 63 checks as expected
