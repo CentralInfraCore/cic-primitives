@@ -1,0 +1,26 @@
+# A `pattern` contract: zárt reguláriskifejezés-profil (P1, terv és mérés)
+
+Az angol változat (`docs/en/GRAMMAR-PATTERN-PROFILE-DESIGN.md`) a normatív forrás; ez az összefoglaló. **Tervvázlat, csak dokumentáció és evidence**: grammatika, ellenőrző, Forms, verifier, P2, P4, #166 és a sémavéglegesítés nem változik. A *jelölt* jelölésű elemek javaslatok, nem döntések.
+
+**Kiindulás: a tulajdonosi irány (2026-11-21).** Zárt, explicit RE2-részhalmaz; teljes illeszkedés, a `^`/`$` csak a külső határon; a `.` sosem illeszt LF-et, a `$` nem enged át záró LF-et; ASCII osztályok, a `.` egy kódpont az LF kivételével; önálló pattern-profile pin, a node-név grammatikától független életciklussal; a meglévő minták szövege változatlan, a kompatibilitás mérve; közös vektorkészlet Python/Go/Rust között kötelező CI-kapuval. Hozzáadva: erőforráskorlátok és fail-closed szemantika (nem támogatott szintaxis fordítási elutasítás, nincs natív visszaesés).
+
+**Ma nincs meghatározva** (`schemas/atomic/contract.yaml`: `pattern: regex`): nincs ízesítés, horgonyzási szabály, korlát. Egyetlen olvasója a Python `jsonschema` a grammatika-ellenőrzőben (`re.search`).
+
+**Mérések** (`docs/evidence/grammar-pattern-measurement/`):
+1. **Leltár:** 9 különböző `pattern` contract (37 deklaráció), **mind a jelölt részhalmazon belül** (hossz ≤ 89, ismétlés ≤ 64, beágyazás 1, ≤ 3 korlátlan ismétlés, csoportra egy sem). A grammatika saját JSON Schema mintái (9 különböző) más réteg, részhalmazon kívül.
+2. **Szemantikai paritás a részhalmazon belül:** 117 eset, a három motor **mind a 117-en azonos**, és megegyezik egy független elvárással.
+3. **A régi olvasat egyetlen ponton tér el:** a Python `re.search` az érvényes érték + **egy záró LF**-et is elfogadja (mind a 9 contractnál, a `vault:v1:.+`-nál a `\r\n`-t is; 10 eset a 117-ből). Go és Rust sosem.
+4. **Valós adat:** a `v0.2.1` rekord, az aranyrekord és a probe-rekord 127 mintával kötött értékéből **0** tartalmaz sortörést, **0** verdikt változik.
+5. **A részhalmazon kívüli szintaxis eltér:** 70 szerkezetből **20-nál a három motor eltérő eredményt ad** (pl. `a{,3}`, `[a-z&&[^b]]`, `a++`, `(?i)`, `\p{L}`, `\Q..\E`); a részhalmaz 23 mért szerkezete mindenhol azonos. Natív visszaesés tehát motorfüggővé tenné a verdiktet.
+6. **A fordítási korlátok eltérnek:** ismétlés > 1000 csak Go-ban hiba; 250 mélységű beágyazás Rustban, 500 Pythonban hiba; a 100 × 100 beágyazott ismétlést a Go, az 1000 × 1000-et a Rust utasítja el. A szintaxis önmagában nem ad azonos erőforrás-viselkedést.
+7. **Futási idő** (egy futás, tájékoztató): a Python visszalépéses motorja **exponenciális** a `(a+)+$`-on (28 karakternél 7,8 s) és **polinomiális** a szomszédos korlátlan ismétléseken (`a*a*a*$`: 256 karakternél 11 ms, 1024-nél 660 ms, 8000-nél > 10 s); Go és Rust minden esetben 0,5 ms alatt marad.
+
+**A profil (jelölt):** teljes illeszkedés, a horgonyok csak a külső határon; zárt szintaxis (literál, `.`, ASCII osztály, sima csoport, `|`, `* + ? {n} {n,m} {n,}` mohón); tiltott: `\d \w \s \b \n \x \u`, visszahivatkozás, tagadott és POSIX osztály, `(?...)`, lusta és birtokló kvantor, nem ASCII minta. **Erőforrás-szabályok (jelölt számok):** minta ≤ 256 karakter; egy ismétlésszám ≤ 255; csoport-beágyazás ≤ 4; beágyazott ismétlések szorzata ≤ 1000; korlátlan kvantor csak egyetlen atomra, **csoportra sosem**; legfeljebb 3 korlátlan kvantor; az illesztett érték ≤ 256 kódpont (hosszabb érték nem illeszkedik). **Fail-closed:** a profilon kívüli kifejezést a séma beolvasásakor elutasítja a producer és a verifier is, az egész sémát; nincs natív visszaesés, nincs flag.
+
+**Verziózás és kompatibilitás:** saját, explicit pin, a node-név verziójától független; a kötés mint az `access-policy/1`-nél és a node-névnél (a verzió a pinelt séma és a feldolgozási környezet tulajdona, sosem dokumentumkulcs; nincs default; három külön hiba). Javasolt hely: `spec.pattern_profile.version` a `contract.yaml`-ban (jelölt név). A 9 meglévő minta szövege változatlan; a profil **nem töri** egyetlen meglévő rekordot vagy sémát sem (semmi nem értékel ma sémamintát élesben).
+
+**Vektorok és kapu (terv, itt nem épül):** közös vektorkészlet a node-név vektorok stílusában (profil-verdikt + három motor + elutasítási vektorok), a Go és Rust runner építése és futtatása minden CI-futásban, azonos hiba beültetése mindkét runnerbe, a kapu bukásának bizonyítása. A prototípus az evidence: `probe_engines.py`, `gate_selftest.py` (4 beültetett hiba, 4 detektálva, köztük ugyanaz mindkét runnerben), `subset_check.py` + önteszt + mutáció (12 detektálva, 1 elfedett, kimondva), `compat_records.py`.
+
+**Nyitott pontok a tulajdonosnak:** O1 a verziómező neve és helye; O2 a korlátértékek; O3 a reason azonosítók (munkanevek: `pattern_syntax_unsupported`, `pattern_value_too_long`; nincs deklarációban); O4 a hatókör (a `pattern` contract; a grammatika saját JSON Schema mintái maradnak); O5 a Python referencia-kiértékelő (szabályok a `re` előtt, vagy lineáris motor; ajánlott: szabályok); O6 a pin kötelező-e (ajánlott: igen).
+
+**Nem állítom:** más motorverziók viselkedését; hogy a futási idők többek egy gépen mért tájékoztató értéknél; hogy a korlátértékek optimálisak; a Forms vagy verifier viselkedését (egyik sem értékel sémamintát).
