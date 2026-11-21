@@ -1,0 +1,15 @@
+google-re2  [official RE2 bindings]
+  latest 1.1.20251105 (2025-11-05); 26 releases since 2019-09-26; summary: RE2 Python bindings
+  license: - ['License :: OSI Approved :: BSD License']; home: https://github.com/google/re2
+  wheels for cp314/abi3 of the latest: 11 (macosx_13_0_arm64, macosx_13_0_x86_64, macosx_14_0_arm64, macosx_14_0_x86_64, macosx_15_0_arm64, macosx_15_0_x86_64, manylinux_2_26_aarch64.manylinux_2_28_aarch64, manylinux_2_27_x86_64.manylinux_2_28)
+  sdist: True
+pyre2  [third-party Cython wrapper of RE2]
+  latest 0.3.14 (2026-09-25); 8 releases since 2020-10-27; summary: Python wrapper for Google RE2 library using Cython
+  license: BSD-3-Clause ; home: https://github.com/andreasvc/pyre2
+  wheels for cp314/abi3 of the latest: 4 (macosx_14_0_arm64, manylinux2014_x86_64.manylinux_2_17_x86_64, manylinux_2_24_aarch64.manylinux_2_28_aarch64, win_amd64)
+  sdist: True
+regex  [backtracking engine, a superset of re]
+  latest 2026.11.19 (2026-11-18); 375 releases since 2010-02-17; summary: Alternative regular expression module, to replace re.
+  license: Apache-2.0 AND CNRI-Python ; home: https://github.com/mrabarnett/mrab-regex
+  wheels for cp314/abi3 of the latest: 16 (macosx_10_15_universal2, macosx_10_15_x86_64, macosx_11_0_arm64, manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64, manylinux2014_ppc64le.manylinux_2_17_ppc64le.manylinux_2_28_ppc64l)
+  sdist: True

@@ -1,0 +1,8 @@
+nfa: `.` also matches LF                                                       with canaries: caught by canary parity alone: DETECTED DETECTED
+nfa: prefix match instead of full match                                        with canaries: caught by canary parity alone: DETECTED DETECTED
+nfa: class upper bound exclusive                                               with canaries: caught by parity parity alone: DETECTED DETECTED
+nfa: bounded repeat has one optional copy too few                              with canaries: caught by parity parity alone: DETECTED DETECTED
+nfa: an optional copy may be skipped only at the end                           with canaries: caught by parity parity alone: DETECTED DETECTED
+re2g adapter: always answers match (constant engine)                           with canaries: caught by canary parity alone: DETECTED DETECTED
+re2g+re2p adapters: no full-match wrapper (the same defect in two engines)     with canaries: caught by canary parity alone: DETECTED DETECTED
+nfa+re2g+re2p: no full-match wrapper (the same defect in three engines)        with canaries: caught by canary parity alone: DETECTED DETECTED

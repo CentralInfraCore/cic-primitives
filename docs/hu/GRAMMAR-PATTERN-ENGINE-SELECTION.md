@@ -1,0 +1,21 @@
+# A `pattern` contract: a lineáris idejű kiértékelő kiválasztása (P1, O5)
+
+Az angol változat (`docs/en/GRAMMAR-PATTERN-ENGINE-SELECTION.md`) a normatív forrás; ez az összefoglaló. **Döntés-előkészítés, csak dokumentáció és izolált mérés.** A végleges motorválasztás a tulajdonosé. Nem része: a profil implementációja, normatív vektorkészlet, CI-kapu, séma- vagy grammatikamódosítás, az O2 (végleges korlátok) és az O3 (hibakódok), amelyek ennek lezárása után, külön PR-ban jönnek.
+
+**Kiindulás:** a `pattern` contract kiértékelőjének a legrosszabb esetben is lineáris időt kell garantálnia; visszalépéses motor nem megfelelő. A Go `regexp` és a Rust `regex` ezt már teljesíti; a nyitott kérdés a Python-oldali kiértékelő.
+
+**Jelöltek:** `re` (stdlib, alapvonal), `regex` (PyPI, visszalépéses), `google-re2` 1.1.20251105 (hivatalos RE2 kötés), `pyre2` 0.3.14 (harmadik fél, Cython), `nfa` (saját, 191 soros Thompson-NFA a zárt részhalmazra, függőség nélkül, csak azt futtatja, amit az osztályozó elfogadott), valamint a Go és a Rust mint nyelvközi referencia.
+
+**Mérések** (`docs/evidence/pattern-engine-selection/`; egy gép, egy futás, a nagyságrend és az egyezés az eredmény):
+1. **Háromnyelvű paritás:** 141 kézzel írt eset független elvárással (a 7 motor mind egyezik, a visszalépéseseket is beleértve) és egy rögzített magú differenciális fuzz: **1500 generált minta, 15000 eset, 0 eltérés** az öt lineáris motor (`nfa`, `re2g`, `re2p`, `go`, `rust`) között. Korlát: kis fuzz-ábécé, nem fedés-vezérelt.
+2. **Futási idő** (53 eset, a mintaméret-korlátoknál is): `re` **14 esetben > 10 s** (megölve), `regex` 1 esetben > 10 s (4,4 s a `(a|aa)+$` 36 karakternél); `re2g` 2,5 ms, `re2p` 3,3 ms, `nfa` 25 ms (65536 karakteres értéken; 17 ms a 256-os korlátnál), Go 1,7 ms, Rust 18,6 ms a legrosszabb eset.
+3. **Fordítási költség és memória:** a 9 meglévő contract fordítása `nfa`-val 21–102 µs, egy tipikus érték illesztése 2,4–44 µs; a korlátoknál a legrosszabb fordítás 2,5 ms, a csúcsmemória 4,2 MB (Go 4,5 MB, Rust 2,0 MB, `re2g` 0,5 MB). A saját kiértékelő 10–100x lassabb a natív motoroknál, és bármilyen release-ellenőrzési keretben elhanyagolható.
+4. **Fail-closed viselkedés:** a **`pyre2` alapbeállításban csendben elfogad 5 szerkezetet, amelyet maga az RE2 elutasít** (lookahead, negatív lookahead, lookbehind, visszahivatkozás, birtokló kvantor): átadja a Python `re`-nek (visszalépéses, más szemantika). Kikapcsolható, de csak folyamat-globális kapcsolóval. A `google-re2` hibával utasítja el őket; az `nfa` eleve csak az osztályozó által elfogadottat futtatja.
+5. **A mérés tud bukni:** 8 beültetett hiba (köztük ugyanaz a hiba két és három motorban egyszerre) mind detektálva, canary-val és **canary nélkül (csak a paritás-réteg)** is: 8/8 mindkétszer.
+6. **Függőség- és ellátásilánc-rekord** (PyPI, 2026-11-21): `google-re2` hivatalos (Google), de az utolsó kiadása 12 hónapos, natív bináris függőség; `pyre2` egy külső karbantartó, natív függőség, alapból fail-open; az `nfa` nem ad új függőséget, de a kód a projekté.
+
+**Ajánlás (a döntés a tulajdonosé):** (1) a normatív Python referencia-kiértékelő a saját `nfa` (vagy ugyanennek a specifikációnak egy implementációja) az osztályozó mögött: nincs új függőség, nem tud visszaesni, és a profil jelentése olvasható kódként a repóban él; (2) a `google-re2` opcionális keresztellenőrző motor a CI-kapuban (fejlesztői/CI, nem futásidejű függőség); (3) a `pyre2`, `re`, `regex` nem használt. Alternatíva, ha a tulajdonos nem akar saját kiértékelőt: a `google-re2` futásidejű kiértékelőként, ugyanazzal a kapuval és osztályozóval; a szemantikát ez nem érinti, csak a függőséget.
+
+**Döntések a tulajdonosnak:** E1 a Python referencia-kiértékelő (saját `nfa`, ajánlott, vagy `google-re2`); E2 a `google-re2` opcionális CI-keresztellenőrzőként (ajánlott: igen); E3 a kiértékelő verziója nem része a pinnek, a pin (O1) a **szemantikát** köti, a megfelelőséget a kapu adja (ajánlott).
+
+**Nem állítom:** más motorverziókat és platformokat (Windows, macOS nem futott); a wheel-ekbe csomagolt RE2 verzióját; a 15000 esetnél nagyobb fuzz-lefedettséget; hogy a valós munkaterhelés összideje mért (származtatott); a Forms vagy verifier viselkedését (egyik sem értékel sémamintát).
