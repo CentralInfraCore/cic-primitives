@@ -36,6 +36,7 @@ ok       'a{0}'
 ok       'a{0,3}'                                                     
 ok       '(a|aa){1,255}'                                              
 ok       '(a?){30}a{30}'                                              
+ok       '^aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 
 ok       '\\d+'                                                       refused: escape \d is not in the subset
 ok       '\\w'                                                        refused: escape \w is not in the subset
 ok       '\\s'                                                        refused: escape \s is not in the subset
@@ -109,4 +110,10 @@ ok       '(a|)'                                                       refused: a
 ok       '()'                                                         refused: an empty alternative, empty group or empty body is not in the subset
 ok       '^$'                                                         refused: an empty alternative, empty group or empty body is not in the subset
 ok       '^|a$'                                                       refused: an empty alternative, empty group or empty body is not in the subset
-111 vectors, 0 wrong
+ok       '^aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refused: longer than the length limit 256
+ok       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refused: longer than the length limit 256
+ok       '((((((((((a'                                                refused: group nesting deeper than the limit 4
+ok       'a{256}('                                                    refused: a repetition count above the limit 255
+ok       'a*a*a*a*('                                                  refused: more than 3 unbounded quantifiers
+ok       '(a{30}){40}('                                               refused: the product of nested repeat counts exceeds 1000
+118 vectors, 0 wrong

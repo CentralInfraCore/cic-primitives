@@ -11,6 +11,7 @@ Grammar of the candidate subset (everything not listed is refused; there is no f
 Metacharacters: \ . [ ] ( ) * + ? { } | ^ $
 The pattern text itself is ASCII printable only (0x20..0x7E).
 Counts are written without leading zeros ('{0}' is fine, '{01}' is refused); every alternative, group and the body is non-empty; inside a class the pairs '&&', '--', '~~' are refused.
+Resource limits are enforced BEFORE the parse (the length of the whole original text) and DURING it (nesting on entry of the recursion, counts as they are read), never after it.
 The limits bound the SIZE of the compiled program, NOT the worst-case time of a backtracking engine (see the timing probe): the evaluator must be linear-time.
 Limits (CANDIDATE values, to be decided from the measurement): see LIMITS.
 parse(p) returns a Result(ok, reason, stats) ; stats = length, max_repeat, depth, groups, unbounded (number of unbounded quantifiers), alt (alternations).
@@ -41,6 +42,8 @@ class P:
         c = self.peek(); self.i += 1; return c
 
     def alt(self, depth, end):
+        if depth > LIMITS["depth"]:   # on entry of the recursion, not after the parse
+            raise Refused("group nesting deeper than the limit %d" % LIMITS["depth"])
         self.stats["depth"] = max(self.stats["depth"], depth)
         prod = self.nonempty_concat(depth, end)
         while self.peek() == "|":
@@ -118,6 +121,10 @@ class P:
             return e
         return c
 
+    def check_unbounded(self):
+        if self.stats["unbounded"] > LIMITS["unbounded"]:
+            raise Refused("more than %d unbounded quantifiers" % LIMITS["unbounded"])
+
     def repeat(self, depth):
         kind, prod = self.atom(depth)
         c = self.peek()
@@ -125,6 +132,7 @@ class P:
             self.i += 1
             if c != "?":
                 self.stats["unbounded"] += 1
+                self.check_unbounded()
                 if kind == "group":
                     raise Refused("an unbounded quantifier on a group (resource rule: it may only follow a single atom)")
         elif c == "{":
@@ -141,11 +149,16 @@ class P:
                 raise Refused("repetition bounds out of order")
             if m.group(2) and not hi:
                 self.stats["unbounded"] += 1
+                self.check_unbounded()
                 if kind == "group":
                     raise Refused("an unbounded quantifier on a group (resource rule: it may only follow a single atom)")
             self.stats["max_repeat"] = max(self.stats["max_repeat"], top, n)
+            if max(top, n) > LIMITS["repeat"]:
+                raise Refused("a repetition count above the limit %d" % LIMITS["repeat"])
             prod *= max(top, 1)
             self.stats["repeat_product"] = max(self.stats["repeat_product"], prod)
+            if prod > LIMITS["repeat_product"]:
+                raise Refused("the product of nested repeat counts exceeds %d" % LIMITS["repeat_product"])
         if self.peek() in ("?", "*", "+", "{"):
             raise Refused("lazy, possessive or stacked quantifier is not in the subset")
         return prod
@@ -156,6 +169,8 @@ def parse(p):
     try:
         if not p:
             raise Refused("empty pattern")
+        if len(p) > LIMITS["length"]:   # the WHOLE original text (anchors included), before any syntactic processing
+            raise Refused("longer than the length limit %d" % LIMITS["length"])
         if any(not (0x20 <= ord(ch) <= 0x7E) for ch in p):
             raise Refused("the pattern text is not ASCII printable")
         s = p
@@ -171,16 +186,6 @@ def parse(p):
             raise Refused("'^' is allowed only at the outer start")
         if "$" in re.sub(r"\\.|\[(?:\\.|[^\]])*\]", "", body):
             raise Refused("'$' is allowed only at the outer end")
-        if st["length"] > LIMITS["length"]:
-            raise Refused("longer than the length limit %d" % LIMITS["length"])
-        if st["max_repeat"] > LIMITS["repeat"]:
-            raise Refused("a repetition count above the limit %d" % LIMITS["repeat"])
-        if st["depth"] > LIMITS["depth"]:
-            raise Refused("group nesting deeper than the limit %d" % LIMITS["depth"])
-        if st["unbounded"] > LIMITS["unbounded"]:
-            raise Refused("more than %d unbounded quantifiers" % LIMITS["unbounded"])
-        if st["repeat_product"] > LIMITS["repeat_product"]:
-            raise Refused("the product of nested repeat counts exceeds %d" % LIMITS["repeat_product"])
         return Result(True, "", st)
     except Refused as e:
         return Result(False, str(e), st)

@@ -2,9 +2,9 @@ escape d allowed                                               DETECTED
 negated class allowed                                          DETECTED
 group extension allowed                                        DETECTED
 lazy quantifier allowed                                        DETECTED
-length limit removed                                           DETECTED
+length limit removed (pre-parse)                               DETECTED
 repeat limit removed                                           DETECTED
-depth limit removed                                            DETECTED
+depth limit removed (on entry)                                 DETECTED
 unbounded-count limit removed                                  DETECTED
 repeat-product limit removed                                   DETECTED
 unbounded quantifier on a group allowed (the * + branch)       DETECTED

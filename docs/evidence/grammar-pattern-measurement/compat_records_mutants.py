@@ -3,10 +3,15 @@ import os, subprocess, sys, tempfile, shutil
 HERE = os.path.dirname(os.path.abspath(__file__)); src = open(os.path.join(HERE, "compat_records.py"), encoding="utf-8").read()
 M = [("the 256 code point limit is not applied", "    if not S.parse(expr).ok or len(v) > VALUE_MAX:", "    if not S.parse(expr).ok:"),
      ("the subset check is not applied", "    if not S.parse(expr).ok or len(v) > VALUE_MAX:", "    if len(v) > VALUE_MAX:"),
-     ("a mandatory node with no value is not refused", "    if n_nodes_without:\n", "    if False:\n"),
+     ("element-level gaps are not refused", "    if bad:\n", "    if False:\n"),
      ("an expression outside the subset is not refused", "    if outside:\n", "    if False:\n"),
      ("too few values are not refused", "    if n_vals < MIN_VALUES:\n", "    if False:\n"),
-     ("a mandatory node is not counted when it has no value", "        if not vs and mandatory and not nullable:", "        if False:")]
+     ("a mandatory key missing in an element is not counted", "                if mandatory:\n                    a.missing += 1", "                if mandatory:\n                    pass"),
+     ("a null where null is not allowed is not counted", "            if v is None:\n                if not nullable:\n                    a.null_bad += 1", "            if v is None:\n                if not nullable:\n                    pass"),
+     ("a null item inside a collection is not counted", "                if it is None:\n                    if not nullable:\n                        a.null_bad += 1", "                if it is None:\n                    if not nullable:\n                        pass"),
+     ("a non-string leaf value is not counted", "                    else:\n                        a.type_bad += 1\n                else:", "                    else:\n                        pass\n                else:"),
+     ("an element that is not a mapping is not counted", "            if not isinstance(x, dict):\n                a.type_bad += 1; continue", "            if not isinstance(x, dict):\n                continue"),
+     ("a collection that is not a list is not counted", "                if not isinstance(v, list):\n                    a.type_bad += 1; continue", "                if not isinstance(v, list):\n                    continue")]
 bad = 0
 for name, a, b in M:
     if src.count(a) != 1:
