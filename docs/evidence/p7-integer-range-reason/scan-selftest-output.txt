@@ -1,0 +1,13 @@
+a complete scan with no finding                              expected 0 got 0 ok
+a real finding (2^53)                                        expected 3 got 3 ok
+a negative finding (-2^53)                                   expected 3 got 3 ok
+the bound itself is no finding                               expected 0 got 0 ok
+the tag does not exist (git fails)                           expected 1 got 1 ok
+the required record is absent from the tag                   expected 1 got 1 ok
+the required record is empty                                 expected 1 got 1 ok
+the required record is not YAML                              expected 1 got 1 ok
+the required record is a bare scalar                         expected 1 got 1 ok
+no fixture is found                                          expected 1 got 1 ok
+a fixture is unreadable YAML                                 expected 1 got 1 ok
+an incomplete scan hidden behind a finding elsewhere         expected 1 got 1 ok
+12 of 12 cases as expected

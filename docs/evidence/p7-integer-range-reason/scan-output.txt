@@ -1,7 +1,11 @@
-primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml        integers=2 max_abs=(2, '$.provenance.envelope') beyond_2^53-1=0
-primitives/@v0.2.1:release/cic-primitives-v0.2.1.yaml        integers=6 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
-tests/fixtures/envelope3/golden-record.yaml                  integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
-docs/evidence/release-schema-draft-probe/base-record.yaml    integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
+primitives/@v0.1.4:release/cic-primitives-v0.1.4.yaml          integers=0 max_abs=- beyond_2^53-1=0
+primitives/@v0.1.5:release/cic-primitives-v0.1.5.yaml          integers=0 max_abs=- beyond_2^53-1=0
+primitives/@v0.2.0:release/cic-primitives-v0.1.5.yaml          integers=0 max_abs=- beyond_2^53-1=0
+primitives/@v0.2.0:release/cic-primitives-v0.2.0.yaml          integers=2 max_abs=(2, '$.provenance.envelope') beyond_2^53-1=0
+primitives/@v0.2.1:release/cic-primitives-v0.1.5.yaml          integers=0 max_abs=- beyond_2^53-1=0
+primitives/@v0.2.1:release/cic-primitives-v0.2.1.yaml          integers=6 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
+tests/fixtures/envelope3/golden-record.yaml                    integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
+docs/evidence/release-schema-draft-probe/base-record.yaml      integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
 docs/evidence/release-schema-draft-probe/cases/K01_primitive_release/docs/inf_bad_digest_form.yaml integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
 docs/evidence/release-schema-draft-probe/cases/K01_primitive_release/docs/inf_bad_kind.yaml integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
 docs/evidence/release-schema-draft-probe/cases/K01_primitive_release/docs/inf_bad_source_commit.yaml integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
@@ -36,4 +40,4 @@ docs/evidence/release-schema-draft-probe/cases/K03_primitive_record_against_modu
 docs/evidence/release-schema-draft-probe/cases/K03_primitive_record_against_module_schema/schema.yaml integers=1 max_abs=(1, '$.spec.config_surface.nodes[6].fields[1].min_items') beyond_2^53-1=0
 docs/evidence/release-schema-draft-probe/cases/K04_module_record_against_primitive_schema/docs/neg_module_record.yaml integers=2 max_abs=(3, '$.provenance.envelope') beyond_2^53-1=0
 docs/evidence/release-schema-draft-probe/cases/K04_module_record_against_primitive_schema/schema.yaml integers=2 max_abs=(1, '$.spec.config_surface.nodes[6].fields[1].min_items') beyond_2^53-1=0
-files scanned (fixtures and the probe base record): 38  integers beyond 2^53-1 in all scanned files: 0
+required records processed: 4 of 4; fixture files scanned: 38; integers beyond 2^53-1 in all scanned files: 0
