@@ -16,11 +16,12 @@ sys.path.insert(0, HERE)
 import compose as C
 PLAN_REASONS = {"kind_missing", "kind_unsupported", "kind_schema_violation", "schema_field_collision"}
 A_REASONS = {"reading_differs", "reading_key_differs", "reading_structure_differs", "reading_value_differs", "duplicate_key", "key_not_string",
-             "value_type_unsupported", "alias_forbidden", "merge_key_forbidden", "tag_forbidden", "multiple_documents", "encoding_form"}
+             "value_type_unsupported", "integer_out_of_range", "alias_forbidden", "merge_key_forbidden", "tag_forbidden", "multiple_documents", "encoding_form"}
 BLOB_REASONS = {"artifact_absent", "artifact_digest_mismatch", "artifact_not_regular"}
 MODULE_REASONS = {"module_identity_mismatch"}          # proposed by this draft (review #38 P5.1), not yet named by the plan
 PRODUCER_REASONS = {"declaration_required_path_missing"}   # the module release plan: a producer-side refusal
 COMPOSITION_REASONS = {"schema_field_collision"}
+SHARED_REASONS = {"integer_out_of_range"}   # P7 (owner decision 2026-11-21): refused by the producer AND, independently, by the verifier; both executors must be declared
 OWNERS = {"verifier", "producer", "composition"}      # who executes; "none" is only for not_implemented
 problems = []
 
@@ -99,8 +100,9 @@ PLANNED = PLAN_REASONS | A_REASONS | MODULE_REASONS | PRODUCER_REASONS          
 inventory = IMPLEMENTED | PLANNED
 STATUSES = {"implemented", "planned", "not_implemented", "implemented_draft"}
 owned = {}
-def expected_owner(reason):
-    return "composition" if reason in COMPOSITION_REASONS else "producer" if reason in PRODUCER_REASONS else "verifier"
+def allowed_owners(reason):
+    return {"verifier", "producer"} if reason in SHARED_REASONS else {"composition"} if reason in COMPOSITION_REASONS else {"producer"} if reason in PRODUCER_REASONS else {"verifier"}
+owners_of = {}   # reason -> the set of owners that execute it (a shared reason needs both)
 def account(rid, owner, status, reasons, note):
     # the executor: explicit, valid, and consistent with the status and with the kind of reason
     if owner is None:
@@ -124,9 +126,10 @@ def account(rid, owner, status, reasons, note):
             problems.append("4: %s claims implemented for %r, which the reference verifier does not make" % (rid, r))
         if status == "planned" and r in IMPLEMENTED:
             problems.append("4: %s says planned for %r, which the reference verifier already makes" % (rid, r))
-        if owner != expected_owner(r):
-            problems.append("4: %s names the owner %r for the reason %r, which only a %s executes" % (rid, owner, r, expected_owner(r))); continue
+        if owner not in allowed_owners(r):
+            problems.append("4: %s names the owner %r for the reason %r, which only a %s executes" % (rid, owner, r, " or a ".join(sorted(allowed_owners(r))))); continue
         owned.setdefault(r, []).append(rid)
+        owners_of.setdefault(r, set()).add(owner)
 for e in declared["contracts"]:
     account(e["id"], e["verifier"].get("owner"), e["verifier"].get("status"), e["verifier"]["reasons"], e["verifier"].get("note"))
 for sect in ("further_requirements", "global_requirements"):
@@ -140,13 +143,40 @@ if len(all_ids) != len(set(all_ids)):
     problems.append("5: duplicate requirement ids across the declaration")
 for r in sorted(inventory - set(owned)):
     problems.append("5: the reason %r has no owner in the declaration (a normative check would be silently absent)" % r)
+for r in sorted(SHARED_REASONS):
+    if r in owned and owners_of.get(r, set()) != {"verifier", "producer"}:
+        problems.append("5: the shared reason %r must have BOTH a verifier and a producer executor in the declaration (has %s): the verifier never relies on the producer" % (r, sorted(owners_of.get(r, set()))))
 have = {e["id"] for s in ("further_requirements", "global_requirements") for e in declared.get(s) or []}
-for g in ("G01", "G02", "G03", "V08", "V09", "P01"):
+for g in ("G01", "G02", "G03", "V08", "V09", "P01", "P02"):
     if g not in have:
-        problems.append("5: the required requirement %s is missing (G01-G03 admission profile; V08, V09, P01 the module release decisions of review #38 P5)" % g)
-g2 = [e for e in declared.get("global_requirements") or [] if e["id"] == "G02"]
+        problems.append("5: the required requirement %s is missing (G01-G03 admission profile; V08, V09, P01 the module release decisions of review #38 P5; P02 the producer side of the integer range, decision P7)" % g)
+# review #45 F1: the shared reason is bound to the requirement IDENTIFIERS, so that no other entry can stand in for them
+byid = {e["id"]: e for s in ("further_requirements", "global_requirements") for e in declared.get(s) or []}
+# review #45 F1.1: the SECTION is part of the binding; every check below reads the same entry, found by identifier
+in_global = {e["id"] for e in declared.get("global_requirements") or []}
+in_further = {e["id"] for e in declared.get("further_requirements") or []}
+if "G02" in byid and "G02" not in in_global:
+    problems.append("5: G02 must be in global_requirements (the closed domain is a whole-record rule), not in further_requirements")
+if "P02" in byid and "P02" not in in_further:
+    problems.append("5: P02 must be in further_requirements (the producer side is a rule a schema cannot express), not in global_requirements")
+if "G02" in byid and byid["G02"].get("status") not in ("planned", "implemented"):
+    problems.append("5: G02 must be planned or implemented, not %r: a not_implemented closed domain is no executor" % (byid["G02"].get("status"),))
+if "G02" in byid and byid["G02"].get("owner") != "verifier":
+    problems.append("5: G02 must be owned by the verifier (decision P7: the verifier checks the closed domain independently), not %r" % (byid["G02"].get("owner"),))
+if "P02" in byid:
+    if byid["P02"].get("owner") != "producer":
+        problems.append("5: P02 must be owned by the producer (decision P7: the producer side of the integer range), not %r" % (byid["P02"].get("owner"),))
+    if "integer_out_of_range" not in (byid["P02"].get("reasons") or []):
+        problems.append("5: P02 must name the reason integer_out_of_range (another entry naming it does not stand in for P02)")
+    if byid["P02"].get("status") not in ("planned", "implemented"):
+        problems.append("5: P02 must be planned or implemented, not %r: a not_implemented producer check is no executor" % (byid["P02"].get("status"),))
+g2 = [byid["G02"]] if "G02" in byid else []   # by identifier, from either section (F1.1): a G02 moved to another section is not skipped
 if g2 and not ("2^53" in g2[0].get("text", "") and "opaque" in g2[0].get("text", "")):
     problems.append("5: G02 must state the 2^53-1 bound over the whole tree including opaque members")
+if g2 and "independent" not in g2[0].get("text", ""):
+    problems.append("5: G02 must state that the verifier checks independently of the producer (decision P7)")
+if g2 and not {"value_type_unsupported", "integer_out_of_range"} <= set(g2[0].get("reasons") or []):
+    problems.append("5: G02 must name both value_type_unsupported (a type outside the domain) and integer_out_of_range (a magnitude outside the domain)")
 node_n = sum(1 for k in from_decl if k[1] != "surface")
 n_exec = sum(1 for s in ("contracts", "further_requirements", "global_requirements") for e in declared[s] if (e["verifier"] if s == "contracts" else e)["status"] != "not_implemented")
 n_none = sum(1 for s in ("contracts", "further_requirements", "global_requirements") for e in declared[s]) - n_exec

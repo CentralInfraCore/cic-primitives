@@ -390,6 +390,12 @@ further_requirements:
   reasons:
   - declaration_required_path_missing
   note: 'ModuleRelease only (review #38 P5.2, module release plan): the producer refuses a declaration that lacks module/module.wasm or project.yaml before emitting a record.'
+- id: P02
+  owner: producer
+  status: planned
+  reasons:
+  - integer_out_of_range
+  note: 'Decision P7 (owner, 2026-11-21): the producer refuses to emit a record that holds an integer outside -(2^53-1) .. +(2^53-1) anywhere in the value tree, opaque member contents included. The verifier does not rely on this (G02 is checked independently). Not implemented.'
 global_requirements:
 - id: G01
   scope: whole record, admission profile A (plan section 5)
@@ -409,8 +415,10 @@ global_requirements:
   status: planned
   reasons:
   - value_type_unsupported
-  text: 'Closed value domain over the WHOLE value tree, opaque member contents included: null, boolean, integer with absolute value at most 2^53-1, string. Not only the declared integer fields. OPEN (P7): the plan names no separate reason for an out-of-range
-    integer; value_type_unsupported is used until the owner decides.'
+  - integer_out_of_range
+  text: 'Closed value domain over the WHOLE value tree, opaque member contents included: null, boolean, integer in the range -(2^53-1) .. +(2^53-1) inclusive, string. Not only the declared integer fields. A value of another type is refused with value_type_unsupported; an
+    integer outside the range is refused with integer_out_of_range (decision P7, owner, 2026-11-21: two distinct events, a type error and a range error). The verifier checks independently of the producer and never relies on the producer''s result (the producer side is P02).
+    Admission profile A only: the historical profile H is unchanged.'
 - id: G03
   scope: raw parse, admission profile A
   owner: verifier

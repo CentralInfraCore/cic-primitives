@@ -1,6 +1,6 @@
 # P7: the reason for an integer beyond 2^53 - 1 (decision preparation)
 
-Status: **decision preparation, not a decision.** Documentation and evidence only: no plan text, declaration, checker or verifier is changed here. The decision is the owner's.
+Status: **DECIDED (owner, 2026-11-21): option B.** Sections 1 to 6 are the preparation (#44, unchanged); section 7 records the decision and its effect. Normative decision and declaration only: **no implementation** (the reference verifier, the producer and the vectors are not changed).
 
 ## 1. The question
 
@@ -50,3 +50,13 @@ Open inside B, for the owner: the final identifier (`integer_out_of_range` is a 
 * No claim that any reader other than PyYAML, the Rust Form and the Go Form behaves in a given way beyond the bound (JavaScript and others are not measured).
 * No claim about the plan's future text, or about reasons other than this one.
 * The scan covers the four tagged records, `tests/fixtures` and the release-schema probe records; it does not cover records that exist only outside these repositories.
+
+## 7. Decision (owner, 2026-11-21) and its effect
+
+* **Reason:** `integer_out_of_range` (the identifier asked about in section 4 is final). A value of another type is refused with `value_type_unsupported`: a type error and a range error are two distinct events.
+* **Range:** -(2^53-1) .. +(2^53-1), inclusive.
+* **Where:** the producer refuses to emit such a record **and** the verifier refuses it; the verifier checks **independently** and never relies on the producer's result.
+* **Scope:** the whole value tree, the contents of opaque members included.
+* **Profile H:** unchanged.
+* **Effect in the repository (this change):** the generalization plan, EN and HU (closed domain and the parse stage); `contract-conformance.yaml` (G02 names both reasons and states the independence; the new requirement P02 is the producer side; both `planned`); `check_declaration.py` (38 known reasons; the new notion of a shared reason: a reason with a verifier executor and a producer executor, both required; **bound to the requirement identifiers and sections** (review #45 F1, F1.1): G02 must be in `global_requirements`, owned by the verifier, planned or implemented, name both reasons and state the independence; P02 must be in `further_requirements`, owned by the producer, planned or implemented and name `integer_out_of_range`; every check reads the entry found by identifier, so that no other entry can stand in for them and a move to another section skips nothing; P02 required); `selftest_declaration.py` (63 checks, 61 planted defects, 20 of them new: 7 for the decision, 7 for review #45 F1 and 6 for F1.1); the open-points and design documents. Evidence: `docs/evidence/p7-integer-out-of-range-decision/`.
+* **Not done:** the reference verifier does not make the profile A checks; the producer does not refuse; no vector exists. The five boundary vectors of section 5 remain to be written with the implementation. The reason is **not** added to the published contract table (section 11 of `RELEASE-RECORD-CONTRACT.md`), because the verifier does not emit it yet.

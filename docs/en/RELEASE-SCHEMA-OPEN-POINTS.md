@@ -1,6 +1,6 @@
 # Release schema set: status after D1 and the open decision points
 
-Status date: 2026-11-21. Status of the schemas: **DRAFT**.
+Status date: 2026-11-21 (updated after the merges of cic-primitives #44, cic-primitive-forms #168 and the P7 decision). Status of the schemas: **DRAFT**.
 
 Grammatical conformance is not semantic completeness. This document records the first and lists what is missing for the second.
 
@@ -12,8 +12,9 @@ Grammatical conformance is not semantic completeness. This document records the 
 | P1 regular-expression flavor of `pattern` | **OPEN** | design doc section 7 |
 | P2 expression dialect of `must` | **OPEN** | design doc section 7 |
 | P4 `timestamp` pattern against `format: date-time` | **OPEN** | design doc section 7 |
-| P7 reason for an integer beyond 2^53-1 | **OPEN** | design doc section 7, declaration G02 |
-| Forms #167 surface-level `validation` is neither evaluated nor listed | **OPEN** | the four `must` entries are declared `not_reported` |
+| P7 reason for an integer beyond 2^53-1 | **DECIDED** (normative decision recorded; implementation not done) | owner, 2026-11-21: `integer_out_of_range`; `docs/en/RELEASE-P7-INTEGER-RANGE-REASON.md`, plan section on the closed domain, declaration G02 and P02 |
+| Forms #167 visibility of the surface-level `validation` | **CLOSED** | cic-primitive-forms #168 (`0dec0e7b`): the entries are listed in `unevaluated_surface_contracts` (the declaration's Form status for the four entries still says `not_reported`; it is updated with the finalization) |
+| Forms #167 evaluation of the surface-level `validation` | **OPEN**, depends on P2 | no evaluation exists; the issue stays open |
 | The schemas (`common`, `primitive-release`, `module-release`, `composition`, declaration) | **DRAFT** | unchanged byte for byte; `final` is not given while P1, P2, P4, P7 and #167 are open |
 
 The sentence "D1 blocks finalization" in the header of `common.yaml` and in section 6 of the design doc is **stale**: D1 no longer blocks, but D1 was never the only blocker (section 7 of the design doc says so for P1, P2, P4). The header is not edited here: the probe evidence digests bind the file bytes, and a status-only comment change is not worth invalidating them. The next change of the part files (the finalization pull request) fixes the header.
@@ -29,12 +30,11 @@ For each point: what is undecided, what depends on it, what it blocks, and what 
 * **Blocks:** the declaration's Form status for those entries (`not_reported` today); V09 and the kind checks have the verifier as named owner regardless.
 * **Recommendation:** decide visibility first (list as unevaluated, like node-level entries; cheap, no dialect needed), evaluation later with P2.
 
-### P7: reason for an out-of-range integer
+### P7: reason for an out-of-range integer: DECIDED
 
-* **Undecided:** the plan names no reason for an integer with absolute value above 2^53-1; `value_type_unsupported` is used.
-* **Depends on:** the reason inventory of the generalization plan and of the Relay module release plan (37 identifiers are accounted for by `check_declaration.py`).
-* **Blocks:** G02 text; a new identifier would add one to the inventory and to the Relay plan.
-* **Recommendation:** an owner decision only, no tooling; either keep `value_type_unsupported` explicitly or name a new reason in the plan first.
+* **Decision (owner, 2026-11-21): option B.** The final reason is `integer_out_of_range`; the permitted range is -(2^53-1) .. +(2^53-1) inclusive; the check is made by the producer and by the verifier, and the verifier checks independently and never relies on the producer's result; it covers the whole value tree, opaque contents included; the historical profile H is unchanged. A value of another type keeps `value_type_unsupported`.
+* **Recorded in:** the generalization plan (closed domain, EN and HU), the declaration (G02 names both reasons and states the independence; the new requirement P02 is the producer side), `check_declaration.py` (38 reasons; a shared reason needs both a verifier and a producer executor) and its self-test (20 new planted defects; since review #45 F1 and F1.1 G02 and P02 are bound to their identifiers and sections and tested against a decoy entry and a move to the other section).
+* **Not done:** any implementation (the reference verifier, the producer, vectors). The requirements are `planned`.
 
 ### P1: regular-expression flavor of `pattern`
 
@@ -65,17 +65,16 @@ For each point: what is undecided, what depends on it, what it blocks, and what 
 ## 3. Dependencies and proposed order
 
 ```
-#167 visibility ──┐
-                  ├──> P2 dialect ──┐
-P7 (owner)  ──────┘                 │
-P1 flavor ──> P4 timestamp ─────────┴──> finalization PR
+(P7 decided; #167 visibility closed)
+P1 flavor ──> P4 timestamp ──────────┐
+#167 evaluation ──> P2 dialect ──────┴──> finalization PR
 ```
 
-1. **#167 visibility** and **P7**: small, independent, owner decisions plus an issue.
-2. **P1**: the largest tooling reuse; unlocks P4.
+1. ~~#167 visibility and P7~~: done (#168; the P7 decision).
+2. **P1**: the largest tooling reuse; unlocks P4. The next section of work.
 3. **P4** after P1.
-4. **P2** last; it needs #167's answer for the evaluator.
-5. **Finalization PR** only when all five are closed.
+4. **P2** last; the evaluation of the surface `validation` (#167) waits for it.
+5. **Finalization PR** only when P1, P2, P4 are decided and the evaluation question of #167 is settled or explicitly accepted.
 
 ## 4. Finalization criteria (for the later pull request)
 
