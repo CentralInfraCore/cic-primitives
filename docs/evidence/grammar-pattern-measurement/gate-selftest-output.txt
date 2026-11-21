@@ -1,0 +1,4 @@
+M1 Python uses $ instead of \Z                                 exit=1 disagreeing cases=10 canary=ok  DETECTED
+M2 both runners always answer match                            exit=1 disagreeing cases=-1 canary=failed  DETECTED
+M3 both runners always answer nomatch                          exit=1 disagreeing cases=-1 canary=failed  DETECTED
+M4 both runners drop the full-match wrapper                    exit=1 disagreeing cases=-1 canary=failed  DETECTED

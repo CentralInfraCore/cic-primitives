@@ -1,0 +1,119 @@
+ok       '^[0-9a-f]{40}$'                                             
+ok       '^vault:v1:.+$'                                              
+ok       '^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$'      
+ok       'abc'                                                        
+ok       'a.c'                                                        
+ok       '[a-c]+'                                                     
+ok       '[a-]+'                                                      
+ok       '[a\\-z]+'                                                   
+ok       '(ab){1,3}'                                                  
+ok       'a|b'                                                        
+ok       'a{3}'                                                       
+ok       'a{2,3}'                                                     
+ok       'a{2,}'                                                      
+ok       'ab?'                                                        
+ok       'a*'                                                         
+ok       'a\\.c'                                                      
+ok       'a\\\\c'                                                     
+ok       '^a\\$$'                                                     
+ok       '^[A-Za-z0-9+/]{43}=$'                                       
+ok       '^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$'                  
+ok       '^a$'                                                        
+ok       'a$'                                                         
+ok       '^a'                                                         
+ok       '\\\\$'                                                      
+ok       'a*a*a*'                                                     
+ok       '(a{30}){30}'                                                
+ok       '(\\.[0-9]+)?'                                               
+ok       '(a|b)'                                                      
+ok       '(ab){2}'                                                    
+ok       '[a&b]'                                                      
+ok       '[&a]'                                                       
+ok       '[a&]'                                                       
+ok       '[~a]'                                                       
+ok       '[a\\-\\-b]'                                                 
+ok       'a{0}'                                                       
+ok       'a{0,3}'                                                     
+ok       '(a|aa){1,255}'                                              
+ok       '(a?){30}a{30}'                                              
+ok       '^aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 
+ok       '\\d+'                                                       refused: escape \d is not in the subset
+ok       '\\w'                                                        refused: escape \w is not in the subset
+ok       '\\s'                                                        refused: escape \s is not in the subset
+ok       '\\bab'                                                      refused: escape \b is not in the subset
+ok       '[^a]'                                                       refused: negated class is not in the subset
+ok       '[[:alpha:]]'                                                refused: '[' inside a class (POSIX class or nesting) is not in the subset
+ok       '\\p{L}'                                                     refused: escape \p is not in the subset
+ok       '(?i)a'                                                      refused: group extension '(?' is not in the subset
+ok       '(?:a)'                                                      refused: group extension '(?' is not in the subset
+ok       '(?P<n>a)'                                                   refused: group extension '(?' is not in the subset
+ok       '(?<n>a)'                                                    refused: group extension '(?' is not in the subset
+ok       'a(?=b)'                                                     refused: group extension '(?' is not in the subset
+ok       '(a)\\1'                                                     refused: escape \1 is not in the subset
+ok       'a*?'                                                        refused: lazy, possessive or stacked quantifier is not in the subset
+ok       'a+?'                                                        refused: lazy, possessive or stacked quantifier is not in the subset
+ok       'a{1,2}?'                                                    refused: lazy, possessive or stacked quantifier is not in the subset
+ok       'a++'                                                        refused: lazy, possessive or stacked quantifier is not in the subset
+ok       'a**'                                                        refused: lazy, possessive or stacked quantifier is not in the subset
+ok       'a{2,1}'                                                     refused: repetition bounds out of order
+ok       'a{,3}'                                                      refused: malformed repetition
+ok       'a{'                                                         refused: malformed repetition
+ok       'a{x}'                                                       refused: malformed repetition
+ok       '\\x41'                                                      refused: escape \x is not in the subset
+ok       '\\u0041'                                                    refused: escape \u is not in the subset
+ok       '\\n'                                                        refused: escape \n is not in the subset
+ok       '\\t'                                                        refused: escape \t is not in the subset
+ok       '\\101'                                                      refused: escape \1 is not in the subset
+ok       'a$b'                                                        refused: unexpected metacharacter '$'
+ok       'a^b'                                                        refused: unexpected metacharacter '^'
+ok       '\\Aab'                                                      refused: escape \A is not in the subset
+ok       'ab\\z'                                                      refused: escape \z is not in the subset
+ok       'ab\\Z'                                                      refused: escape \Z is not in the subset
+ok       '\\Qa\\E'                                                    refused: escape \Q is not in the subset
+ok       '[z-a]'                                                      refused: class range out of order
+ok       '[]a]'                                                       refused: empty class
+ok       '[a-z&&[^b]]'                                                refused: class set operator '&&' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       '[a[b]'                                                      refused: '[' inside a class (POSIX class or nesting) is not in the subset
+ok       'é'                                                          refused: the pattern text is not ASCII printable
+ok       'a\n'                                                        refused: the pattern text is not ASCII printable
+ok       '(a'                                                         refused: unbalanced parenthesis
+ok       'a)'                                                         refused: unexpected ')' at 1
+ok       '*a'                                                         refused: unexpected metacharacter '*'
+ok       ''                                                           refused: empty pattern
+ok       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refused: longer than the length limit 256
+ok       'a{256}'                                                     refused: a repetition count above the limit 255
+ok       '(((((a)))))'                                                refused: group nesting deeper than the limit 4
+ok       '(a|aa)+'                                                    refused: an unbounded quantifier on a group (resource rule: it may only follow a single atom)
+ok       '(a+)+'                                                      refused: an unbounded quantifier on a group (resource rule: it may only follow a single atom)
+ok       '(a*)*'                                                      refused: an unbounded quantifier on a group (resource rule: it may only follow a single atom)
+ok       '(ab){2,}'                                                   refused: an unbounded quantifier on a group (resource rule: it may only follow a single atom)
+ok       'a*a*a*a*'                                                   refused: more than 3 unbounded quantifiers
+ok       '(a{40}){30}'                                                refused: the product of nested repeat counts exceeds 1000
+ok       '^^a'                                                        refused: unexpected metacharacter '^'
+ok       'a$$'                                                        refused: unexpected metacharacter '$'
+ok       '\\\\\\x'                                                    refused: escape \x is not in the subset
+ok       '[a&&b]'                                                     refused: class set operator '&&' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       '[a--b]'                                                     refused: class set operator '--' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       '[a~~b]'                                                     refused: class set operator '~~' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       '[+--]'                                                      refused: class set operator '--' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       '[--]'                                                       refused: class set operator '--' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       '[a-c&&c-e]'                                                 refused: class set operator '&&' is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)
+ok       'a{01}'                                                      refused: a repetition count with a leading zero is not in the subset
+ok       'a{1,02}'                                                    refused: a repetition count with a leading zero is not in the subset
+ok       'a{00}'                                                      refused: a repetition count with a leading zero is not in the subset
+ok       'a{0,03}'                                                    refused: a repetition count with a leading zero is not in the subset
+ok       'a|'                                                         refused: an empty alternative, empty group or empty body is not in the subset
+ok       '|a'                                                         refused: an empty alternative, empty group or empty body is not in the subset
+ok       'a||b'                                                       refused: an empty alternative, empty group or empty body is not in the subset
+ok       '(|a)'                                                       refused: an empty alternative, empty group or empty body is not in the subset
+ok       '(a|)'                                                       refused: an empty alternative, empty group or empty body is not in the subset
+ok       '()'                                                         refused: an empty alternative, empty group or empty body is not in the subset
+ok       '^$'                                                         refused: an empty alternative, empty group or empty body is not in the subset
+ok       '^|a$'                                                       refused: an empty alternative, empty group or empty body is not in the subset
+ok       '^aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refused: longer than the length limit 256
+ok       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refused: longer than the length limit 256
+ok       '((((((((((a'                                                refused: group nesting deeper than the limit 4
+ok       'a{256}('                                                    refused: a repetition count above the limit 255
+ok       'a*a*a*a*('                                                  refused: more than 3 unbounded quantifiers
+ok       '(a{30}){40}('                                               refused: the product of nested repeat counts exceeds 1000
+118 vectors, 0 wrong

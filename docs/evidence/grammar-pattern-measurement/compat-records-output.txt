@@ -1,0 +1,7 @@
+tag primitives/@v0.2.1 release/cic-primitives-v0.2.1.yaml
+   pattern-constrained string values found: 55; with a line feed: 0; longer than 256 code points: 0; verdicts that change: 0; element-level gaps: 0; expressions outside the subset: 0
+tests/fixtures/envelope3/golden-record.yaml
+   pattern-constrained string values found: 17; with a line feed: 0; longer than 256 code points: 0; verdicts that change: 0; element-level gaps: 0; expressions outside the subset: 0
+docs/evidence/release-schema-draft-probe/base-record.yaml
+   pattern-constrained string values found: 55; with a line feed: 0; longer than 256 code points: 0; verdicts that change: 0; element-level gaps: 0; expressions outside the subset: 0
+verdicts changed by the candidate profile (subset + 256 code points + full match) over all records: 0

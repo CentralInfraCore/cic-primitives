@@ -1,0 +1,25 @@
+a clean value keeps its verdict                                                              ok
+a value with a trailing line feed CHANGES (legacy accepts, candidate refuses)                ok
+a value with a leading line feed keeps its verdict (both refuse)                             ok
+the outer anchors are removed, an escaped dollar is kept                                     ok
+a value over the 256 code point limit CHANGES (legacy accepts, candidate refuses)            ok
+an expression outside the subset: the candidate profile refuses every value                  ok
+a complete flat record passes (9 values, no gap, nothing outside)                            ok
+a mandatory key missing in the record: INCOMPLETE                                            ok
+an optional key missing is not a gap                                                         ok
+a complete collection passes (9 elements)                                                    ok
+ONE element without the mandatory key among nine that have it: INCOMPLETE (the review's case) ok
+a null in one element where the node is not nullable: INCOMPLETE                             ok
+the same null where the node IS nullable is not a gap                                        ok
+a value of the wrong type (an integer) in one element: INCOMPLETE                            ok
+a list where a string is expected: INCOMPLETE                                                ok
+a null list element (an item that is null) where the node is not nullable: INCOMPLETE        ok
+an element that is not a mapping: INCOMPLETE                                                 ok
+a collection that is not a list: INCOMPLETE                                                  ok
+the same gap one level deeper (an object, then a collection): INCOMPLETE                     ok
+the nested complete record passes                                                            ok
+a mandatory parent that is absent: INCOMPLETE (not read as zero)                             ok
+an expression outside the subset: INCOMPLETE                                                 ok
+too few values: INCOMPLETE (vacuous)                                                         ok
+a long value is counted as a changed verdict                                                 ok
+a git error is refused, not read as zero                                                     ok

@@ -1,0 +1,10 @@
+F4: resource limits before and during the parse        previous                      current
+  whole text 257 with anchors (body 255)               ACCEPT                         REFUSE: longer than the length l   RED/GREEN as required
+  300 chars, also unbalanced: length decides first     REFUSE: an empty alternative   REFUSE: longer than the length l   RED/GREEN as required
+  10 deep, also unbalanced: depth decides first        REFUSE: unbalanced parenthes   REFUSE: group nesting deeper tha   RED/GREEN as required
+  a{256}(: the count decides before the parse ends     REFUSE: an empty alternative   REFUSE: a repetition count above   RED/GREEN as required
+F3.1: element-level completeness (INCOMPLETE = refused)   previous                      current
+  one element lacks the mandatory key (the review's case) ACCEPTED (the defect)          refused   RED/GREEN as required
+  one element has a null where null is not allowed     ACCEPTED (the defect)          refused   RED/GREEN as required
+  one element has an integer                           ACCEPTED (the defect)          refused   RED/GREEN as required
+  one element has a list                               ACCEPTED (the defect)          refused   RED/GREEN as required
