@@ -15,6 +15,10 @@ M = [("escape d allowed", 'ESCAPABLE = set("%s%s.[]()*+?{}|^$-")' % (BS * 2, "")
      ("unbounded quantifier on a group allowed (the * + branch)", '                if kind == "group":\n                    raise Refused("an unbounded quantifier on a group (resource rule: it may only follow a single atom)")\n        elif c == "{":', "        elif c == \"{\":", True),
      ("non-ASCII allowed", "        if any(not (0x20 <= ord(ch) <= 0x7E) for ch in p):", "        if False:", True),
      ("empty pattern allowed", '        if not p:\n            raise Refused("empty pattern")\n', "", True),
+     ("class set operators allowed", '            for op in ("&&", "--", "~~"):', '            for op in ():', True),
+     ("only && refused (-- and ~~ allowed)", '("&&", "--", "~~")', '("&&",)', True),
+     ("leading zero in a repetition count allowed", '                if num and len(num) > 1 and num[0] == "0":', "                if False:", True),
+     ("empty alternative allowed", '        if self.i == start:\n            raise Refused("an empty alternative', '        if False:\n            raise Refused("an empty alternative', True),
      ("anchor in the middle allowed (explicit check only)", '        if "^" in re.sub(', '        if False and "^" in re.sub(', False)]   # masked: the atom rule refuses '^' and '$' first
 bad = 0
 for name, a, b, must in M:

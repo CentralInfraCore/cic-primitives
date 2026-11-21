@@ -10,4 +10,8 @@ repeat-product limit removed                                   DETECTED
 unbounded quantifier on a group allowed (the * + branch)       DETECTED
 non-ASCII allowed                                              DETECTED
 empty pattern allowed                                          DETECTED
+class set operators allowed                                    DETECTED
+only && refused (-- and ~~ allowed)                            DETECTED
+leading zero in a repetition count allowed                     DETECTED
+empty alternative allowed                                      DETECTED
 anchor in the middle allowed (explicit check only)             MASKED (a second layer refuses it)

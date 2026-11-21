@@ -1,0 +1,6 @@
+the 256 code point limit is not applied                      DETECTED
+the subset check is not applied                              DETECTED
+a mandatory node with no value is not refused                DETECTED
+an expression outside the subset is not refused              DETECTED
+too few values are not refused                               DETECTED
+a mandatory node is not counted when it has no value         DETECTED

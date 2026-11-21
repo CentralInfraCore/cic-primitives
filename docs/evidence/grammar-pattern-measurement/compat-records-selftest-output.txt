@@ -4,4 +4,12 @@ a value with a leading line feed keeps its verdict (both refuse)       ok
 the outer anchors are removed, an escaped dollar is kept               ok
 a path with a list is resolved item by item                            ok
 a missing path gives no value (the caller counts it)                   ok
+a value over the 256 code point limit CHANGES (legacy accepts, candidate refuses) ok
+an expression outside the subset: the candidate profile refuses every value ok
+a complete synthetic record passes (9 values, nothing missing, nothing outside) ok
+a mandatory pattern node with no value makes the run INCOMPLETE        ok
+an optional node with no value does not                                ok
+an expression outside the subset makes the run INCOMPLETE              ok
+too few values make the run INCOMPLETE (vacuous)                       ok
+a long value in a record is counted as a changed verdict               ok
 a git error is refused, not read as zero                               ok

@@ -10,6 +10,8 @@ Grammar of the candidate subset (everything not listed is refused; there is no f
   literal := an ASCII printable char that is not a metacharacter, or '\' + one of  \ . [ ] ( ) * + ? { } | ^ $ -
 Metacharacters: \ . [ ] ( ) * + ? { } | ^ $
 The pattern text itself is ASCII printable only (0x20..0x7E).
+Counts are written without leading zeros ('{0}' is fine, '{01}' is refused); every alternative, group and the body is non-empty; inside a class the pairs '&&', '--', '~~' are refused.
+The limits bound the SIZE of the compiled program, NOT the worst-case time of a backtracking engine (see the timing probe): the evaluator must be linear-time.
 Limits (CANDIDATE values, to be decided from the measurement): see LIMITS.
 parse(p) returns a Result(ok, reason, stats) ; stats = length, max_repeat, depth, groups, unbounded (number of unbounded quantifiers), alt (alternations).
 """
@@ -40,9 +42,16 @@ class P:
 
     def alt(self, depth, end):
         self.stats["depth"] = max(self.stats["depth"], depth)
-        prod = self.concat(depth, end)
+        prod = self.nonempty_concat(depth, end)
         while self.peek() == "|":
-            self.i += 1; self.stats["alt"] += 1; prod = max(prod, self.concat(depth, end))
+            self.i += 1; self.stats["alt"] += 1; prod = max(prod, self.nonempty_concat(depth, end))
+        return prod
+
+    def nonempty_concat(self, depth, end):
+        start = self.i
+        prod = self.concat(depth, end)
+        if self.i == start:
+            raise Refused("an empty alternative, empty group or empty body is not in the subset")
         return prod
 
     def concat(self, depth, end):
@@ -65,6 +74,12 @@ class P:
             return "group", inner
         if c == "[":
             n = 0
+            start = self.i
+            m = re.match(r"(?:\\.|[^\]\\])*", self.s[start:])           # the class text up to its first unescaped ']' (checked BEFORE the range rules, so no other rule can hide it)
+            raw = re.sub(r"\\.", "xx", m.group(0))                        # an escaped character cannot form an operator pair
+            for op in ("&&", "--", "~~"):
+                if op in raw:
+                    raise Refused("class set operator %r is not in the subset (Rust regex reads it as intersection, difference or symmetric difference)" % op)
             if self.peek() == "^":
                 raise Refused("negated class is not in the subset")
             while self.peek() != "]":
@@ -118,6 +133,9 @@ class P:
                 raise Refused("malformed repetition")
             self.i += m.end()
             n = int(m.group(1)); hi = m.group(3)
+            for num in (m.group(1), hi):
+                if num and len(num) > 1 and num[0] == "0":
+                    raise Refused("a repetition count with a leading zero is not in the subset")
             top = n if not m.group(2) else (int(hi) if hi else n)
             if m.group(2) and hi and int(hi) < n:
                 raise Refused("repetition bounds out of order")

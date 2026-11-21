@@ -94,6 +94,9 @@ CONSTRUCTS = [
     ("anchor_mid_dollar", "a$b", "ab"), ("anchor_mid_caret", "a^b", "ab"), ("anchor_A", r"\Aab", "ab"), ("anchor_z_lower", r"ab\z", "ab"), ("anchor_Z_upper", r"ab\Z", "ab"),
     ("quote_Q", r"\Qa.b\E", "a.b"), ("dollar_before_lf", "ab$", "ab\n"), ("nested_quantifier", "(a+)+", "aaa"), ("empty_alternative", "a|", ""), ("empty_group", "()", ""),
     ("class_range_reversed", "[z-a]", "m"), ("class_with_bracket", r"[\]]", "]"), ("class_leading_bracket", "[]a]", "]"), ("class_intersection", "[a-z&&[^b]]", "a"),
+    ("class_intersection_a", "[a&&b]", "a"), ("class_intersection_amp", "[a&&b]", "&"), ("class_difference", "[a-z--b]", "b"), ("class_difference_lit", "[a--b]", "-"), ("class_symdiff", "[a~~b]", "a"),
+    ("class_symdiff_tilde", "[a~~b]", "~"), ("class_dash_dash_range", "[+--]", "-"), ("class_single_amp", "[a&b]", "&"), ("class_single_tilde", "[a~b]", "~"),
+    ("repeat_leading_zero", "a{01}", "a"), ("repeat_leading_zero_range", "a{1,02}", "aa"), ("repeat_zero", "a{0}", ""), ("empty_alt_leading", "|a", ""), ("empty_alt_middle", "a||b", ""),
     ("non_ascii_literal", "é", "é"), ("lone_unmatched_paren", "(a", "a"), ("unmatched_close", "a)", "a)"), ("star_at_start", "*a", "a"), ("double_star", "a**", "a"),
 ]
 
@@ -124,6 +127,12 @@ def timing_cases():
     for n in (20, 24, 28, 32, 36):
         cs.append({"id": "tim.alt_in_plus.%d" % n, "p": "^(a|aa)+$", "input": "a" * n + "b"})
         cs.append({"id": "tim.nested_plus.%d" % n, "p": "^(a+)+$", "input": "a" * n + "b"})
+    for n in (16, 20, 24, 28, 32):           # F1 of the review: a BOUNDED repeat, inside every candidate limit, is still exponential in Python (Fibonacci growth)
+        cs.append({"id": "tim.bounded_alt_group.%d" % n, "p": "^(a|aa){1,255}$", "input": "a" * n + "b"})
+    for n in (16, 20, 24, 28, 32):           # no group, no alternation, no unbounded quantifier: a literal run of optional atoms followed by the same number of required ones
+        cs.append({"id": "tim.optional_run.%d" % n, "p": "^" + "a?" * n + "a" * n + "$", "input": "a" * n + "b"})
+    for n in (16, 20, 24, 28, 32):           # a bounded repeat of an optional atom inside a group
+        cs.append({"id": "tim.bounded_group_optional.%d" % n, "p": "^(a?){%d}a{%d}$" % (n, n), "input": "a" * n + "b"})
     for n in (128, 256, 512, 1024):          # the candidate rule: at most 3 unbounded quantifiers and a short value: the worst case inside the rule
         cs.append({"id": "tim.consecutive_star3.%d" % n, "p": "^" + "a*" * 3 + "$", "input": "a" * n + "b"})
     for n in (2000, 8000):
