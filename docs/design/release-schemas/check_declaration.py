@@ -150,6 +150,17 @@ have = {e["id"] for s in ("further_requirements", "global_requirements") for e i
 for g in ("G01", "G02", "G03", "V08", "V09", "P01", "P02"):
     if g not in have:
         problems.append("5: the required requirement %s is missing (G01-G03 admission profile; V08, V09, P01 the module release decisions of review #38 P5; P02 the producer side of the integer range, decision P7)" % g)
+# review #45 F1: the shared reason is bound to the requirement IDENTIFIERS, so that no other entry can stand in for them
+byid = {e["id"]: e for s in ("further_requirements", "global_requirements") for e in declared.get(s) or []}
+if "G02" in byid and byid["G02"].get("owner") != "verifier":
+    problems.append("5: G02 must be owned by the verifier (decision P7: the verifier checks the closed domain independently), not %r" % (byid["G02"].get("owner"),))
+if "P02" in byid:
+    if byid["P02"].get("owner") != "producer":
+        problems.append("5: P02 must be owned by the producer (decision P7: the producer side of the integer range), not %r" % (byid["P02"].get("owner"),))
+    if "integer_out_of_range" not in (byid["P02"].get("reasons") or []):
+        problems.append("5: P02 must name the reason integer_out_of_range (another entry naming it does not stand in for P02)")
+    if byid["P02"].get("status") not in ("planned", "implemented"):
+        problems.append("5: P02 must be planned or implemented, not %r: a not_implemented producer check is no executor" % (byid["P02"].get("status"),))
 g2 = [e for e in declared.get("global_requirements") or [] if e["id"] == "G02"]
 if g2 and not ("2^53" in g2[0].get("text", "") and "opaque" in g2[0].get("text", "")):
     problems.append("5: G02 must state the 2^53-1 bound over the whole tree including opaque members")

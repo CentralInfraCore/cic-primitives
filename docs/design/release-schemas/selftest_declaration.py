@@ -6,7 +6,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 probe = os.path.abspath(sys.argv[1])
 results = []
 
-def run(label, mutate, expect_fail=True, probe_mut=None):
+def run(label, mutate, expect_fail=True, probe_mut=None, needle=None):
     d = tempfile.mkdtemp()
     shutil.copytree(HERE, d + "/docs/design/release-schemas", ignore=shutil.ignore_patterns("__pycache__"))
     os.makedirs(d + "/docs/en", exist_ok=True)
@@ -18,6 +18,8 @@ def run(label, mutate, expect_fail=True, probe_mut=None):
     r = subprocess.run([sys.executable, d + "/docs/design/release-schemas/check_declaration.py", pr], capture_output=True, text=True)
     failed = r.returncode != 0
     ok = failed == expect_fail
+    if needle is not None and failed:
+        ok = ok and any(needle in l for l in r.stdout.splitlines() if l.startswith("PROBLEM: "))   # refused for THIS reason, not for another one
     why = next((l[9:] for l in r.stdout.splitlines() if l.startswith("PROBLEM: ")), "")
     print("%-62s -> %s (%s)%s" % (label, "refused" if failed else "ACCEPTED", "as expected" if ok else "UNEXPECTED", ("  [" + why[:70] + "]") if why else ""))
     results.append(ok)
@@ -66,6 +68,18 @@ run("P7: G02 no longer says the verifier checks independently", decl(lambda d: f
 run("P7: the new reason owned by the composition", decl(lambda d: further("P02")(d).update(owner="composition")))
 run("P7: P02 downgraded to not_implemented (the producer check silently absent)", decl(lambda d: further("P02")(d).update(status="not_implemented", owner="none", reasons=[], note="x")))
 run("P7: the verifier executor is the producer (G02 owned by the producer)", decl(lambda d: further("G02")(d).update(owner="producer")))
+# review #45 F1: the P7 requirements are bound to their identifiers; a DECOY entry that also names the reason must not hide a damaged G02 or P02
+def decoy(owner):
+    return lambda d: d["further_requirements"].append({"id": "X99", "owner": owner, "status": "planned", "reasons": ["integer_out_of_range"], "note": "a decoy that names the shared reason"})
+def both(*fs):
+    return lambda d: [f(d) for f in fs]
+run("F1: P02 stripped of the reason, a decoy producer entry names it", decl(both(lambda d: further("P02")(d).update(reasons=["declaration_required_path_missing"]), decoy("producer"))), needle="P02 must name the reason")
+run("F1: P02 owned by the verifier, a decoy producer entry names the reason", decl(both(lambda d: further("P02")(d).update(owner="verifier"), decoy("producer"))), needle="P02 must be owned by the producer")
+run("F1: P02 not_implemented, a decoy producer entry names the reason", decl(both(lambda d: further("P02")(d).update(status="not_implemented", owner="none", reasons=[], note="x"), decoy("producer"))), needle="P02 must be owned by the producer")
+run("F1: G02 stripped of the reason, a decoy verifier entry names it", decl(both(lambda d: further("G02")(d).update(reasons=["value_type_unsupported"]), decoy("verifier"))), needle="G02 must name both")
+run("F1: G02 owned by the producer", decl(lambda d: further("G02")(d).update(owner="producer")), needle="G02 must be owned by the verifier")
+run("F1: G02 downgraded to not_implemented, a decoy verifier entry names the reason", decl(both(lambda d: further("G02")(d).update(status="not_implemented", owner="none", reasons=[], note="x"), decoy("verifier"))), needle="G02 must be owned by the verifier")
+run("F1: P02 removed, a decoy producer entry names the reason", decl(both(lambda d: d["further_requirements"].remove(further("P02")(d)), decoy("producer"))), needle="P02 is missing")
 run("a requirement downgraded to not_implemented loses its reason's owner", decl(lambda d: further("V03")(d).update(status="not_implemented", owner="none", reasons=[], note="x")))
 def dup_contract(d):
     n = d["spec"]["config_surface"]["nodes"][1]

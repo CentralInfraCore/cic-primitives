@@ -33,6 +33,13 @@ P7: G02 no longer says the verifier checks independently       -> refused (as ex
 P7: the new reason owned by the composition                    -> refused (as expected)  [4: P02 names the owner 'composition' for the reason 'integer_out_of_ra]
 P7: P02 downgraded to not_implemented (the producer check silently absent) -> refused (as expected)  [5: the shared reason 'integer_out_of_range' must have BOTH a verifier ]
 P7: the verifier executor is the producer (G02 owned by the producer) -> refused (as expected)  [4: G02 names the owner 'producer' for the reason 'value_type_unsupport]
+F1: P02 stripped of the reason, a decoy producer entry names it -> refused (as expected)  [5: P02 must name the reason integer_out_of_range (another entry naming]
+F1: P02 owned by the verifier, a decoy producer entry names the reason -> refused (as expected)  [5: P02 must be owned by the producer (decision P7: the producer side o]
+F1: P02 not_implemented, a decoy producer entry names the reason -> refused (as expected)  [5: P02 must be owned by the producer (decision P7: the producer side o]
+F1: G02 stripped of the reason, a decoy verifier entry names it -> refused (as expected)  [5: G02 must name both value_type_unsupported (a type outside the domai]
+F1: G02 owned by the producer                                  -> refused (as expected)  [4: G02 names the owner 'producer' for the reason 'value_type_unsupport]
+F1: G02 downgraded to not_implemented, a decoy verifier entry names the reason -> refused (as expected)  [5: the reason 'value_type_unsupported' has no owner in the declaration]
+F1: P02 removed, a decoy producer entry names the reason       -> refused (as expected)  [5: the required requirement P02 is missing (G01-G03 admission profile;]
 a requirement downgraded to not_implemented loses its reason's owner -> refused (as expected)  [5: the reason 'artifact_order' has no owner in the declaration (a norm]
 the same contract entry twice in a part (would overwrite)      -> refused (as expected)  [1: the parts declare ('common', '$.version', 'pattern', "'^(0|[1-9][0-]
 the Form no longer lists a node of the probe                   -> refused (as expected)  [3: K01_primitive_release: the Form lists ['$.version'], the nodes decl]
@@ -48,4 +55,4 @@ composition: a duplicate nested name inside the kind part              -> refuse
 composition: a kind part with a different aggregate_ref                -> refused, as expected
 composition: a kind part with an unknown config_surface key            -> refused, as expected
 composition: a kind part ADDS a field to provenance (merged by path)   -> merged as expected
-50 of 50 checks as expected
+57 of 57 checks as expected

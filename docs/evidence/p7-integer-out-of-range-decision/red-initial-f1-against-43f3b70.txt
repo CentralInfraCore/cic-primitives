@@ -1,0 +1,8 @@
+F1: P02 stripped of the reason, a decoy producer entry names it -> ACCEPTED (UNEXPECTED)
+F1: P02 owned by the verifier, a decoy producer entry names the reason -> ACCEPTED (UNEXPECTED)
+F1: P02 not_implemented, a decoy producer entry names the reason -> ACCEPTED (UNEXPECTED)
+F1: G02 stripped of the reason, a decoy verifier entry names it -> refused (as expected)  [5: G02 must name both value_type_unsupported (a type outside the domai]
+F1: G02 owned by the producer                                  -> refused (UNEXPECTED)  [4: G02 names the owner 'producer' for the reason 'value_type_unsupport]
+F1: G02 downgraded to not_implemented, a decoy verifier entry names the reason -> refused (UNEXPECTED)  [5: the reason 'value_type_unsupported' has no owner in the declaration
+F1: P02 removed, a decoy producer entry names the reason       -> refused (as expected)  [5: the required requirement P02 is missing (G01-G03 admission profile;]
+52 of 57 checks as expected
