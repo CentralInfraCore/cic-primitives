@@ -1,0 +1,7 @@
+a clean value keeps its verdict                                        ok
+a value with a trailing line feed CHANGES (legacy accepts, candidate refuses) ok
+a value with a leading line feed keeps its verdict (both refuse)       ok
+the outer anchors are removed, an escaped dollar is kept               ok
+a path with a list is resolved item by item                            ok
+a missing path gives no value (the caller counts it)                   ok
+a git error is refused, not read as zero                               ok

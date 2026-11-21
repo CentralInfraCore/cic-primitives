@@ -1,0 +1,5 @@
+semantic   117 cases written
+constructs 70 cases written
+limits     38 cases written
+timing     31 cases written
+disagreements or incomplete groups: 0

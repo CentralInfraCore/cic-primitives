@@ -1,0 +1,39 @@
+case                               python_full  go           rust         legacy_search expression / input
+lim.repeat.100                     nomatch      nomatch      nomatch      nomatch      a{100} | 
+lim.repeat.255                     nomatch      nomatch      nomatch      nomatch      a{255} | 
+lim.repeat.256                     nomatch      nomatch      nomatch      nomatch      a{256} | 
+lim.repeat.500                     nomatch      nomatch      nomatch      nomatch      a{500} | 
+lim.repeat.1000                    nomatch      nomatch      nomatch      nomatch      a{1000} | 
+lim.repeat.1001                    nomatch      compile_error nomatch      nomatch      a{1001} | 
+lim.repeat.2000                    nomatch      compile_error nomatch      nomatch      a{2000} | 
+lim.repeat.5000                    nomatch      compile_error nomatch      nomatch      a{5000} | 
+lim.repeat.100000                  nomatch      compile_error nomatch      nomatch      a{100000} | 
+lim.nesting.4                      match        match        match        match        ((((a)))) | a
+lim.nesting.8                      match        match        match        match        ((((((((a)))))))) | a
+lim.nesting.16                     match        match        match        match        ((((((((((((((((a)))))))))))))))) | a
+lim.nesting.32                     match        match        match        match        ((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))) | a
+lim.nesting.64                     match        match        match        match        (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.128                    match        match        match        match        (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.200                    match        match        match        match        (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.250                    match        match        compile_error match        (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.251                    match        match        compile_error match        (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.500                    compile_error match        compile_error compile_error (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.1000                   compile_error compile_error compile_error compile_error (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.1001                   compile_error compile_error compile_error compile_error (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.nesting.2000                   compile_error compile_error compile_error compile_error (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((( | a
+lim.length.256                     match        match        match        match        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+lim.length.1024                    match        match        match        match        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+lim.length.4096                    match        match        match        match        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+lim.length.65536                   match        match        match        match        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+lim.length.262144                  match        match        match        match        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+lim.alternatives.64                match        match        match        match        w0|w1|w2|w3|w4|w5|w6|w7|w8|w9|w10|w11|w12|w13|w14|w15|w16|w1 | w1
+lim.alternatives.1000              match        match        match        match        w0|w1|w2|w3|w4|w5|w6|w7|w8|w9|w10|w11|w12|w13|w14|w15|w16|w1 | w1
+lim.alternatives.5000              match        match        match        match        w0|w1|w2|w3|w4|w5|w6|w7|w8|w9|w10|w11|w12|w13|w14|w15|w16|w1 | w1
+lim.nested_repeat.10x10            nomatch      nomatch      nomatch      nomatch      (a{10}){10} | a
+lim.nested_repeat.30x30            nomatch      nomatch      nomatch      nomatch      (a{30}){30} | a
+lim.nested_repeat.100x100          nomatch      compile_error nomatch      nomatch      (a{100}){100} | a
+lim.nested_repeat.255x255          nomatch      compile_error nomatch      nomatch      (a{255}){255} | a
+lim.nested_repeat.1000x1000        nomatch      compile_error compile_error nomatch      (a{1000}){1000} | a
+lim.class_items.8                  nomatch      nomatch      nomatch      nomatch      [!"#$%&'(] | a
+lim.class_items.64                 nomatch      nomatch      nomatch      nomatch      [!"#$%&'()*+,z./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZz | a
+lim.class_items.255                match        match        match        match        [!"#$%&'()*+,z./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZz | a
