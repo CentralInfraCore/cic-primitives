@@ -1,5 +1,7 @@
 # Release schema set design (draft: parts, composition, contract declarations)
 
+**Update 2026-11-21:** decision D1 is CLOSED (#41, #42): the composed schemas have no finding under the node-name grammar V2. The schemas stay **DRAFT**; the open points P1, P2, P4, P7 and Forms #167 are listed with their dependencies in `docs/en/RELEASE-SCHEMA-OPEN-POINTS.md`. Statements below that say "D1 blocks finalization" are the history of the #38 state; D1 never was the only blocker.
+
 Status: **design draft, documentation and evidence only.** The schema parts in `docs/design/release-schemas/` are **drafts and are not finalized**: finalization is on hold until the grammar conformance of the node name `createdBy` is settled (decision D1, section 6). Not part of this pull request: the derived JSON Schema, any lint, any compiler or verifier refactor, any change of the Form, any change of the grammar.
 
 Principle in force: **the current capabilities of a consumer must not rewrite the meaning of the normative contract.** The schemas say what must hold, whatever the Form can evaluate today.
@@ -53,6 +55,8 @@ The pinned grammar limits a node name to `^[a-z][a-z0-9_]*$`; the records `v0.1.
 * until the rule is settled, `check_grammar.py` reports the three `createdBy` findings and is the **finalization gate** of the schemas: the drafts are final only when it reports none.
 
 A draft of the grammar issue is prepared (not opened).
+
+**Settled 2026-11-21:** the gate above is met (V2: 0 findings on both composed schemas; V1: exactly the three `createdBy` findings; evidence `docs/evidence/release-schema-d1-gate-closed/`). Meeting this gate proves grammatical conformance only; it does not finalize the schemas (see `docs/en/RELEASE-SCHEMA-OPEN-POINTS.md`).
 
 ## 7. Open points
 
