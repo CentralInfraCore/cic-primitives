@@ -1,0 +1,11 @@
+PASS     C1 vector file
+PASS     C2 v2 through the real checker
+PASS     C3 version binding
+PASS     C4 no version key in a document
+PASS     C5 V1 regression (pinned files)
+PASS     C6 release schema set
+PASS     C7 widening (bounded exhaustive)
+         (go version go1.26.11 linux/amd64; cargo 1.99.1 (5f94df478 2026-08-27); 28 names; rule {"min_length": 1, "pattern": "^[a-z][a-zA-Z0-9_]*$", "not_pattern": "\\n"})
+PASS     C8 Go and Rust parity
+
+name vectors: 8/8 checks pass
