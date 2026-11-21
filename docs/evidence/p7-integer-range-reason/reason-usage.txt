@@ -1,0 +1,14 @@
+$ grep -rIn "value_type_unsupported" tools tests   # the reference verifier and its tests
+exit: 1 (1 = no occurrence)
+
+$ grep -rIln "value_type_unsupported" docs --exclude-dir=evidence
+docs/hu/RELEASE-SCHEMA-OPEN-POINTS.md
+docs/hu/RELEASE-CONTRACT-GENERALIZATION-PLAN.md
+docs/design/release-schemas/contract-conformance.yaml
+docs/design/release-schemas/check_declaration.py
+docs/en/RELEASE-SCHEMA-OPEN-POINTS.md
+docs/en/RELEASE-SCHEMA-SET-DESIGN.md
+docs/en/RELEASE-CONTRACT-GENERALIZATION-PLAN.md
+
+$ grep -rIln "value_type_unsupported" <CIC_Relay worktree> (docs, code)
+exit: 1
