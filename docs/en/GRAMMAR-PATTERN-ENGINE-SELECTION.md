@@ -46,7 +46,7 @@ The 46 timing cases of the profile probe, the review-F1 cases (a bounded repetit
 | `go` | 1.8 ms | |
 | `rust` | 19 ms (a cold run) | |
 
-Every engine other than `re` and `regex` stays at or below 33 ms on every case, on adversarial input, at and beyond the cap.
+Within this timing group (53 cases) every engine other than `re` and `regex` stays at or below 33 ms. This is the maximum of this group only; it does not cover the closure-heavy valid patterns of 2.7, where the own evaluator is slower (38.45 ms at the cap, 88.1 ms at 65536 code points; see the maxima table in 2.7).
 
 ### 2.3 Compile cost and memory (`results/bench.txt`, 18 cases, one process per engine and case)
 
@@ -57,7 +57,7 @@ Compile time is the best of 5; match time is the median of 7 warm runs; the memo
 | the 9 existing contracts: compile | 5.5 to 7.6 us | 1.4 to 3.2 us | 24 to 95 us | 3.4 to 20 us | 9 to 53 us |
 | the 9 existing contracts: match of a typical value | 2.7 to 4.4 us | 0.3 to 0.6 us | 2.9 to 27 us | 0.2 to 1.1 us | 0.04 to 0.24 us |
 | worst compile at the limits (25 x `[a-z]{255}`, 6375 states) | 11 us | 7 us | **4.6 ms** | 0.5 ms | 0.7 ms |
-| worst match at the cap (`^(a?){255}a{255}$`, 255 code points) | 1.0 ms | 1.2 ms | **9.3 ms** | 0.9 ms | **0.47 us** |
+| match at the cap, this workload only (`^(a?){255}a{255}$`, 255 code points; not the overall worst, see 2.7) | 1.0 ms | 1.2 ms | **9.3 ms** | 0.9 ms | **0.47 us** |
 | peak memory at the limits (25 class runs) | 460 kB | 400 kB | **4.3 MB** | 4.4 MB | 2.0 MB |
 
 (Correction against the first version of this document: the Rust worst match at the cap was listed as 0.4 ms; the measured value is 469 ns, a unit slip of the document, not of the measurement. The same run reports the cold worst case of 19 ms in 2.2.)
@@ -107,7 +107,19 @@ Review finding F1: the evaluator at the first head precomputed the epsilon closu
 | `^(a?){255}(b?){255}(c?){255}$` | 1531 | 294 526 | 88 ms / 1.2 ms | 2.7 MB / 0.2 MB | 91 ms / 23 ms |
 | `^(a?){255}$` | 511 | 33 151 | 10.1 ms / 0.4 ms | 435 kB / 151 kB | 13.7 ms / 5.6 ms |
 
-The closure table grows with the **square** of the states. The evaluator was therefore changed: the closure is **not** precomputed; for each input code point the next set is built by following epsilon edges with a per-step visit mark, so each state is visited at most once and each edge at most once per step. **Stated bound now: O(P x N) time, O(P) memory (compile and match), P = states + class ranges + edges of the program (edges <= 2 x states), N = value length; never backtracking.** P is bounded by the profile's limits (the largest valid program measured: 6376 states, 4.3 MB). Verdicts of the old and the new evaluator are identical on every probe case and on the 165 + 15000 cases of 2.1. Trade-off, measured: for the flat large patterns (25 class runs) the new compile is slower (4.6 ms against 2.5 ms in the first version, from three small arrays built per state); for every closure-heavy shape it is 10 to 100 times faster to compile and also faster to match. Input for O2: the resource limits bound P, and the worst measured costs at the limits are 4.6 ms compile, 9.3 ms match at the cap, 4.3 MB.
+The closure table grows with the **square** of the states. The evaluator was therefore changed: the closure is **not** precomputed; for each input code point the next set is built by following epsilon edges with a per-step visit mark, so each state is visited at most once and each edge at most once per step. **Stated bound now: O(P x N) time, O(P) memory (compile and match), P = states + class ranges + edges of the program (edges <= 2 x states), N = value length; never backtracking.** P is bounded by the profile's limits (the largest valid program measured: 6376 states, 4.3 MB). Verdicts of the old and the new evaluator are identical on every probe case and on the 165 + 15000 cases of 2.1. Trade-off, measured: for the flat large patterns (25 class runs) the new compile is slower (4.6 ms against 2.5 ms in the first version, from three small arrays built per state); for every closure-heavy shape it is 10 to 100 times faster to compile and also faster to match. Input for O2: the resource limits bound P. These are measured values on one machine, not guaranteed runtime limits.
+
+Maxima of the own evaluator, kept apart by measurement group (a maximum is valid only for its group):
+
+| Group (source) | Workloads | Worst compile | Worst match | Peak memory |
+|---|---|---|---|---|
+| timing (`results/timing.txt`), at the 256 cap | the cap cases of the 53 | n/a | 9.1 ms (`^(a?){255}a{255}$`) | n/a |
+| timing, beyond the cap (65536 code points) | `tim.semver_adversarial.65536` | n/a | 33 ms | n/a |
+| bench (`results/bench.txt`), limits | 9 contracts + limit workloads | 4.6 ms (25 class runs) | 9.3 ms (`^(a?){255}a{255}$`) | 4.3 MB |
+| closure probe (`results/closure.txt`), valid closure-heavy patterns, 256 code points | 11 patterns | 4.17 ms (`class_runs_25`) | **38.45 ms (`nested_opt_10x10x10`)** | 1.6 MB (new evaluator) |
+| closure probe, 65536 code points | 10 patterns | n/a | **88.1 ms (`nested_opt_10x10x10`)** | n/a |
+
+**Overall worst measured match at the 256 cap: 38.45 ms** (`nested_opt_10x10x10`, 2001 states); beyond the cap: 88.1 ms. The 9.3 ms figure is the worst of the bench workloads only and must not be used as the overall maximum. Overall worst compile: 4.6 ms; overall peak memory: 4.3 MB (bench group; the closure probe's new-evaluator peak is 1.6 MB at most).
 
 ## 3. Assessment
 
@@ -117,7 +129,7 @@ The closure table grows with the **square** of the states. The evaluator was the
 
 **3.3 `pyre2`.** Correct once its fallback is turned off, and fast, but fail-open by default and only closeable by a global switch. A single maintainer. **Not recommended**: the profile's central rule is that nothing falls back.
 
-**3.4 `nfa` (own evaluator).** Correct on every measured case (0 disagreements in 15000 fuzz cases, 0 against the independent expectation on 165 hand-authored cases, 0 against the stdlib `re` on the 15000), no dependency, and the strongest property: the **text that runs is exactly the text the classifier accepted**, parsed by one grammar, so "the classifier accepts but the engine reads it differently" cannot happen on the Python side. The meaning of the profile is then *written down as code that anyone can read in 204 lines* rather than inherited from a library. Costs: 10 to 100 times slower than the native engines (9.3 ms worst at the cap, 4.6 ms worst compile at the limits, 4.3 MB peak: all inside any budget of a release verification); **the project owns the code**, and a bug in it is the project's bug. The mitigation is the gate, not trust: the evaluator is compared with Go, Rust and (optionally) RE2 on every vector and on a seeded fuzz in every CI run, and the self-test shows that the comparison sees a planted defect, even when three engines share it.
+**3.4 `nfa` (own evaluator).** Correct on every measured case (0 disagreements in 15000 fuzz cases, 0 against the independent expectation on 165 hand-authored cases, 0 against the stdlib `re` on the 15000), no dependency, and the strongest property: the **text that runs is exactly the text the classifier accepted**, parsed by one grammar, so "the classifier accepts but the engine reads it differently" cannot happen on the Python side. The meaning of the profile is then *written down as code that anyone can read in 204 lines* rather than inherited from a library. Costs: 10 to 100 times slower than the native engines (38.45 ms worst measured match at the cap, 88.1 ms at 65536 code points, 4.6 ms worst compile at the limits, 4.3 MB peak: measured on one machine, not guaranteed bounds; see the maxima table in 2.7); **the project owns the code**, and a bug in it is the project's bug. The mitigation is the gate, not trust: the evaluator is compared with Go, Rust and (optionally) RE2 on every vector and on a seeded fuzz in every CI run, and the self-test shows that the comparison sees a planted defect, even when three engines share it.
 
 **3.5 Go and Rust.** Unchanged: the native engines of the two other implementations, already linear. Their agreement with `nfa` and with RE2 on 15000 + 165 cases is the cross-language parity result.
 
@@ -126,7 +138,7 @@ The closure table grows with the **square** of the states. The evaluator was the
 1. **The normative Python reference evaluator is the own `nfa` evaluator** (or an implementation of the same specification), behind the closed-subset classifier. It is the only candidate that adds no dependency, cannot fall back, and makes the profile's meaning executable in the repository.
 2. **`google-re2` is admitted as an optional cross-check engine in the CI gate** (a development and CI dependency, not a runtime one): a third, independently written implementation raises the strength of the parity gate at no runtime cost.
 3. **`pyre2`, `re` and `regex` are not used** by the profile (the first two for the reasons in 3.1 and 3.3).
-4. Go and Rust keep their standard engines; the profile's limits (O2) and reason identifiers (O3) are decided in the next pull request, using the measured costs above (compile time, memory and the 9.3 ms worst case at the cap are inputs to O2).
+4. Go and Rust keep their standard engines; the profile's limits (O2) and reason identifiers (O3) are decided in the next pull request, using the measured costs above (compile time, memory and the overall worst measured match, 38.45 ms at the cap per the maxima table in 2.7, are inputs to O2; they are measurements, not guaranteed runtime limits).
 
 The alternative, if the owner prefers no owned evaluator: `google-re2` as the runtime evaluator, with the same gate and the same classifier in front. Nothing in the measurement contradicts it; what changes is the dependency, not the semantics.
 
