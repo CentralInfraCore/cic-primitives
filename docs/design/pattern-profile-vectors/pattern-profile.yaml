@@ -122,6 +122,7 @@ requirements:
 - {id: R-PIN-CONFLICT, text: "conflicting pin versions are pattern_profile_conflict", src: "D 4.1"}
 - {id: R-PIN-FIRST, text: "the pin errors precede every expression check", src: "L 3.2"}
 - {id: R-PIN-ONLY-IF-PATTERN, text: "a schema without any pattern contract needs no pin", src: "D 4.3, O6"}
+- {id: R-PIN-IDENTICAL, text: "identical pin declarations count as one declaration: the same version declared in separate places is not a conflict", src: "owner decision of 2026-11-22 (review of #49), D 4.1"}
 - {id: R-COMPAT-CONTRACTS, text: "the 9 existing expressions are accepted with the stated PI, and their values keep their verdict", src: "D 4.3"}
 # Requirements a verdict vector cannot test. They are listed so that the matrix is honest; each names where it must be tested instead.
 not_testable_by_vectors:
@@ -662,3 +663,7 @@ schemas:
 - {id: S-014, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^a$'}, {path: '$.b', expr: '^b$'}, {path: '$.c', expr: '^c$'}, {path: '$.d', expr: '^d$'}, {path: '$.e', expr: '^e$'}, {path: '$.f', expr: '^f$'}, {path: '$.g', expr: '^g$'}, {path: '$.h', expr: '^h$'}, {path: '$.i', expr: '^i$'}, {path: '$.j', expr: '[z-a]'}], expect: refuse, code: pattern_class_range_order, at: 10, req: [R-SCHEMA-WHOLE, R-SCHEMA-ORDER]}
 - {id: S-015, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^a$'}, {path: '$.b', expr: '^a$'}, {path: '$.c', expr: '^a$'}], expect: accept, req: [R-SCHEMA-ORDER]}
 - {id: S-016, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^[0-9a-f]{40}$'}, {path: '$.b', expr: '^sha256:[0-9a-f]{64}$'}, {path: '$.c', expr: '^vault:v1:.+$'}], expect: accept, req: [R-COMPAT-CONTRACTS, R-SCHEMA-WHOLE]}
+- {id: S-017, pin: {state: declared, versions: [1, 1]}, contracts: [{path: '$.a', expr: '^[a-z]+$'}], expect: accept, req: [R-PIN-IDENTICAL, R-PIN-CONFLICT]}
+- {id: S-018, pin: {state: declared, versions: [1, 1, 1]}, contracts: [{path: '$.a', expr: '^[a-z]+$'}, {path: '$.b', expr: '^[0-9]{4}$'}], expect: accept, req: [R-PIN-IDENTICAL]}
+- {id: S-019, pin: {state: declared, versions: [99, 99]}, contracts: [{path: '$.a', expr: '^[a-z]+$'}], expect: refuse, code: pattern_profile_unknown, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN]}
+- {id: S-020, pin: {state: declared, versions: [1, 1]}, contracts: [{path: '$.a', expr: '^a$'}, {path: '$.b', expr: '(?i)b'}], expect: refuse, code: pattern_group_extension, at: 2, req: [R-PIN-IDENTICAL, R-SCHEMA-ORDER]}

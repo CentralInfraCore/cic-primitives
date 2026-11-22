@@ -62,6 +62,8 @@ def faults():
         ("a decided code removed from the code list", text.replace("  - pattern_empty\n", "", 1), "meta.codes.expression"),
         ("every accepted PI-boundary vector moved away from pi_max", text.replace("expect: accept, pi: 2048,", "expect: accept, pi: 2047,"), "meta.boundary.pi_max"),
         ("the known pin version of the schema vectors changed", text.replace("pin: {state: ok, version: 1}", "pin: {state: ok, version: 2}"), "meta.pin.known-version"),
+        ("a `declared` pin with different versions", text.replace(line_of(text, "S-017"), line_of(text, "S-017").replace("versions: [1, 1]", "versions: [1, 2]")), "pin.declared.S-017"),
+        ("identical unknown declarations expected to be accepted", text.replace(line_of(text, "S-019"), line_of(text, "S-019").replace("versions: [99, 99]", "versions: [1, 1]")), "meta.pin.declared.S-019"),
     ]
 
 
@@ -84,7 +86,8 @@ def main():
               ("CIC_CODES_PLANT", "row-removed", "DISAGREE P X-Q130"), ("CIC_CODES_PLANT", "value-mismatch-before-length", "DISAGREE P V-L007"),
               ("CIC_CODES_PLANT", "early-size", "DISAGREE P X-A027"), ("CIC_SPEC_PLANT", "no-class-precheck-spec", "DISAGREE S X-K101"),
               ("CIC_SPEC_PLANT", "count-before-bounds-spec", "DISAGREE S X-Q108"), ("CIC_SPEC_PLANT", "depth-before-extension-spec", "DISAGREE S X-S124"),
-              ("CIC_CONFORM_PLANT", "last-refused", "DISAGREE P.schema S-010"), ("CIC_CONFORM_PLANT", "pin-after-expressions", "DISAGREE P.schema S-005")]
+              ("CIC_CONFORM_PLANT", "last-refused", "DISAGREE P.schema S-010"), ("CIC_CONFORM_PLANT", "pin-after-expressions", "DISAGREE P.schema S-005"),
+              ("CIC_CONFORM_PLANT", "identical-is-conflict", "DISAGREE P.schema S-017")]
     for var, plant, needle in plants:
         rc, o = run([CONFORM, "--no-native"], {var: plant})
         report("B planted: %s=%s" % (var, plant), rc == 1 and needle in o, "exit=%d needle=%r" % (rc, needle))

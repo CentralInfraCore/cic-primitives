@@ -1,0 +1,3 @@
+sha256 of pattern-profile.yaml: e7ece43a9486187c16a482a96a86d22cf82407711be940920155f4e3abe277e0 (reference e7ece43a9486187c16a482a96a86d22cf82407711be940920155f4e3abe277e0, from the value supplied on the command line)
+mode: ACCEPTANCE: verified against an explicit value; the value is authenticated by the review procedure (PR description, independent recomputation), not by this tool
+all expectations held

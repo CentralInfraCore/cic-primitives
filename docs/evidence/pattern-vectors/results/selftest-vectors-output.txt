@@ -18,6 +18,8 @@ A planted: the profile name changed                        OK exit=1 needle=meta
 A planted: a decided code removed from the code list       OK exit=1 needle=meta.codes.expression
 A planted: every accepted PI-boundary vector moved away from pi_max OK exit=1 needle=meta.boundary.pi_max
 A planted: the known pin version of the schema vectors changed OK exit=1 needle=meta.pin.known-version
+A planted: a `declared` pin with different versions        OK exit=1 needle=pin.declared.S-017
+A planted: identical unknown declarations expected to be accepted OK exit=1 needle=meta.pin.declared.S-019
 B positive control (all implementations, native)           OK exit=0
 B planted: CIC_CODES_PLANT=charset-before-length           OK exit=1 needle='DISAGREE P X-T107'
 B planted: CIC_CODES_PLANT=size-off-by-one                 OK exit=1 needle='DISAGREE P X-Z101'
@@ -31,6 +33,7 @@ B planted: CIC_SPEC_PLANT=count-before-bounds-spec         OK exit=1 needle='DIS
 B planted: CIC_SPEC_PLANT=depth-before-extension-spec      OK exit=1 needle='DISAGREE S X-S124'
 B planted: CIC_CONFORM_PLANT=last-refused                  OK exit=1 needle='DISAGREE P.schema S-010'
 B planted: CIC_CONFORM_PLANT=pin-after-expressions         OK exit=1 needle='DISAGREE P.schema S-005'
+B planted: CIC_CONFORM_PLANT=identical-is-conflict         OK exit=1 needle='DISAGREE P.schema S-017'
 B vector file: S-010 with the position of the third contract OK exit=1 needle='DISAGREE P.schema S-010'
 B vector file: pi_max declared as 4096                     OK exit=1 needle='DISAGREE P.meta limits.pi_max'
 B planted: the Go runner matches any line feed (canary)    OK exit=3

@@ -1,0 +1,8 @@
+{
+ "vector_file_sha256": "e7ece43a9486187c16a482a96a86d22cf82407711be940920155f4e3abe277e0",
+ "approved_base": {
+  "commit": "9fe89b1c53eed142b53cea7449b36931b60d6573",
+  "vector_file_sha256": "bea100d469b427f738af397451fcb92d9b262397b95cf2c7e88d9bb6aff69607"
+ },
+ "note": "computed from the intended bytes BEFORE they were written; the same values are in the PR description, where the review checks them"
+}
