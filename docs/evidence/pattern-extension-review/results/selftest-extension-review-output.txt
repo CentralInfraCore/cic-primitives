@@ -1,0 +1,15 @@
+A positive control (the package as it is)                                                        OK exit=0
+A planted: a case without a review entry (E-PIN-13 removed from the review data)                 OK exit=1 needle=review.ids.equal
+A planted: a decision outside D1 to D6 (D7)                                                      OK exit=1 needle=review.depends.known.E-TRV-01
+A planted: a dependency outside the group's set (E-TRV-01 depends on D1)                         OK exit=1 needle=review.depends.group.E-TRV-01
+A planted: a missing derivation (E-PIN-05)                                                       OK exit=1 needle=review.derive.E-PIN-05
+A planted: a rule that names an unknown obligation                                               OK exit=1 needle=review.rule.known.E-PIN-33.O-RD-99
+A planted: a case whose expectation no longer follows the rules (E-PIN-01 expects conflict)      OK exit=1 needle=model.E-PIN-01
+A planted: a requirement that does not exist in the approved set                                 OK exit=1 needle=case.reqs.known.E-PIN-01.R-NOPE
+A planted: the case table of the document edited by hand                                         OK exit=1 needle=doc.table.in-sync
+A planted: the decision table of the document no longer matches the data (D4 needs 6)            OK exit=1 needle=doc.counts.D4
+A planted: the group table of the document no longer matches the data (E-TRV 8)                  OK exit=1 needle=doc.group.E-TRV
+A planted: the approved vector file modified by one appended comment line                        OK exit=1 needle=approved.unchanged
+B planted model defect: the version compared by Python equality (true and 1.0 pass)              OK exit=1
+C infra: the review data is unreadable (exit 2, not a detection)                                 OK exit=2
+self-test: all as expected

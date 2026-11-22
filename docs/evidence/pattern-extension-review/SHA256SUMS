@@ -1,0 +1,7 @@
+b59c699e43333d640788025701e6d8c9ae3cb4e82bbdb578c8ac4a5fd74e5030  README.md
+73427181175cad761da5743285368bf60aad411559fc51364905c0842c168f1f  check_extension_review.py
+111c2dc8a25cb397f8c89dbc95f675c4e6ac7118de6855c238b55e97a3aa3293  selftest_extension_review.py
+10f58c28a8fdfb3adf08ef93f9c0fa47e47f41696490c1a235107e95f2438428  results/check_extension_review.txt
+68f70c8bdf780f7641b8f8e576f5b4c17d1d090a87bdf554f030e58e5893d261  results/selftest-extension-review-output.txt
+7483bcc976230ccf3de2ba5ab931770883ce3fd65b5039a75b133fce41ddd029  ../../design/pattern-profile-spec/extension-review.yaml
+0b93073b97364b890dadfb5cd136d64126f46f9f4328723e808c46dd71bc663e  ../../en/GRAMMAR-PATTERN-EXTENSION-CASES-REVIEW.md
