@@ -2,7 +2,7 @@
 
 Design: the text is first judged by the closed-subset classifier (subset_check.parse); only an accepted text is parsed here, so the set of texts that RUN is exactly the set the
 grammar accepts. The expression (outer anchors removed) becomes a Thompson NFA over Unicode code points (a repetition {n,m} is expanded into copies; the profile limits bound the
-size), and a value is matched as a FULL match by simulating the set of states, one code point at a time: O(states x value length) in the worst case, never backtracking.
+size), and a value is matched as a FULL match by simulating the set of states, one code point at a time, with the epsilon closure followed on the fly (one visit per state per step): O(P x value length) in the worst case, P = program size (states + class ranges + edges), never backtracking.
 `.` is any code point except LF. A class is a list of ASCII ranges. Nothing else exists.
 """
 import os, sys
@@ -145,32 +145,37 @@ class _Prog:
 
 
 class Matcher:
+    """Pike-style simulation. The epsilon closure is NOT precomputed: for each input code point the next state set is built by following epsilon edges with a per-step visit
+    mark, so every state is visited at most once per step and every edge at most once. Cost per code point: O(P) with P = states + class ranges + edges of the program (edges <= 2 x states);
+    compile: O(P) time and memory. Total: O(P x N), never backtracking. (A precomputed closure per state costs O(S^2) memory and time to build and makes a step O(S x closure): see nfa_closure_precomputed.py / closure_probe.py.)"""
     def __init__(self, p):
         ast = parse_ast(p)
         self.prog = _Prog()
         self.start = self.prog.build(ast, self.prog.accept)
-        t = self.prog.t
-        self.closure = []
-        for s in range(len(t)):                          # the consuming (or accepting) states reachable by epsilon moves only
-            seen, stack, out = {s}, [s], []
-            while stack:
-                x = stack.pop()
-                eps = [e for e in t[x] if e[0] == "eps"]
-                if x == self.prog.accept or len(eps) != len(t[x]):
-                    out.append(x)
-                for _, _, n in eps:
-                    if n not in seen:
-                        seen.add(n); stack.append(n)
-            self.closure.append(tuple(out))
+        t, acc = self.prog.t, self.prog.accept
         self.states = len(t)
+        self.ranges = sum(len(e[1]) for tr in t for e in tr if e[0] == "cls")
+        self.edges = sum(len(tr) for tr in t)
+        self.eps = [tuple(e[2] for e in tr if e[0] == "eps") for tr in t]               # epsilon targets of each state (one pass, O(edges))
+        self.out = [s == acc or any(e[0] != "eps" for e in tr) for s, tr in enumerate(t)]  # a state that consumes a code point or accepts
+        self.step = [tuple(e for e in tr if e[0] != "eps") for tr in t]                  # its consuming edges
 
     def fullmatch(self, value):
-        t, cl, acc = self.prog.t, self.closure, self.prog.accept
-        cur = set(cl[self.start])
+        eps, out, step, acc = self.eps, self.out, self.step, self.prog.accept
+        mark = [0] * self.states; gen = 1
+        cur = []; stack = [self.start]
+        while stack:
+            x = stack.pop()
+            if mark[x] == gen:
+                continue
+            mark[x] = gen
+            if out[x]:
+                cur.append(x)
+            stack.extend(eps[x])
         for ch in value:
-            o = ord(ch); nxt = set()
+            o = ord(ch); gen += 1; nxt = []
             for s in cur:
-                for kind, arg, n in t[s]:
+                for kind, arg, n in step[s]:
                     if kind == "c":
                         ok = arg == ch
                     elif kind == "any":
@@ -180,7 +185,15 @@ class Matcher:
                     else:
                         continue
                     if ok:
-                        nxt.update(cl[n])
+                        stack.append(n)
+                        while stack:
+                            x = stack.pop()
+                            if mark[x] == gen:
+                                continue
+                            mark[x] = gen
+                            if out[x]:
+                                nxt.append(x)
+                            stack.extend(eps[x])
             cur = nxt
             if not cur:
                 return False

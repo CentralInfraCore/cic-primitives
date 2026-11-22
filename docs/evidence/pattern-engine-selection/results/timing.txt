@@ -1,55 +1,55 @@
 case                           re             regex          re2g           re2p           nfa            go             rust             (match time in ns; compile time is included in none of them; 'timeout' = killed at 10 s)
-tim.alt_in_plus.20             806779         1969497        11138          5298           0              18430          53104           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.nested_plus.20             30298683       20495          6652           2366           0              1883           35783           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.alt_in_plus.24             5767196        13569823       4102           1503           0              1990           37835           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.nested_plus.24             483505589      21969          2778           1250           0              1677           34924           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.alt_in_plus.28             40161894       93312263       2778           1238           0              2147           37005           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.nested_plus.28             7857692475     24280          2241           1144           0              1762           35647           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.alt_in_plus.32             269168915      636029499      3547           1313           0              2394           34995           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.nested_plus.32             timeout:10000000000 29544          2191           1228           0              2096           35577           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.alt_in_plus.36             1848242313     4356103670     2500           1396           0              2531           35810           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.nested_plus.36             timeout:10000000000 29278          2551           1322           0              2237           34666           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
-tim.bounded_alt_group.16       122200         319932         26069          31130          33751          37172          187082          ^(a|aa){1,255}$
-tim.bounded_alt_group.20       814051         1961070        8678           8224           42768          12602          207210          ^(a|aa){1,255}$
-tim.bounded_alt_group.24       5853740        13557746       8883           10173          51778          14656          248179          ^(a|aa){1,255}$
-tim.bounded_alt_group.28       40953456       93088550       10374          10056          64354          18789          300304          ^(a|aa){1,255}$
-tim.bounded_alt_group.32       271131287      637037579      10909          11074          79809          312331         357642          ^(a|aa){1,255}$
-tim.optional_run.16            1375797        27667          4749           3901           30697          16794          125088          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaa
-tim.optional_run.20            24341467       39330          3865           3760           49869          9414           165605          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
-tim.optional_run.24            410064788      58653          4672           4388           70244          13314          213475          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
-tim.optional_run.28            7005113943     80757          4669           4926           92893          17430          279828          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
-tim.optional_run.32            timeout:10000000000 117043         4775           6722           121051         22557          343672          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
-tim.bounded_group_optional.16  3340232        57977          5661           6120           28364          8054           137510          ^(a?){16}a{16}$
-tim.bounded_group_optional.20  34825363       91883          6515           6760           47750          11699          183619          ^(a?){20}a{20}$
-tim.bounded_group_optional.24  552581612      140952         8230           8062           66504          16644          239611          ^(a?){24}a{24}$
-tim.bounded_group_optional.28  8827735582     212244         15433          10781          89114          21880          338014          ^(a?){28}a{28}$
-tim.bounded_group_optional.32  timeout:10000000000 308103         12874          13431          116959         28163          390504          ^(a?){32}a{32}$
-tim.consecutive_star3.128      1623176        95119          2737           1663           59118          10459          34687           ^a*a*a*$
-tim.consecutive_star3.256      11282023       318603         3443           1467           110872         20817          36257           ^a*a*a*$
-tim.consecutive_star3.512      84657826       1180070        2837           1606           164318         39567          41267           ^a*a*a*$
-tim.consecutive_star3.1024     654997421      4560782        3051           2124           338576         74670          49972           ^a*a*a*$
-tim.consecutive_star2.2000     7244684        5861179        4738           4059           466172         117607         73119           ^a*a*$
-tim.consecutive_star2.8000     112660279      89617707       12557          13135          1911043        462938         197282          ^a*a*$
-tim.consecutive_star3.500      79225402       1128433        2234           1191           160697         36583          41619           ^a*a*a*$
-tim.consecutive_star3.2000     4837423202     16963455       4111           3516           646587         141807         74054           ^a*a*a*$
-tim.consecutive_star3.8000     timeout:10000000000 268548356      12219          13074          2545963        571595         195225          ^a*a*a*$
-tim.consecutive_star4.500      timeout:10000000000 4267498        2641           1648           0              54698          42768           ^a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
-tim.consecutive_star4.2000     timeout:10000000000 34009564       4202           3596           0              218380         76730           ^a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
-tim.consecutive_star4.8000     timeout:10000000000 539511567      12232          13034          0              860925         203506          ^a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
-tim.consecutive_star5.500      timeout:10000000000 3692799        2533           1622           0              65065          63366           ^a*a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
-tim.consecutive_star5.2000     timeout:10000000000 56619986       4267           3529           0              259934         75055           ^a*a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
-tim.consecutive_star5.8000     timeout:10000000000 898155797      12186          13073          0              1030395        195457          ^a*a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
-tim.semver_adversarial.4096    24412          5242           16597          13767          1589795        89491          119645          ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(
-tim.vault_long.4096            3301           7369           36007          10315          713415         72540          144615          ^vault:v1:.+$
-tim.cidr_adversarial.4096      2961           8496           3003           671            7265           16387          663             ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1
-tim.semver_adversarial.65536   349812         25779          113719         89106          24873940       1429622        1396443         ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(
-tim.vault_long.65536           19884          25492          365469         89111          11090028       1201803        1428512         ^vault:v1:.+$
-tim.cidr_adversarial.65536     3184           10259          6128           2791           6812           4328           840             ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1
-max.bounded_alt                timeout:10000000000 timeout:10000000000 1888191        2288404        4354897        589650         14097923        ^(a|aa){1,255}$
-max.optional_run               timeout:10000000000 1673874        18114          20913          1036750        51222          1886649         ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
-max.group_optional             timeout:10000000000 124676634      2465810        3281504        16885964       1700472        18614026        ^(a?){255}a{255}$
-max.star3                      11138015       316460         3790           1394           83302          16017          55066           ^a*a*a*$
-max.nested_bounded             1679           2584           3556           1948           41328          84             340             ^(a{30}){30}$
-max.big_class_runs             1768           3840           44343          50869          99906          91             1030            ^[a-z]{255}[a-z]{255}[a-z]{255}[a-z]
-max.alt_255                    8859           18570          10687          4165           61237          7153           561634          ^(a|b){255}$
-worst match time per engine over all 53 cases (ns): re=10000000000, regex=10000000000, re2g=2465810, re2p=3281504, nfa=24873940, go=1700472, rust=18614026
+tim.alt_in_plus.20             825111         2017434        11170          5204           0              19170          97080           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.nested_plus.20             42579452       22387          7119           2532           0              2188           88969           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.alt_in_plus.24             5613313        14987163       6166           1506           0              2172           81482           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.nested_plus.24             488615598      25841          3108           1209           0              1746           79449           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.alt_in_plus.28             38628726       93279962       3101           1260           0              2245           80039           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.nested_plus.28             7759937984     25242          2213           1178           0              1836           77820           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.alt_in_plus.32             261606339      642155611      4655           1300           0              2523           91088           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.nested_plus.32             timeout:10000000000 26605          2418           1202           0              2097           80282           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.alt_in_plus.36             1947325664     4577101435     2535           1388           0              2613           81261           ^(a|aa)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.nested_plus.36             timeout:10000000000 29556          2327           1247           0              2243           79621           ^(a+)+$  [outside the subset: nfa refuses by design, shown as 0]
+tim.bounded_alt_group.16       125282         332908         30265          29428          52811          29716          328895          ^(a|aa){1,255}$
+tim.bounded_alt_group.20       832416         2255556        9000           8214           67215          12424          425784          ^(a|aa){1,255}$
+tim.bounded_alt_group.24       6331933        14654830       9137           10386          88851          14710          499103          ^(a|aa){1,255}$
+tim.bounded_alt_group.28       43161769       96046713       10595          9700           110188         18735          607911          ^(a|aa){1,255}$
+tim.bounded_alt_group.32       268448787      709016082      11524          10902          137447         250360         699483          ^(a|aa){1,255}$
+tim.optional_run.16            1390685        33098          5363           3874           44119          13686          273635          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaa
+tim.optional_run.20            23281094       43811          4852           3680           66170          5584           352297          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
+tim.optional_run.24            403695421      64148          6336           4305           88564          4725           433226          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
+tim.optional_run.28            7315900253     91954          5473           5642           123048         6044           548591          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
+tim.optional_run.32            timeout:10000000000 122962         6086           7479           155102         12021          667791          ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
+tim.bounded_group_optional.16  2150781        62640          5831           5834           43406          3640           290621          ^(a?){16}a{16}$
+tim.bounded_group_optional.20  34398780       153046         6965           6714           65588          4521           380963          ^(a?){20}a{20}$
+tim.bounded_group_optional.24  584935477      150900         8652           8552           86511          6050           480683          ^(a?){24}a{24}$
+tim.bounded_group_optional.28  9485941626     291216         10679          10504          120388         8020           609326          ^(a?){28}a{28}$
+tim.bounded_group_optional.32  timeout:10000000000 320670         13165          11914          155817         10250          747602          ^(a?){32}a{32}$
+tim.consecutive_star3.128      1580428        109415         4483           1469           80957          4838           90046           ^a*a*a*$
+tim.consecutive_star3.256      11226497       367188         3527           1362           173112         10686          86131           ^a*a*a*$
+tim.consecutive_star3.512      84330689       1356950        3004           1586           328844         18738          92705           ^a*a*a*$
+tim.consecutive_star3.1024     651367780      5074427        3033           2121           648930         39922          107237          ^a*a*a*$
+tim.consecutive_star2.2000     7094817        6339689        5020           4036           895667         55647          131412          ^a*a*$
+tim.consecutive_star2.8000     112345606      91863414       12456          13081          3647649        232541         317653          ^a*a*$
+tim.consecutive_star3.500      78443952       1134328        2193           1157           316438         20603          93682           ^a*a*a*$
+tim.consecutive_star3.2000     4795832578     17473379       4267           3524           1316509        73020          137503          ^a*a*a*$
+tim.consecutive_star3.8000     timeout:10000000000 274893478      12154          13039          5270438        270572         310009          ^a*a*a*$
+tim.consecutive_star4.500      timeout:10000000000 2301738        2889           1637           0              24533          100941          ^a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
+tim.consecutive_star4.2000     timeout:10000000000 34341503       4410           3558           0              94948          140013          ^a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
+tim.consecutive_star4.8000     timeout:10000000000 540745557      12174          13070          0              344277         319027          ^a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
+tim.consecutive_star5.500      timeout:10000000000 4816701        2600           1563           0              36119          95586           ^a*a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
+tim.consecutive_star5.2000     timeout:10000000000 56490751       4242           3541           0              114401         148409          ^a*a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
+tim.consecutive_star5.8000     timeout:10000000000 970282902      12262          13027          0              782903         314543          ^a*a*a*a*a*$  [outside the subset: nfa refuses by design, shown as 0]
+tim.semver_adversarial.4096    24085          8501           16820          13904          2084100        49871          190196          ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(
+tim.vault_long.4096            3423           10907          37686          10317          1193957        37332          265011          ^vault:v1:.+$
+tim.cidr_adversarial.4096      3335           12087          2749           682            8518           1943           963             ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1
+tim.semver_adversarial.65536   349641         26825          92077          89094          32584458       642569         1318943         ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(
+tim.vault_long.65536           19682          30265          359877         89117          19134779       642037         1440870         ^vault:v1:.+$
+tim.cidr_adversarial.65536     3191           12489          6528           2830           11291          3901           897             ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1
+max.bounded_alt                timeout:10000000000 timeout:10000000000 1912696        2293682        7623101        1457918        13744442        ^(a|aa){1,255}$
+max.optional_run               timeout:10000000000 1919568        22501          19504          996488         114012         1892532         ^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a
+max.group_optional             timeout:10000000000 124517856      2506489        3621392        9057045        1839110        18795643        ^(a?){255}a{255}$
+max.star3                      11175942       319595         5583           5090           171105         19230          55594           ^a*a*a*$
+max.nested_bounded             1455           2839           4456           2247           49740          188            288             ^(a{30}){30}$
+max.big_class_runs             1903           4267           47898          47972          95202          818            788             ^[a-z]{255}[a-z]{255}[a-z]{255}[a-z]
+max.alt_255                    9617           17705          14102          5227           86940          6994           532203          ^(a|b){255}$
+worst match time per engine over all 53 cases (ns): re=10000000000, regex=10000000000, re2g=2506489, re2p=3621392, nfa=32584458, go=1839110, rust=18795643

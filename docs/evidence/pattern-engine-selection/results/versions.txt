@@ -1,0 +1,16 @@
+re     python 3.14.4, stdlib re (no package version)
+regex  python 3.14.4, regex 2026.11.19
+re2g   python 3.14.4, google-re2 1.1.20251105
+re2p   python 3.14.4, pyre2 0.3.14
+nfa    python 3.14.4, own nfa_engine.py sha256 b48b31a140eff570d82f393d4d7d70dfa6b29bb480392496d2ddaf5b2d95b1de
+go     go version go1.26.11 linux/amd64
+cargo  cargo 1.99.1 (5f94df478 2026-08-27)
+rust regex crate (runner of the profile probe) 1.13.2 (Cargo.lock sha256 106d73cb150c750f)
+rust regex crate (bench)                       1.13.2 (Cargo.lock sha256 2ad819c735d42d23)
+go.mod of the profile probe runner             go 1.21
+go.mod of the bench                            go 1.21
+nfa_engine.py                                  sha256 b48b31a140eff570d82f393d4d7d70dfa6b29bb480392496d2ddaf5b2d95b1de
+engines.py                                     sha256 7729fe3ddcdbb57456f13370c7d1812a9a424d96535dc1db26f888d62e46c6fe
+construct_expect.py                            sha256 4ec981c285fd9b3f14334cc86bafdf6b253651679abb9273123318462b81380a
+fuzz_gen.py                                    sha256 c3f5d2ef14852d1acb3c7266920532ca753b855ccba2c743911c0affea899541
+subset_check.py (the classifier in front of every engine) sha256 f4aa62ca5a80a80989831b71f7feb332d4c5c390095d2ea472dd6a68a9a15b67
