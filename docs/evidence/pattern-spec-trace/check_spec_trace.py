@@ -207,6 +207,22 @@ def main(argv):
                          ("implementation", (M.class_key(1, items, [1], "impl2", "ref"), M.result_key(1, items, [1], "impl2", "ref"))),
                          ("conformance-reference", (M.class_key(1, items, [1], "impl", "ref2"), M.result_key(1, items, [1], "impl", "ref2")))):
         expect("evidence.context-bound.%s" % label, other[0] != base[0] and other[1] != base[1], "a changed %s must change both keys" % label)
+    # domain separation (review F6): every component digest and every identifier has its own tag, the tags are the ones the specification lists, and no two digests coincide on the empty input
+    empty = [M.content_digest([]), M.delivery_digest([]), M.pin_ordered_digest([]), M.pin_set_digest([])]
+    expect("evidence.domain-separation.components-distinct", len(set(empty)) == 4, "two component digests coincide on the empty input: they share a domain tag or have none")
+    one = [(("a", "contract", 0), "^a$")]
+    expect("evidence.domain-separation.content-vs-delivery", M.content_digest(one) != M.delivery_digest(one), "the content and the delivery digest of the same single contract coincide")
+    expect("evidence.domain-separation.keys-distinct", M.class_key(1, one, [1], "i", "r") != M.result_key(1, one, [1], "i", "r"), "the class key and the result key coincide")
+    for t in M.ALL_TAGS:
+        expect("spec.tag.%s" % t.decode("ascii"), t.decode("ascii") in spec, "the specification does not list this domain tag")
+    expect("evidence.domain-separation.tags-distinct", len(set(M.ALL_TAGS)) == len(M.ALL_TAGS), "two domain tags are equal")
+    # the scope of the keys (review F5): only the schema pattern validation after a SUCCESSFUL document read gets a key; a reader error gets none
+    for c in cases["cases"]:
+        if c["id"].startswith("E-RDR") or (c["expect"]["outcome"] == "reader_error" and c.get("pin_text") is None):
+            ev = M.evidence_for_schema(c["schema"], c.get("pin") or [1], 1, "impl", "ref")
+            expect("evidence.scope.reader-error-no-key.%s" % c["id"], ev is None, "a document the reader refused must get no evidence key")
+    ev_ok = M.evidence_for_schema("a: {contract: [{type: pattern, expression: '^a$'}]}", [1], 1, "impl", "ref")
+    expect("evidence.scope.successful-read-gets-keys", ev_ok is not None and ev_ok["verdict"] == ("accept",) and ev_ok["class_key"] != ev_ok["result_key"], "a successfully read schema must get both keys and its verdict")
     # the typed canonical encoding is equal iff the values are identical
     import random
     rnd = random.Random(20261123)

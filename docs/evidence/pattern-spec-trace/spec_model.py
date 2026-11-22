@@ -202,13 +202,29 @@ def _enc_path(path):
     return _lp(out)
 
 
+# THE DOMAIN TAGS (a rule of the specification: one tag per component and per identifier, so that no two of them can ever produce the same digest from the same bytes; the specification text lists them and the
+# check compares the text with these constants)
+TAG_CONTRACTS_CONTENT = b"cic.pattern.contracts.content/1"
+TAG_CONTRACTS_DELIVERY = b"cic.pattern.contracts.delivery/1"
+TAG_PIN_ORDERED = b"cic.pattern.pin.ordered/1"
+TAG_PIN_SET = b"cic.pattern.pin.set/1"
+TAG_CLASS = b"cic.pattern.class/1"
+TAG_RESULT = b"cic.pattern.result/1"
+ALL_TAGS = [TAG_CONTRACTS_CONTENT, TAG_CONTRACTS_DELIVERY, TAG_PIN_ORDERED, TAG_PIN_SET, TAG_CLASS, TAG_RESULT]
+
+
+def _tagged(tag, count):
+    """the start of every component digest: the domain tag and the number of entries (planted: no tag, the untagged digest the review found)"""
+    return hashlib.sha256(b"" if PLANT == "no-domain-tags" and tag in (TAG_CONTRACTS_CONTENT, TAG_CONTRACTS_DELIVERY) else tag + struct.pack(">Q", count))
+
+
 def delivery_digest(items):
     """the DELIVERY DIGEST (specification, binding of the result to its input): SHA-256 over a length-prefixed encoding of the ORDERED list of (path, expression) pairs as the reader delivers them.
     items: [(path, expression)]. The order is part of the input: two documents with the same contracts in another delivery order have different delivery digests."""
     seq = list(items)
     if PLANT == "digest-sorted":                       # planted: an order-erasing digest, which cannot tell the two orders apart
         seq = sorted(seq, key=lambda it: (_enc_path(it[0]), it[1]))
-    h = hashlib.sha256()
+    h = _tagged(TAG_CONTRACTS_DELIVERY, len(seq))
     for path, expr in seq:
         h.update(_enc_path(path)); h.update(_lp(expr.encode("utf-8")))
     return h.hexdigest()
@@ -216,7 +232,7 @@ def delivery_digest(items):
 
 def content_digest(items):
     """the order-erasing digest of the same contracts (what a canonical form that sorts keys would see)"""
-    h = hashlib.sha256()
+    h = _tagged(TAG_CONTRACTS_CONTENT, len(items))
     for path, expr in sorted(items, key=lambda it: (_enc_path(it[0]), it[1])):
         h.update(_enc_path(path)); h.update(_lp(expr.encode("utf-8")))
     return h.hexdigest()
@@ -248,7 +264,7 @@ def enc(v):
 
 def pin_ordered_digest(declarations):
     """a COMPONENT: the declarations as delivered, in order, typed"""
-    h = hashlib.sha256(b"cic.pattern.pin.ordered/1" + struct.pack(">Q", len(declarations)))
+    h = _tagged(TAG_PIN_ORDERED, len(declarations))
     for d in declarations:
         h.update(_lp(enc(d)))
     return h.hexdigest()
@@ -257,7 +273,7 @@ def pin_ordered_digest(declarations):
 def pin_set_digest(declarations):
     """a COMPONENT: the SET of the distinct declared values (identity classes), typed and sorted; the pin resolution depends only on this set"""
     encs = sorted({enc(d) for d in declarations})
-    h = hashlib.sha256(b"cic.pattern.pin.set/1" + struct.pack(">Q", len(encs)))
+    h = _tagged(TAG_PIN_SET, len(encs))
     for e in encs:
         h.update(_lp(e))
     return h.hexdigest()
@@ -275,12 +291,12 @@ def _key(tag, profile_version, contracts_digest, pin_digest, implementation, con
 def class_key(profile_version, items, declarations, implementation, conformance_ref):
     """the key under which the accept/refuse CLASS of a validation may be reused: the profile version, the contracts WITHOUT their order (content digest), the pin declarations as a typed SET,
     the implementation identity and the conformance reference (the approved vector file hash)"""
-    return _key(b"cic.pattern.class/1", profile_version, content_digest(items), pin_set_digest(declarations), implementation, conformance_ref)
+    return _key(TAG_CLASS, profile_version, content_digest(items), pin_set_digest(declarations), implementation, conformance_ref)
 
 
 def result_key(profile_version, items, declarations, implementation, conformance_ref):
     """THE FULL EVIDENCE IDENTIFIER of a validation result: the same context, with the contracts and the pin declarations IN THE ORDER DELIVERED. Only an equal result key makes the reported code and path reusable."""
-    return _key(b"cic.pattern.result/1", profile_version, delivery_digest(items), pin_ordered_digest(declarations), implementation, conformance_ref)
+    return _key(TAG_RESULT, profile_version, delivery_digest(items), pin_ordered_digest(declarations), implementation, conformance_ref)
 
 
 def may_reuse(prev, cur, what):
@@ -289,6 +305,19 @@ def may_reuse(prev, cur, what):
     if PLANT == "reuse-by-partial":                    # planted: the contracts digest alone decides
         return prev["content"] == cur["content"] if what == "class" else prev["delivery"] == cur["delivery"]
     return prev["class_key"] == cur["class_key"] if what == "class" else prev["result_key"] == cur["result_key"]
+
+
+def evidence_for_schema(schema_text, declarations, profile_version, implementation, conformance_ref):
+    """THE SCOPE OF THE KEYS (review F5 of #52): the class key and the evidence identifier identify ONLY the verdict of the SCHEMA PATTERN VALIDATION that follows a SUCCESSFUL document read. A document the
+    reader refuses gets no key (None); a key contains no record value and no budget context and is no identifier of a value validation, of a reader error or of a release verdict."""
+    try:
+        items = deliver(schema_text)
+    except ReaderError:
+        if PLANT == "key-on-reader-error":                 # planted: a key is issued for a document the reader refused
+            return dict(class_key="x", result_key="y", verdict=("reader_error",))
+        return None
+    return dict(class_key=class_key(profile_version, items, declarations, implementation, conformance_ref),
+                result_key=result_key(profile_version, items, declarations, implementation, conformance_ref), verdict=validate_delivered(declarations, items))
 
 
 def deliver(schema_text):

@@ -51,6 +51,8 @@ def main():
         ("the approved vector file modified by one appended comment line (the 513 vectors are a reference)", dict(vec=vec + b"# x\n"), "approved.unchanged"),
         ("review F4: a plan item that does not list the requirement the obligation relies on it for (R-PIN-IDENTICAL)", dict(obl=sub(obl, "reqs: [R-PIN-MISSING, R-PIN-UNKNOWN, R-PIN-CONFLICT, R-PIN-IDENTICAL, R-PIN-FIRST, R-PIN-ONLY-IF-PATTERN], method: \"extension cases for the pin", "reqs: [R-PIN-MISSING, R-PIN-UNKNOWN, R-PIN-CONFLICT, R-PIN-FIRST, R-PIN-ONLY-IF-PATTERN], method: \"extension cases for the pin")), "obligation.covers.O-RD-04.R-PIN-IDENTICAL"),
         ("review F4: the machine-readable text of O-VF-01 names fewer steps than the specification (steps 1 to 3)", dict(obl=sub(obl, "repeat steps 0 to 3 of the validation order INDEPENDENTLY", "repeat steps 1 to 3 of the validation order INDEPENDENTLY")), "consistency.text.O-VF-01"),
+        ("review F5: the specification no longer states the scope of the keys (a successful document read)", dict(spec=spec.replace("successful document read", "document read")), "consistency.spec.O-GT-02"),
+        ("review F6: the specification no longer lists a domain tag (cic.pattern.contracts.delivery/1)", dict(spec=spec.replace("cic.pattern.contracts.delivery/1", "cic.pattern.contracts.deliv")), "spec.tag.cic.pattern.contracts.delivery/1"),
         ("review F4: the specification no longer says steps 0 to 3", dict(spec=spec.replace("steps 0 to 3", "steps 1 to 3")), "consistency.spec.O-VF-01"),
     ]
     for name, files, needle in faults:
@@ -70,7 +72,9 @@ def main():
                           ("json-identity", "extension.model.E-PIN-18"), ("json-identity", "model_raised"),
                           ("stop-at-first-accept", "property.class-order-independent.S-010"), ("digest-sorted", "digest.order-sensitive"),
                           ("key-without-pin", "evidence.pin-bound.class-keys-distinct"), ("key-without-pin", "evidence.pin-change-no-reuse"),
-                          ("reuse-by-partial", "evidence.pin-change-no-reuse"), ("python-keys", "extension.model.E-PIN-28"), ("python-keys", "extension.model.E-PIN-32")):
+                          ("reuse-by-partial", "evidence.pin-change-no-reuse"), ("python-keys", "extension.model.E-PIN-28"), ("python-keys", "extension.model.E-PIN-32"),
+                          ("no-domain-tags", "evidence.domain-separation.components-distinct"), ("no-domain-tags", "evidence.domain-separation.content-vs-delivery"),
+                          ("key-on-reader-error", "evidence.scope.reader-error-no-key")):
         rc, o = run([], {"CIC_SPECMODEL_PLANT": plant})
         named = [l for l in o.splitlines() if l.startswith("FAIL-EXPECT") and needle in l]
         report("B planted model defect: " + plant, rc == 1 and bool(named), "exit=%d needle=%s" % (rc, needle))
