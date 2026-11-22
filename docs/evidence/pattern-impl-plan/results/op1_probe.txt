@@ -1,0 +1,56 @@
+PyYAML 6.0.3, the YAML 1.1 rules
+scalar     YAML 1.2 core schema   PyYAML                 same?
+'010'      int 10                 int 8                  NO
+'0o10'     int 8                  str '0o10'             NO
+'0x10'     int 16                 int 16                 yes
+'08'       int 8                  str '08'               NO
+'+1'       int 1                  int 1                  yes
+'-0'       int 0                  int 0                  yes
+'1'        int 1                  int 1                  yes
+'0'        int 0                  int 0                  yes
+'1_000'    str '1_000'            int 1000               NO
+'1,000'    str '1,000'            str '1,000'            yes
+'0b10'     str '0b10'             int 2                  NO
+'0o8'      str '0o8'              str '0o8'              yes
+'0x'       str '0x'               str '0x'               yes
+'on'       str 'on'               bool True              NO
+'off'      str 'off'              bool False             NO
+'yes'      str 'yes'              bool True              NO
+'no'       str 'no'               bool False             NO
+'y'        str 'y'                str 'y'                yes
+'n'        str 'n'                str 'n'                yes
+'tRUE'     str 'tRUE'             str 'tRUE'             yes
+'true'     bool True              bool True              yes
+'True'     bool True              bool True              yes
+'TRUE'     bool True              bool True              yes
+'false'    bool False             bool False             yes
+'False'    bool False             bool False             yes
+'~'        null None              null None              yes
+'null'     null None              null None              yes
+'Null'     null None              null None              yes
+''         null None              null None              yes
+'1e3'      float 1000.0           str '1e3'              NO
+'1.0'      float 1.0              float 1.0              yes
+'.5'       float 0.5              float 0.5              yes
+'5.'       float 5.0              float 5.0              yes
+'-1.5e-2'  float -0.015           float -0.015           yes
+'.inf'     float inf              float inf              yes
+'-.inf'    float -inf             float -inf             yes
+'.nan'     float nan              float nan              yes
+'1:30'     str '1:30'             int 90                 NO
+'2001-01-01' str '2001-01-01'       date datetime.date(2001, 1, 1) NO
+'0.1.2'    str '0.1.2'            str '0.1.2'            yes
+'1.2.3'    str '1.2.3'            str '1.2.3'            yes
+'abc'      str 'abc'              str 'abc'              yes
+PyYAML differs from the core schema on 12 of 42 scalars: '010', '0o10', '08', '1_000', '0b10', 'on', 'off', 'yes', 'no', '1e3', '1:30', '2001-01-01'
+## recorded without expectations: what PyYAML does with the structures the review asked to define
+alias                  accepted -> {'a': 1, 'b': 1}
+merge key              accepted -> {'a': {'k': 1}, 'b': {'k': 1, 'j': 2}}
+explicit tag !!str     accepted -> {'v': '1'}
+explicit tag !!int     accepted -> {'v': 1}
+unknown tag            error ConstructorError
+python tag             error ConstructorError
+duplicate key          accepted -> {'a': 2}
+keys 1 and true        accepted -> {1: 'b'}
+complex key            error ConstructorError
+all expectations held

@@ -49,6 +49,15 @@ def main():
         ("a gate no milestone uses (G-9 removed from M5)", dict(plan=sub(plan, "gates: [G-7, G-9]", "gates: [G-7]")), "gate.used.G-9"),
         ("the counts of the plan no longer equal the files (512 approved)", dict(plan=sub(plan, "approved: 513", "approved: 512")), "counts.approved"),
         ("the Forms integration no longer listed as out of scope", dict(plan=sub(plan, '- "the integration of the Forms (a separate work package)"\n', "")), "scope.out-of-scope"),
+        ("review F1 of #54: the standalone harness is built in a later milestone than the gates it executes (U-10a in M6)", dict(plan=sub(plan, 'module: "tests/pattern_profile/harness", milestone: M3', 'module: "tests/pattern_profile/harness", milestone: M6')), "gate.requires.G-2.U-10a"),
+        ("review F2 of #54: a unit depends on itself (U-01 after U-01)", dict(plan=sub(plan, "module: reader.py, milestone: M3, after: []", "module: reader.py, milestone: M3, after: [U-01]")), "dag.self.U-01"),
+        ("review F2 of #54: a cycle of two units in one milestone (U-01 after U-03, U-03 after U-01)", dict(plan=sub(plan, "module: reader.py, milestone: M3, after: []", "module: reader.py, milestone: M3, after: [U-03]")), "dag.cycle"),
+        ("review F2 of #54: a cycle through three units (U-01 after U-06, U-06 after U-03, U-03 after U-01)", dict(plan=sub(sub(plan, "module: reader.py, milestone: M3, after: []", "module: reader.py, milestone: M3, after: [U-06]"), "module: validator.py, milestone: M3, after: [U-01, U-03, U-04]", "module: validator.py, milestone: M3, after: [U-03]")), "dag.cycle"),
+        ("review F3 of #54: the reader no longer needs OP-1 although OP-1 blocks it", dict(plan=sub(plan, "needs: [D1, D4, D5, D6, OP-1], text: \"source-order mappings", "needs: [D1, D4, D5, D6], text: \"source-order mappings")), "op.blocks.U-01.OP-1"),
+        ("review F3 of #54: the gate G-0 no longer names OP-1", dict(plan=sub(plan, "OP-1 (the YAML scalar schema, explicit tags, duplicate keys and aliases of the reader) closed by a recorded specification decision", "the open point of the YAML scalar schema closed by a recorded specification decision")), "op.closed-by.OP-1"),
+        ("review F4 of #54: a pair covered only through the extension without a fallback (F-01 removed)", dict(plan="\n".join(l for l in plan.split("\n") if not l.startswith("- {id: F-01,"))), "fallback.needed.U-01.R-PIN-MISSING"),
+        ("review F4 of #54: a fallback that names an unknown unit", dict(plan=sub(plan, "- {id: F-02, unit: U-01,", "- {id: F-02, unit: U-99,")), "fallback.known.F-02"),
+        ("review F4 of #54: a claim of execution without an evidence reference", dict(plan=sub(plan, "state: not_started", "state: executed")), "execution.claim"),
         ("the plan document no longer mentions a unit (U-06)", dict(doc=doc.replace("U-06", "U-0x")), "text.mentions.U-06"),
         ("the approved vector file modified by one appended comment line", dict(vec=vec + b"# x\n"), "approved.unchanged"),
     ]
@@ -65,6 +74,18 @@ def main():
             shutil.rmtree(d, ignore_errors=True)
         named = [l for l in o.splitlines() if l.startswith("FAIL-EXPECT") and needle in l]
         report("A planted: " + name, rc == 1 and bool(named), "exit=%d needle=%s" % (rc, needle))
+    # OP-1: the reference resolver of the YAML 1.2 core schema agrees with the hand-written table and PyYAML measurably differs; a planted defect of the resolver is caught, the missing dependency exits 2
+    def probe(env_extra=None):
+        env = dict(os.environ); env.pop("CIC_OP1_PLANT", None); env.pop("CIC_OP1_NO_YAML", None); env.update(env_extra or {})
+        r = subprocess.run([sys.executable, os.path.join(HERE, "op1_probe.py")], capture_output=True, text=True, env=env, timeout=300)
+        return r.returncode, r.stdout + r.stderr
+    rc, o = probe()
+    report("O OP-1 probe positive control (the reference resolver agrees with the table; PyYAML differs)", rc == 0 and "PyYAML differs from the core schema on" in o, "exit=%d" % rc)
+    for plant, needle in (("octal-int", "FAIL-EXPECT core.'010'"), ("bool-yaml11", "FAIL-EXPECT core.'on'"), ("underscore-int", "FAIL-EXPECT core.'1_000'")):
+        rc, o = probe({"CIC_OP1_PLANT": plant})
+        report("O planted: the reference resolver is wrong (%s)" % plant, rc == 1 and needle in o, "exit=%d" % rc)
+    rc, o = probe({"CIC_OP1_NO_YAML": "1"})
+    report("O infra: PyYAML is missing (exit 2, not a detection)", rc == 2 and "INCOMPLETE" in o, "exit=%d" % rc)
     rc, o = run(["--plan", "/nonexistent/plan.yaml"])
     report("C infra: the plan is unreadable (exit 2, not a detection)", rc == 2 and "INCOMPLETE" in o, "exit=%d" % rc)
     print("self-test: %s" % ("all as expected" if not bad else "%d problem(s)" % bad))
