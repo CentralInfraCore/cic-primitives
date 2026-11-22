@@ -1,0 +1,664 @@
+# DRAFT normative vectors of the `pattern` contract profile (P1). Not published, not pinned, no gate reads them yet (HOLD); the profile version number 1 below is a working assumption of the
+# vectors, fixed by the pin decision. Design and decisions: docs/en/GRAMMAR-PATTERN-PROFILE-DESIGN.md (#46), docs/en/GRAMMAR-PATTERN-ENGINE-SELECTION.md (#47),
+# docs/en/GRAMMAR-PATTERN-LIMITS-AND-ERRORS.md (#48); this file and its rules: docs/en/GRAMMAR-PATTERN-VECTORS.md.
+#
+# Every expectation is AUTHORED BY HAND FROM THE SPECIFICATION TEXT, never copied from the output of an implementation. The prototypes (docs/evidence/pattern-limits-errors/) are run against
+# the vectors afterwards (docs/evidence/pattern-vectors/); a disagreement is a finding about the vector, the text or the prototype, and is logged, not auto-corrected.
+#
+# Encoding (so that no reader depends on YAML escapes): an `expr` or a `value` is a plain string (printable ASCII only), or {seq: [...]} where each element is a plain string (literal ASCII
+# text) or [codepoint, count] (that code point, count times). `pi` is the size PI of the expression (limits doc 2.1), derived by hand. `req` lists the requirement ids this vector exercises.
+#
+# Kinds: expressions (a text is accepted or refused, with ONE code), values (an accepted expression and a value: the verdict), schemas (pin state and expressions in document order).
+vectors_format: 1
+profile:
+  name: pattern
+  version: 1
+limits:
+  length: 256
+  repeat_count: 255
+  group_depth: 4
+  repeat_product: 1000
+  unbounded_quantifiers: 3
+  pi_max: 2048
+  value_code_points: 256
+codes:
+  expression:
+  - pattern_empty
+  - pattern_too_long
+  - pattern_not_ascii_printable
+  - pattern_empty_branch
+  - pattern_unbalanced_group
+  - pattern_group_extension
+  - pattern_escape_unsupported
+  - pattern_metachar_unexpected
+  - pattern_anchor_misplaced
+  - pattern_class_empty
+  - pattern_class_negated
+  - pattern_class_unterminated
+  - pattern_class_range_order
+  - pattern_class_nested_or_posix
+  - pattern_class_set_operator
+  - pattern_quantifier_malformed
+  - pattern_quantifier_leading_zero
+  - pattern_quantifier_bounds_order
+  - pattern_quantifier_not_greedy
+  - pattern_nesting_too_deep
+  - pattern_repeat_count_too_large
+  - pattern_repeat_product_too_large
+  - pattern_unbounded_too_many
+  - pattern_unbounded_on_group
+  - pattern_program_too_large
+  value:
+  - pattern_value_not_unicode_scalar
+  - pattern_value_too_long
+  - pattern_value_mismatch
+  pin:
+  - pattern_profile_missing
+  - pattern_profile_unknown
+  - pattern_profile_conflict
+# Requirements: id, the rule in one sentence, and where the rule is written (D = GRAMMAR-PATTERN-PROFILE-DESIGN, L = GRAMMAR-PATTERN-LIMITS-AND-ERRORS).
+requirements:
+- {id: R-MATCH-FULL, text: "the expression matches the whole value, not a part of it", src: "D 3.1"}
+- {id: R-MATCH-ANCHOR-NOOP, text: "an outer ^ and an outer $ add nothing: ^a$ and a mean the same", src: "D 3.1"}
+- {id: R-MATCH-DOT, text: "a dot matches exactly one code point except LF, also CR, NUL, U+2028, non-ASCII and astral code points", src: "D 3.3"}
+- {id: R-MATCH-NO-TRAILING-LF, text: "a $ never lets a trailing LF through", src: "D 3.1"}
+- {id: R-MATCH-CLASS, text: "a class is a set of ASCII members and ranges; a non-ASCII code point is never in it", src: "D 3.2, 3.3"}
+- {id: R-MATCH-ALT, text: "alternation matches either branch, as a whole", src: "D 3.2"}
+- {id: R-MATCH-QUANT, text: "the quantifiers * + ? {n} {n,m} {n,} repeat the atom the stated number of times", src: "D 3.2"}
+- {id: R-MATCH-GROUP, text: "a plain group groups a sub-expression", src: "D 3.2"}
+- {id: R-MATCH-ESCAPE, text: "an escaped metacharacter is that literal character", src: "D 3.2"}
+- {id: R-MATCH-EMPTY, text: "the empty value matches exactly the expressions that can match nothing", src: "D 3.1"}
+- {id: R-VALUE-SCALAR, text: "a value with a lone surrogate is pattern_value_not_unicode_scalar", src: "L 3.2 (value), D 3.3"}
+- {id: R-VALUE-LENGTH, text: "a value of more than 256 code points is pattern_value_too_long, counted in code points; the matcher is not run", src: "D 3.4, L 3.2 (value)"}
+- {id: R-VALUE-ORDER, text: "value order: not a scalar value, then too long, then match or mismatch", src: "L 3.2 (value)"}
+- {id: R-VALUE-MISMATCH, text: "a value that does not match is pattern_value_mismatch", src: "L 3.1"}
+- {id: R-T1-EMPTY, text: "the empty text is pattern_empty", src: "L 3.2 T1.1"}
+- {id: R-T1-LENGTH, text: "more than 256 characters, anchors included, is pattern_too_long", src: "L 3.2 T1.2"}
+- {id: R-T1-ASCII, text: "a character outside 0x20..0x7E is pattern_not_ascii_printable", src: "L 3.2 T1.3"}
+- {id: R-T1-ORDER, text: "tier 1 order: empty, then too long, then not ASCII", src: "L 3.2 T1"}
+- {id: R-BODY-ANCHORS, text: "the body is the text without a leading ^ and without a trailing $ that is preceded by an even number of backslashes", src: "L 3.2 Input"}
+- {id: R-S1-DEPTH, text: "an alternation entered at depth above 4 is pattern_nesting_too_deep", src: "L 3.2 S1"}
+- {id: R-S2-EMPTY-BRANCH, text: "a sequence without an item is pattern_empty_branch, where it ends", src: "L 3.2 S2"}
+- {id: R-S3-GROUP-EXT, text: "(? is pattern_group_extension, before the depth check of the new group", src: "L 3.2 S3"}
+- {id: R-S3-UNBALANCED, text: "a missing or a stray ) is pattern_unbalanced_group", src: "L 3.2 S3, S5"}
+- {id: R-S3-ESCAPE, text: "an escape outside the list, or a trailing backslash, is pattern_escape_unsupported", src: "L 3.2 S3"}
+- {id: R-S3-ANCHOR, text: "a ^ or $ where an atom is expected is pattern_anchor_misplaced", src: "L 3.2 S3"}
+- {id: R-S3-METACHAR, text: "one of * + ? { } ] where an atom is expected is pattern_metachar_unexpected", src: "L 3.2 S3"}
+- {id: R-C1-SET-OPERATOR, text: "the pairs && -- ~~ in the class text are pattern_class_set_operator, a pre-check before every other class rule; escaped pairs do not count", src: "L 3.2 C1"}
+- {id: R-C2-NEGATED, text: "a first character ^ in a class is pattern_class_negated", src: "L 3.2 C2"}
+- {id: R-C3-UNTERMINATED, text: "a class that ends before ] is pattern_class_unterminated", src: "L 3.2 C3"}
+- {id: R-C3-NESTED, text: "[ inside a class is pattern_class_nested_or_posix", src: "L 3.2 C3"}
+- {id: R-C3-ESCAPE, text: "an escape outside the list inside a class is pattern_escape_unsupported", src: "L 3.2 C3"}
+- {id: R-C3-RANGE-ORDER, text: "a range end below its start is pattern_class_range_order, the range being completed before the next item", src: "L 3.2 C3"}
+- {id: R-C4-EMPTY, text: "a class without an item is pattern_class_empty", src: "L 3.2 C4"}
+- {id: R-Q1-UNBOUNDED-COUNT, text: "more than 3 unbounded quantifiers is pattern_unbounded_too_many", src: "L 3.2 Q1"}
+- {id: R-Q2-UNBOUNDED-GROUP, text: "an unbounded quantifier on a group is pattern_unbounded_on_group", src: "L 3.2 Q2"}
+- {id: R-Q3-LEADING-ZERO, text: "a count of two or more digits starting with 0 is pattern_quantifier_leading_zero", src: "L 3.2 Q3"}
+- {id: R-Q4-BOUNDS-ORDER, text: "{n,m} with m below n is pattern_quantifier_bounds_order", src: "L 3.2 Q4"}
+- {id: R-Q5-OPEN-BRACE, text: "{n,} counts as an unbounded quantifier", src: "L 3.2 Q5"}
+- {id: R-Q5B-COUNT, text: "a count above 255 is pattern_repeat_count_too_large", src: "L 3.2 Q5b"}
+- {id: R-Q5C-PRODUCT, text: "a product of enclosing counts above 1000 is pattern_repeat_product_too_large", src: "L 3.2 Q5c"}
+- {id: R-Q6-STACKED, text: "a quantifier directly after a quantifier is pattern_quantifier_not_greedy", src: "L 3.2 Q6"}
+- {id: R-Q-MALFORMED, text: "a { that is not {n}, {n,m} or {n,} is pattern_quantifier_malformed", src: "L 3.2 Q"}
+- {id: R-T3-SIZE, text: "PI above 2048, decided on the whole tree after tiers 1 and 2, is pattern_program_too_large", src: "L 2.1, 3.2 T3"}
+- {id: R-PI-RECURRENCE, text: "PI follows the recurrence of the limits document, construct by construct", src: "L 2.1"}
+- {id: R-PI-ZERO-REPEAT, text: "a repeat with hi 0 contributes 0: a large sub-tree under {0} is not a large program", src: "L 2.1"}
+- {id: R-LIM-LENGTH, text: "limit 256 of the text: 256 accepted, 257 refused", src: "D 3.4"}
+- {id: R-LIM-COUNT, text: "limit 255 of a count: 255 accepted, 256 refused", src: "D 3.4"}
+- {id: R-LIM-DEPTH, text: "limit 4 of the nesting: 4 accepted, 5 refused", src: "D 3.4"}
+- {id: R-LIM-PRODUCT, text: "limit 1000 of the product: 1000 accepted, 1001 refused", src: "D 3.4"}
+- {id: R-LIM-UNBOUNDED, text: "limit 3 of the unbounded quantifiers: 3 accepted, 4 refused", src: "D 3.4"}
+- {id: R-LIM-PI, text: "limit 2048 of PI: 2048 accepted, 2049 refused", src: "L 2.2"}
+- {id: R-LIM-VALUE, text: "limit 256 of the value: 256 code points accepted, 257 refused", src: "D 3.4"}
+- {id: R-PREC-TIER, text: "tier order: whole-text checks, then the scan, then the size", src: "L 3.2"}
+- {id: R-PREC-READING-ORDER, text: "inside the scan the first rule that fires in reading order wins", src: "L 3.2 Tier 2"}
+- {id: R-PREC-CLASS-ORDER, text: "inside a class the order is C1, C2, then the items from left to right, then C4", src: "L 3.2 Classes"}
+- {id: R-PREC-REPEAT-ORDER, text: "inside a quantifier the order is Q1, Q2 (or the brace checks Q3, Q4, Q5, Q5b, Q5c), then Q6", src: "L 3.2 Quantifiers"}
+- {id: R-PREC-GROUP-EXT-DEPTH, text: "at a ( the group-extension check comes before the depth check", src: "L 3.2 S3"}
+- {id: R-SCHEMA-ORDER, text: "a schema is refused with the code of the first refused expression in document order, whatever the tier", src: "L 3.2"}
+- {id: R-SCHEMA-WHOLE, text: "a schema with one refused expression is refused as a whole; there is no partial acceptance and no fallback", src: "D 3.5"}
+- {id: R-PIN-MISSING, text: "a schema with a pattern contract and no pin is pattern_profile_missing", src: "D 4.1, O1, O6"}
+- {id: R-PIN-UNKNOWN, text: "an unknown pin version is pattern_profile_unknown", src: "D 4.1"}
+- {id: R-PIN-CONFLICT, text: "conflicting pin versions are pattern_profile_conflict", src: "D 4.1"}
+- {id: R-PIN-FIRST, text: "the pin errors precede every expression check", src: "L 3.2"}
+- {id: R-PIN-ONLY-IF-PATTERN, text: "a schema without any pattern contract needs no pin", src: "D 4.3, O6"}
+- {id: R-COMPAT-CONTRACTS, text: "the 9 existing expressions are accepted with the stated PI, and their values keep their verdict", src: "D 4.3"}
+# Requirements a verdict vector cannot test. They are listed so that the matrix is honest; each names where it must be tested instead.
+not_testable_by_vectors:
+- {id: R-LINEAR, text: "the evaluator is linear in program size times value length and never backtracks", where: "a timing gate on adversarial input (HOLD)"}
+- {id: R-INDEPENDENT-CHECK, text: "producer and verifier each check, the verifier never relies on the producer", where: "the implementations of the producer and the verifier (HOLD)"}
+- {id: R-VERSION-EVIDENCE, text: "the run evidence names the implementation that ran (E3)", where: "the CI gate (HOLD)"}
+- {id: R-VERIFIER-BUDGET, text: "a verifier of untrusted input applies its own total budget", where: "the verifier, outside this profile (L 2.5)"}
+expressions:
+# ---- accepted expressions with the hand-derived PI (the recurrence of L 2.1: atom 1; sequence the sum; alternation 1 + branches; {lo,hi} lo*x + (hi-lo)*(1+x); unbounded 1 + (lo+1)*x)
+- {id: X-A001, expr: 'a', expect: accept, pi: 1, req: [R-PI-RECURRENCE]}
+- {id: X-A002, expr: '.', expect: accept, pi: 1, req: [R-PI-RECURRENCE, R-MATCH-DOT]}
+- {id: X-A003, expr: '[a-z]', expect: accept, pi: 1, req: [R-PI-RECURRENCE, R-MATCH-CLASS]}
+- {id: X-A004, expr: 'ab', expect: accept, pi: 2, req: [R-PI-RECURRENCE]}
+- {id: X-A005, expr: 'a|b', expect: accept, pi: 3, req: [R-PI-RECURRENCE, R-MATCH-ALT]}
+- {id: X-A006, expr: '(a|b)', expect: accept, pi: 3, req: [R-PI-RECURRENCE, R-MATCH-GROUP]}
+- {id: X-A007, expr: 'a|b|c', expect: accept, pi: 4, req: [R-PI-RECURRENCE]}
+- {id: X-A008, expr: '(a|b)(c|d)', expect: accept, pi: 6, req: [R-PI-RECURRENCE]}
+- {id: X-A009, expr: 'a?', expect: accept, pi: 2, req: [R-PI-RECURRENCE]}
+- {id: X-A010, expr: 'a*', expect: accept, pi: 2, req: [R-PI-RECURRENCE]}
+- {id: X-A011, expr: 'a+', expect: accept, pi: 3, req: [R-PI-RECURRENCE]}
+- {id: X-A012, expr: 'a{3}', expect: accept, pi: 3, req: [R-PI-RECURRENCE]}
+- {id: X-A013, expr: 'a{2,5}', expect: accept, pi: 8, req: [R-PI-RECURRENCE]}
+- {id: X-A014, expr: 'a{2,}', expect: accept, pi: 4, req: [R-PI-RECURRENCE, R-Q5-OPEN-BRACE]}
+- {id: X-A015, expr: 'a{0}b', expect: accept, pi: 1, req: [R-PI-RECURRENCE, R-PI-ZERO-REPEAT]}
+- {id: X-A016, expr: 'a{0,255}', expect: accept, pi: 510, req: [R-PI-RECURRENCE, R-LIM-COUNT]}
+- {id: X-A017, expr: '(ab){2}', expect: accept, pi: 4, req: [R-PI-RECURRENCE]}
+- {id: X-A018, expr: '(a|b){0,2}', expect: accept, pi: 8, req: [R-PI-RECURRENCE]}
+- {id: X-A019, expr: '(a{2}){3}', expect: accept, pi: 6, req: [R-PI-RECURRENCE]}
+- {id: X-A020, expr: '((a?){2}){3}', expect: accept, pi: 12, req: [R-PI-RECURRENCE]}
+- {id: X-A021, expr: 'a{0}', expect: accept, pi: 0, req: [R-PI-RECURRENCE, R-PI-ZERO-REPEAT]}
+- {id: X-A022, expr: 'a{255}', expect: accept, pi: 255, req: [R-LIM-COUNT]}
+- {id: X-A023, expr: 'a{255,}', expect: accept, pi: 257, req: [R-LIM-COUNT, R-Q5-OPEN-BRACE]}
+- {id: X-A024, expr: 'a{2,2}', expect: accept, pi: 2, req: [R-PI-RECURRENCE]}
+- {id: X-A025, expr: '(a{0}){255}', expect: accept, pi: 0, req: [R-PI-ZERO-REPEAT]}
+- {id: X-A026, expr: '((a?){10}){10}', expect: accept, pi: 200, req: [R-PI-RECURRENCE, R-Q5C-PRODUCT]}
+- {id: X-A027, expr: '(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0}b', expect: accept, pi: 1, req: [R-PI-ZERO-REPEAT, R-T3-SIZE]}
+- {id: X-A028, expr: '(a{10}b){0,3}', expect: accept, pi: 36, req: [R-PI-RECURRENCE]}
+# ---- anchors and the body (R-BODY-ANCHORS): a trailing $ is the outer anchor iff an even number (zero included) of backslashes precedes it
+- {id: X-A030, expr: '^a$', expect: accept, pi: 1, req: [R-BODY-ANCHORS, R-MATCH-ANCHOR-NOOP]}
+- {id: X-A031, expr: '^a', expect: accept, pi: 1, req: [R-BODY-ANCHORS]}
+- {id: X-A032, expr: 'a$', expect: accept, pi: 1, req: [R-BODY-ANCHORS]}
+- {id: X-A033, expr: 'a\$', expect: accept, pi: 2, req: [R-BODY-ANCHORS, R-MATCH-ESCAPE]}
+- {id: X-A034, expr: '^a\$$', expect: accept, pi: 2, req: [R-BODY-ANCHORS]}
+- {id: X-A035, expr: 'a\\$', expect: accept, pi: 2, req: [R-BODY-ANCHORS]}
+- {id: X-A036, expr: 'a\\\$', expect: accept, pi: 3, req: [R-BODY-ANCHORS]}
+- {id: X-A037, expr: '[a]\$', expect: accept, pi: 2, req: [R-BODY-ANCHORS]}
+- {id: X-A038, expr: 'a b', expect: accept, pi: 3, req: [R-T1-ASCII]}
+- {id: X-A039, expr: 'a~b', expect: accept, pi: 3, req: [R-T1-ASCII]}
+# ---- every escape of the list is accepted (outside a class)
+- {id: X-A040, expr: '\\', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A041, expr: '\.', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A042, expr: '\[', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A043, expr: '\]', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A044, expr: '\(', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A045, expr: '\)', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A046, expr: '\{', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A047, expr: '\}', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A048, expr: '\*', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A049, expr: '\+', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A050, expr: '\?', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A051, expr: '\|', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A052, expr: '\^', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+- {id: X-A053, expr: '\$', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE, R-BODY-ANCHORS]}
+- {id: X-A054, expr: '\-', expect: accept, pi: 1, req: [R-MATCH-ESCAPE, R-S3-ESCAPE]}
+# ---- accepted classes (the class rules do not fire)
+- {id: X-A060, expr: '[a-z0-9._-]', expect: accept, pi: 1, req: [R-MATCH-CLASS]}
+- {id: X-A061, expr: '[a-]', expect: accept, pi: 1, req: [R-MATCH-CLASS, R-C1-SET-OPERATOR]}
+- {id: X-A062, expr: '[-a]', expect: accept, pi: 1, req: [R-MATCH-CLASS]}
+- {id: X-A063, expr: '[a&b]', expect: accept, pi: 1, req: [R-C1-SET-OPERATOR]}
+- {id: X-A064, expr: '[a~b]', expect: accept, pi: 1, req: [R-C1-SET-OPERATOR]}
+- {id: X-A065, expr: '[a\-\-b]', expect: accept, pi: 1, req: [R-C1-SET-OPERATOR, R-C3-ESCAPE]}
+- {id: X-A066, expr: '[a-a]', expect: accept, pi: 1, req: [R-C3-RANGE-ORDER]}
+- {id: X-A067, expr: '[a^b]', expect: accept, pi: 1, req: [R-C2-NEGATED]}
+- {id: X-A068, expr: '[.]', expect: accept, pi: 1, req: [R-MATCH-CLASS]}
+- {id: X-A069, expr: '[$*+?(){}|]', expect: accept, pi: 1, req: [R-MATCH-CLASS]}
+- {id: X-A070, expr: '[\]]', expect: accept, pi: 1, req: [R-C3-ESCAPE, R-MATCH-ESCAPE]}
+- {id: X-A071, expr: '[\\]', expect: accept, pi: 1, req: [R-C3-ESCAPE, R-MATCH-ESCAPE]}
+- {id: X-A072, expr: '[\^\-\.]', expect: accept, pi: 1, req: [R-C3-ESCAPE, R-MATCH-ESCAPE]}
+# ---- the nine existing contracts (R-COMPAT-CONTRACTS), PI derived by hand
+- {id: X-C001, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', expect: accept, pi: 17, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C002, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', expect: accept, pi: 32, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C003, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', expect: accept, pi: 10, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C004, expr: '^[0-9a-f]{40}$', expect: accept, pi: 40, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C005, expr: '^sha256:[0-9a-f]{64}$', expect: accept, pi: 71, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C006, expr: '^[A-Za-z0-9+/]{43}=$', expect: accept, pi: 44, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C007, expr: '^vault:v1:.+$', expect: accept, pi: 12, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C008, expr: '^[a-z0-9][a-z0-9./_:-]*$', expect: accept, pi: 3, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+- {id: X-C009, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', expect: accept, pi: 27, req: [R-COMPAT-CONTRACTS, R-PI-RECURRENCE]}
+# ---- tier 1: the whole text (R-T1-*), in the order empty, too long, not ASCII
+- {id: X-T101, expr: '', expect: refuse, code: pattern_empty, req: [R-T1-EMPTY]}
+- {id: X-T102, expr: {seq: [[97, 257]]}, expect: refuse, code: pattern_too_long, req: [R-T1-LENGTH, R-LIM-LENGTH]}
+- {id: X-T103, expr: {seq: [[97, 256]]}, expect: accept, pi: 256, req: [R-LIM-LENGTH]}
+- {id: X-T104, expr: {seq: ['^', [97, 255], '$']}, expect: refuse, code: pattern_too_long, req: [R-T1-LENGTH, R-LIM-LENGTH]}
+- {id: X-T105, expr: {seq: ['^', [97, 254], '$']}, expect: accept, pi: 254, req: [R-LIM-LENGTH, R-BODY-ANCHORS]}
+- {id: X-T106, expr: {seq: [[40, 300]]}, expect: refuse, code: pattern_too_long, req: [R-T1-ORDER, R-PREC-TIER]}
+- {id: X-T107, expr: {seq: [[233, 300]]}, expect: refuse, code: pattern_too_long, req: [R-T1-ORDER]}
+- {id: X-T108, expr: {seq: ['a', [233, 1]]}, expect: refuse, code: pattern_not_ascii_printable, req: [R-T1-ASCII]}
+- {id: X-T109, expr: {seq: ['a', [9, 1], 'b']}, expect: refuse, code: pattern_not_ascii_printable, req: [R-T1-ASCII]}
+- {id: X-T110, expr: {seq: ['a', [127, 1]]}, expect: refuse, code: pattern_not_ascii_printable, req: [R-T1-ASCII]}
+- {id: X-T111, expr: {seq: [[128512, 1]]}, expect: refuse, code: pattern_not_ascii_printable, req: [R-T1-ASCII]}
+- {id: X-T112, expr: {seq: ['(a', [233, 1]]}, expect: refuse, code: pattern_not_ascii_printable, req: [R-T1-ASCII, R-PREC-TIER]}
+- {id: X-T113, expr: {seq: ['a', [10, 1]]}, expect: refuse, code: pattern_not_ascii_printable, req: [R-T1-ASCII]}
+# ---- S1 depth, S2 empty branch, S3 groups, escapes, anchors, metacharacters, S5
+- {id: X-S101, expr: '((((a))))', expect: accept, pi: 1, req: [R-S1-DEPTH, R-LIM-DEPTH]}
+- {id: X-S102, expr: '(((((a)))))', expect: refuse, code: pattern_nesting_too_deep, req: [R-S1-DEPTH, R-LIM-DEPTH]}
+- {id: X-S103, expr: '((((((a', expect: refuse, code: pattern_nesting_too_deep, req: [R-S1-DEPTH, R-PREC-READING-ORDER]}
+- {id: X-S104, expr: '(a|((((b))))|c)', expect: refuse, code: pattern_nesting_too_deep, req: [R-S1-DEPTH]}
+- {id: X-S110, expr: 'a|', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH]}
+- {id: X-S111, expr: '|a', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH]}
+- {id: X-S112, expr: 'a||b', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH]}
+- {id: X-S113, expr: '(|a)', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH]}
+- {id: X-S114, expr: '(a|)', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH]}
+- {id: X-S115, expr: '()', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH]}
+- {id: X-S116, expr: '^$', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH, R-BODY-ANCHORS]}
+- {id: X-S117, expr: '(', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH, R-PREC-READING-ORDER]}
+- {id: X-S118, expr: ')', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH, R-PREC-READING-ORDER]}
+- {id: X-S119, expr: '^', expect: refuse, code: pattern_empty_branch, req: [R-S2-EMPTY-BRANCH, R-BODY-ANCHORS]}
+- {id: X-S120, expr: '(?:a)', expect: refuse, code: pattern_group_extension, req: [R-S3-GROUP-EXT]}
+- {id: X-S121, expr: '(?i)a', expect: refuse, code: pattern_group_extension, req: [R-S3-GROUP-EXT]}
+- {id: X-S122, expr: '(?P<n>a)', expect: refuse, code: pattern_group_extension, req: [R-S3-GROUP-EXT]}
+- {id: X-S123, expr: '(?=a)', expect: refuse, code: pattern_group_extension, req: [R-S3-GROUP-EXT]}
+- {id: X-S124, expr: '(((((?:a)))))', expect: refuse, code: pattern_group_extension, req: [R-S3-GROUP-EXT, R-PREC-GROUP-EXT-DEPTH]}
+- {id: X-S125, expr: '(?', expect: refuse, code: pattern_group_extension, req: [R-S3-GROUP-EXT]}
+- {id: X-S130, expr: '(a', expect: refuse, code: pattern_unbalanced_group, req: [R-S3-UNBALANCED]}
+- {id: X-S131, expr: 'a)', expect: refuse, code: pattern_unbalanced_group, req: [R-S3-UNBALANCED]}
+- {id: X-S132, expr: '((a)', expect: refuse, code: pattern_unbalanced_group, req: [R-S3-UNBALANCED]}
+- {id: X-S133, expr: '(a))', expect: refuse, code: pattern_unbalanced_group, req: [R-S3-UNBALANCED]}
+- {id: X-S134, expr: 'a)b', expect: refuse, code: pattern_unbalanced_group, req: [R-S3-UNBALANCED]}
+- {id: X-S140, expr: '\d', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S141, expr: '\w', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S142, expr: '\s', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S143, expr: '\b', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S144, expr: '\n', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S145, expr: '\x41', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S146, expr: '\u0041', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S147, expr: '\A', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S148, expr: '\z', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S149, expr: '\Q', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S150, expr: '\1', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S151, expr: '\0', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S152, expr: 'a\', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S153, expr: '\p{L}', expect: refuse, code: pattern_escape_unsupported, req: [R-S3-ESCAPE]}
+- {id: X-S160, expr: 'a^b', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR]}
+- {id: X-S161, expr: 'a$b', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR]}
+- {id: X-S162, expr: '(^a)', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR]}
+- {id: X-S163, expr: '(a$)', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR]}
+- {id: X-S164, expr: 'a|^b', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR]}
+- {id: X-S165, expr: '^^a', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR, R-BODY-ANCHORS]}
+- {id: X-S166, expr: 'a$$', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR, R-BODY-ANCHORS]}
+- {id: X-S167, expr: '^a^', expect: refuse, code: pattern_anchor_misplaced, req: [R-S3-ANCHOR]}
+- {id: X-S170, expr: '*a', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S171, expr: '+a', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S172, expr: '?a', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S173, expr: '{2}a', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S174, expr: 'a|*b', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S175, expr: 'a}', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S176, expr: 'a]', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S177, expr: '(*a)', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+- {id: X-S178, expr: '{', expect: refuse, code: pattern_metachar_unexpected, req: [R-S3-METACHAR]}
+# ---- classes: C1 pre-check, C2, C3 items from left to right, C4
+- {id: X-K101, expr: '[a&&b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR]}
+- {id: X-K102, expr: '[a--b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR]}
+- {id: X-K103, expr: '[a~~b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR]}
+- {id: X-K104, expr: '[a-z--b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR]}
+- {id: X-K105, expr: '[+--]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR]}
+- {id: X-K106, expr: '[ab&&', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR, R-PREC-CLASS-ORDER]}
+- {id: X-K107, expr: '[^a&&b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR, R-PREC-CLASS-ORDER]}
+- {id: X-K108, expr: '[z-a&&b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR, R-PREC-CLASS-ORDER]}
+- {id: X-K109, expr: '[\d--]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR, R-PREC-CLASS-ORDER]}
+- {id: X-K110, expr: '[[a--b]', expect: refuse, code: pattern_class_set_operator, req: [R-C1-SET-OPERATOR, R-PREC-CLASS-ORDER]}
+- {id: X-K111, expr: '[\&&]', expect: refuse, code: pattern_escape_unsupported, req: [R-C1-SET-OPERATOR, R-C3-ESCAPE]}
+- {id: X-K120, expr: '[^a]', expect: refuse, code: pattern_class_negated, req: [R-C2-NEGATED]}
+- {id: X-K121, expr: '[^]', expect: refuse, code: pattern_class_negated, req: [R-C2-NEGATED, R-PREC-CLASS-ORDER]}
+- {id: X-K122, expr: '[^', expect: refuse, code: pattern_class_negated, req: [R-C2-NEGATED, R-PREC-CLASS-ORDER]}
+- {id: X-K123, expr: '[^[', expect: refuse, code: pattern_class_negated, req: [R-C2-NEGATED, R-PREC-CLASS-ORDER]}
+- {id: X-K130, expr: '[ab', expect: refuse, code: pattern_class_unterminated, req: [R-C3-UNTERMINATED]}
+- {id: X-K131, expr: '[', expect: refuse, code: pattern_class_unterminated, req: [R-C3-UNTERMINATED]}
+- {id: X-K132, expr: '[a-', expect: refuse, code: pattern_class_unterminated, req: [R-C3-UNTERMINATED]}
+- {id: X-K133, expr: '(a|[b', expect: refuse, code: pattern_class_unterminated, req: [R-C3-UNTERMINATED, R-PREC-READING-ORDER]}
+- {id: X-K140, expr: '[[:alpha:]]', expect: refuse, code: pattern_class_nested_or_posix, req: [R-C3-NESTED]}
+- {id: X-K141, expr: '[a[b]', expect: refuse, code: pattern_class_nested_or_posix, req: [R-C3-NESTED]}
+- {id: X-K142, expr: '[z-[a]', expect: refuse, code: pattern_class_nested_or_posix, req: [R-C3-NESTED, R-PREC-CLASS-ORDER]}
+- {id: X-K150, expr: '[\d]', expect: refuse, code: pattern_escape_unsupported, req: [R-C3-ESCAPE]}
+- {id: X-K151, expr: '[a\w]', expect: refuse, code: pattern_escape_unsupported, req: [R-C3-ESCAPE]}
+- {id: X-K152, expr: '[a\', expect: refuse, code: pattern_escape_unsupported, req: [R-C3-ESCAPE, R-PREC-CLASS-ORDER]}
+- {id: X-K153, expr: '[\d z-a]', expect: refuse, code: pattern_escape_unsupported, req: [R-C3-ESCAPE, R-PREC-CLASS-ORDER]}
+- {id: X-K154, expr: '[z-\d]', expect: refuse, code: pattern_escape_unsupported, req: [R-C3-ESCAPE, R-PREC-CLASS-ORDER]}
+- {id: X-K160, expr: '[z-a]', expect: refuse, code: pattern_class_range_order, req: [R-C3-RANGE-ORDER]}
+- {id: X-K161, expr: '[b-a]', expect: refuse, code: pattern_class_range_order, req: [R-C3-RANGE-ORDER]}
+- {id: X-K162, expr: '[9-0]', expect: refuse, code: pattern_class_range_order, req: [R-C3-RANGE-ORDER]}
+- {id: X-K163, expr: '[z-a\d]', expect: refuse, code: pattern_class_range_order, req: [R-C3-RANGE-ORDER, R-PREC-CLASS-ORDER]}
+- {id: X-K164, expr: '[a-zZ-A]', expect: refuse, code: pattern_class_range_order, req: [R-C3-RANGE-ORDER]}
+- {id: X-K170, expr: '[]', expect: refuse, code: pattern_class_empty, req: [R-C4-EMPTY]}
+- {id: X-K171, expr: '[]a]', expect: refuse, code: pattern_class_empty, req: [R-C4-EMPTY, R-PREC-CLASS-ORDER]}
+- {id: X-K172, expr: 'a[]', expect: refuse, code: pattern_class_empty, req: [R-C4-EMPTY]}
+# ---- quantifiers
+- {id: X-Q101, expr: 'a*a*a*', expect: accept, pi: 6, req: [R-Q1-UNBOUNDED-COUNT, R-LIM-UNBOUNDED]}
+- {id: X-Q102, expr: 'a*a*a*a*', expect: refuse, code: pattern_unbounded_too_many, req: [R-Q1-UNBOUNDED-COUNT, R-LIM-UNBOUNDED]}
+- {id: X-Q103, expr: 'a+a+a+a+', expect: refuse, code: pattern_unbounded_too_many, req: [R-Q1-UNBOUNDED-COUNT]}
+- {id: X-Q104, expr: 'a{1,}a{1,}a{1,}a{1,}', expect: refuse, code: pattern_unbounded_too_many, req: [R-Q1-UNBOUNDED-COUNT, R-Q5-OPEN-BRACE]}
+- {id: X-Q105, expr: 'a*a+a{2,}a*', expect: refuse, code: pattern_unbounded_too_many, req: [R-Q1-UNBOUNDED-COUNT, R-Q5-OPEN-BRACE]}
+- {id: X-Q106, expr: 'a?a?a?a?a?', expect: accept, pi: 10, req: [R-Q1-UNBOUNDED-COUNT]}
+- {id: X-Q107, expr: 'a{2,3}a{2,3}a{2,3}a{2,3}', expect: accept, pi: 16, req: [R-Q1-UNBOUNDED-COUNT]}
+- {id: X-Q108, expr: 'a*a*a*a{256,}', expect: refuse, code: pattern_unbounded_too_many, req: [R-Q1-UNBOUNDED-COUNT, R-PREC-REPEAT-ORDER]}
+- {id: X-Q120, expr: '(a)*', expect: refuse, code: pattern_unbounded_on_group, req: [R-Q2-UNBOUNDED-GROUP]}
+- {id: X-Q121, expr: '(a)+', expect: refuse, code: pattern_unbounded_on_group, req: [R-Q2-UNBOUNDED-GROUP]}
+- {id: X-Q122, expr: '(a){2,}', expect: refuse, code: pattern_unbounded_on_group, req: [R-Q2-UNBOUNDED-GROUP, R-Q5-OPEN-BRACE]}
+- {id: X-Q123, expr: '(ab|c)*', expect: refuse, code: pattern_unbounded_on_group, req: [R-Q2-UNBOUNDED-GROUP]}
+- {id: X-Q124, expr: 'a*a*a*(a)*', expect: refuse, code: pattern_unbounded_too_many, req: [R-Q2-UNBOUNDED-GROUP, R-PREC-REPEAT-ORDER]}
+- {id: X-Q125, expr: '(a){2,3}', expect: accept, pi: 4, req: [R-Q2-UNBOUNDED-GROUP]}
+- {id: X-Q126, expr: '(a)?', expect: accept, pi: 2, req: [R-Q2-UNBOUNDED-GROUP]}
+- {id: X-Q130, expr: 'a{01}', expect: refuse, code: pattern_quantifier_leading_zero, req: [R-Q3-LEADING-ZERO]}
+- {id: X-Q131, expr: 'a{00}', expect: refuse, code: pattern_quantifier_leading_zero, req: [R-Q3-LEADING-ZERO]}
+- {id: X-Q132, expr: 'a{1,02}', expect: refuse, code: pattern_quantifier_leading_zero, req: [R-Q3-LEADING-ZERO]}
+- {id: X-Q133, expr: 'a{007,8}', expect: refuse, code: pattern_quantifier_leading_zero, req: [R-Q3-LEADING-ZERO]}
+- {id: X-Q134, expr: 'a{03,2}', expect: refuse, code: pattern_quantifier_leading_zero, req: [R-Q3-LEADING-ZERO, R-PREC-REPEAT-ORDER]}
+- {id: X-Q135, expr: 'a{01,300}', expect: refuse, code: pattern_quantifier_leading_zero, req: [R-Q3-LEADING-ZERO, R-PREC-REPEAT-ORDER]}
+- {id: X-Q136, expr: 'a{10}', expect: accept, pi: 10, req: [R-Q3-LEADING-ZERO]}
+- {id: X-Q137, expr: 'a{0,3}', expect: accept, pi: 6, req: [R-Q3-LEADING-ZERO]}
+- {id: X-Q140, expr: 'a{3,2}', expect: refuse, code: pattern_quantifier_bounds_order, req: [R-Q4-BOUNDS-ORDER]}
+- {id: X-Q141, expr: 'a{255,254}', expect: refuse, code: pattern_quantifier_bounds_order, req: [R-Q4-BOUNDS-ORDER]}
+- {id: X-Q142, expr: 'a{1,0}', expect: refuse, code: pattern_quantifier_bounds_order, req: [R-Q4-BOUNDS-ORDER]}
+- {id: X-Q143, expr: 'a{300,2}', expect: refuse, code: pattern_quantifier_bounds_order, req: [R-Q4-BOUNDS-ORDER, R-PREC-REPEAT-ORDER]}
+- {id: X-Q150, expr: 'a{256}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT, R-LIM-COUNT]}
+- {id: X-Q151, expr: 'a{300,}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT, R-Q5-OPEN-BRACE]}
+- {id: X-Q152, expr: 'a{1,256}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT, R-LIM-COUNT]}
+- {id: X-Q153, expr: 'a{0,1000}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT]}
+- {id: X-Q154, expr: 'a{99999}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT]}
+- {id: X-Q155, expr: '(a{256}){5}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT, R-PREC-REPEAT-ORDER]}
+- {id: X-Q156, expr: 'a{300}*', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT, R-PREC-REPEAT-ORDER]}
+- {id: X-Q157, expr: 'a{256,}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT, R-Q5-OPEN-BRACE, R-PREC-REPEAT-ORDER]}
+- {id: X-Q160, expr: '(a{250}){4}', expect: accept, pi: 1000, req: [R-Q5C-PRODUCT, R-LIM-PRODUCT]}
+- {id: X-Q161, expr: '(a{251}){4}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-Q5C-PRODUCT, R-LIM-PRODUCT]}
+- {id: X-Q162, expr: '((a{10}){10}){10}', expect: accept, pi: 1000, req: [R-Q5C-PRODUCT, R-LIM-PRODUCT]}
+- {id: X-Q163, expr: '((a{10}){10}){11}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-Q5C-PRODUCT]}
+- {id: X-Q164, expr: '(a{200}){6}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-Q5C-PRODUCT]}
+- {id: X-Q165, expr: '(a{10}){101}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-Q5C-PRODUCT]}
+- {id: X-Q166, expr: '(a{200}|b){6}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-Q5C-PRODUCT]}
+- {id: X-Q167, expr: '(a{200}){6}*', expect: refuse, code: pattern_repeat_product_too_large, req: [R-Q5C-PRODUCT, R-PREC-REPEAT-ORDER]}
+- {id: X-Q168, expr: '(a{0}){1000}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-Q5B-COUNT]}
+- {id: X-Q170, expr: 'a**', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q171, expr: 'a++', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q172, expr: 'a??', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q173, expr: 'a*?', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q174, expr: 'a+?', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q175, expr: 'a{2}?', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q176, expr: 'a{2}*', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q177, expr: 'a{2}{3}', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q178, expr: 'a?{2}', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q179, expr: '(a)?*', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q180, expr: 'a{2,3}+', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED]}
+- {id: X-Q181, expr: 'a**a*a*a*', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-Q6-STACKED, R-PREC-REPEAT-ORDER]}
+- {id: X-Q190, expr: 'a{', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q191, expr: 'a{3', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q192, expr: 'a{,3}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q193, expr: 'a{}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q194, expr: 'a{a}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q195, expr: 'a{1,2', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q196, expr: 'a{1,2,3}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q197, expr: 'a{ 1}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q198, expr: 'a{-1}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+- {id: X-Q199, expr: 'a{1.5}', expect: refuse, code: pattern_quantifier_malformed, req: [R-Q-MALFORMED]}
+# ---- tier 3: the size PI (R-T3-SIZE, R-LIM-PI); the boundary 2048 / 2049 in four shapes
+- {id: X-Z101, expr: 'a{0,255}a{0,255}a{0,255}a{0,255}a{0,4}', expect: accept, pi: 2048, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z102, expr: 'a{0,255}a{0,255}a{0,255}a{0,255}a{0,4}a', expect: refuse, code: pattern_program_too_large, pi: 2049, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z103, expr: '(a{0,250}){0,4}a{0,22}', expect: accept, pi: 2048, req: [R-T3-SIZE, R-LIM-PI, R-PI-RECURRENCE]}
+- {id: X-Z104, expr: '(a{0,250}){0,4}a{0,22}a', expect: refuse, code: pattern_program_too_large, pi: 2049, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z105, expr: '(a|b){0,255}(a|b){0,255}(a|b){0,2}', expect: accept, pi: 2048, req: [R-T3-SIZE, R-LIM-PI, R-PI-RECURRENCE]}
+- {id: X-Z106, expr: '(a|b){0,255}(a|b){0,255}(a|b){0,2}a', expect: refuse, code: pattern_program_too_large, pi: 2049, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z107, expr: '[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}', expect: accept, pi: 2040, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z108, expr: '[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{255}[a-z]{9}', expect: refuse, code: pattern_program_too_large, pi: 2049, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z110, expr: '(a{0,250}){0,4}(a{0,250}){0,4}(a{0,250}){0,4}', expect: refuse, code: pattern_program_too_large, pi: 6012, req: [R-T3-SIZE]}
+# the largest program the limits of tiers 1 and 2 admit (limits doc 1): ((a x240){0,4}){0,250}, PI 250 * (1 + 4 * (1 + 240)) = 241250
+- {id: X-Z111, expr: {seq: ['((', [97, 240], '){0,4}){0,250}']}, expect: refuse, code: pattern_program_too_large, pi: 241250, req: [R-T3-SIZE, R-LIM-PI]}
+- {id: X-Z112, expr: '(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0}b', expect: accept, pi: 1, req: [R-PI-ZERO-REPEAT, R-T3-SIZE]}
+- {id: X-Z113, expr: '(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0,1}', expect: refuse, code: pattern_program_too_large, pi: 2551, req: [R-T3-SIZE]}
+- {id: X-Z114, expr: '(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0,1}(a{0,255}){0}', expect: refuse, code: pattern_program_too_large, pi: 2551, req: [R-T3-SIZE, R-PI-ZERO-REPEAT]}
+# ---- precedence across rules (R-PREC-*): the code is the first rule that fires, in the order of limits doc 3.2
+- {id: X-P101, expr: {seq: [[233, 300]]}, expect: refuse, code: pattern_too_long, req: [R-PREC-TIER, R-T1-ORDER]}
+- {id: X-P102, expr: {seq: ['(', [97, 300], [233, 1]]}, expect: refuse, code: pattern_too_long, req: [R-PREC-TIER, R-T1-ORDER]}
+- {id: X-P103, expr: '(a{0,250}){0,4}(a{0,250}){0,4}(a{0,250}){0,4}(', expect: refuse, code: pattern_empty_branch, req: [R-PREC-TIER, R-T3-SIZE]}
+- {id: X-P104, expr: '(a{0,250}){0,4}(a{0,250}){0,4}(a{0,250}){0,4}(a', expect: refuse, code: pattern_unbalanced_group, req: [R-PREC-TIER, R-T3-SIZE]}
+- {id: X-P105, expr: '(a{0,250}){0,4}(a{0,250}){0,4}(a{0,250}){0,4}(a{200}){6}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-PREC-TIER, R-T3-SIZE, R-Q5C-PRODUCT]}
+- {id: X-P106, expr: '(a{0,250}){0,4}(a{0,250}){0,4}(a{0,250}){0,4}[b', expect: refuse, code: pattern_class_unterminated, req: [R-PREC-TIER, R-T3-SIZE]}
+- {id: X-P107, expr: '(((((?:a)))))', expect: refuse, code: pattern_group_extension, req: [R-PREC-GROUP-EXT-DEPTH]}
+- {id: X-P108, expr: '((((((?:a', expect: refuse, code: pattern_nesting_too_deep, req: [R-PREC-GROUP-EXT-DEPTH, R-S1-DEPTH]}
+- {id: X-P109, expr: 'a{300}(', expect: refuse, code: pattern_repeat_count_too_large, req: [R-PREC-READING-ORDER]}
+- {id: X-P110, expr: '(a{300}', expect: refuse, code: pattern_repeat_count_too_large, req: [R-PREC-READING-ORDER]}
+- {id: X-P111, expr: 'a)a{300}', expect: refuse, code: pattern_unbalanced_group, req: [R-PREC-READING-ORDER]}
+- {id: X-P112, expr: '\da{300}', expect: refuse, code: pattern_escape_unsupported, req: [R-PREC-READING-ORDER]}
+- {id: X-P113, expr: 'a{300}\d', expect: refuse, code: pattern_repeat_count_too_large, req: [R-PREC-READING-ORDER]}
+- {id: X-P114, expr: '[a-z]{300}[b-a]', expect: refuse, code: pattern_repeat_count_too_large, req: [R-PREC-READING-ORDER]}
+- {id: X-P115, expr: '[b-a][a-z]{300}', expect: refuse, code: pattern_class_range_order, req: [R-PREC-READING-ORDER]}
+- {id: X-P116, expr: '(a|)(', expect: refuse, code: pattern_empty_branch, req: [R-PREC-READING-ORDER]}
+- {id: X-P117, expr: '[a&&b]{300}', expect: refuse, code: pattern_class_set_operator, req: [R-PREC-READING-ORDER, R-PREC-CLASS-ORDER]}
+- {id: X-P118, expr: 'a{2}{3}{300}', expect: refuse, code: pattern_quantifier_not_greedy, req: [R-PREC-REPEAT-ORDER]}
+- {id: X-P119, expr: '(a)*{300}', expect: refuse, code: pattern_unbounded_on_group, req: [R-PREC-REPEAT-ORDER]}
+- {id: X-P120, expr: '(a{200}){6}{3,2}', expect: refuse, code: pattern_repeat_product_too_large, req: [R-PREC-REPEAT-ORDER]}
+# Values: the expression must be accepted. expect is match, or the value code: pattern_value_mismatch | pattern_value_too_long | pattern_value_not_unicode_scalar.
+values:
+# ---- full match, anchors, trailing LF
+- {id: V-M001, expr: 'ab', value: 'ab', expect: match, req: [R-MATCH-FULL]}
+- {id: V-M002, expr: 'ab', value: 'abc', expect: pattern_value_mismatch, req: [R-MATCH-FULL, R-VALUE-MISMATCH]}
+- {id: V-M003, expr: 'ab', value: 'xab', expect: pattern_value_mismatch, req: [R-MATCH-FULL]}
+- {id: V-M004, expr: 'ab', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-FULL]}
+- {id: V-M005, expr: 'ab', value: '', expect: pattern_value_mismatch, req: [R-MATCH-FULL, R-MATCH-EMPTY]}
+- {id: V-M006, expr: 'a', value: 'aa', expect: pattern_value_mismatch, req: [R-MATCH-FULL]}
+- {id: V-M007, expr: 'a', value: 'a', expect: match, req: [R-MATCH-FULL]}
+- {id: V-M010, expr: '^ab$', value: 'ab', expect: match, req: [R-MATCH-ANCHOR-NOOP]}
+- {id: V-M011, expr: '^ab$', value: 'abc', expect: pattern_value_mismatch, req: [R-MATCH-ANCHOR-NOOP]}
+- {id: V-M012, expr: '^ab', value: 'ab', expect: match, req: [R-MATCH-ANCHOR-NOOP]}
+- {id: V-M013, expr: '^ab', value: 'abx', expect: pattern_value_mismatch, req: [R-MATCH-ANCHOR-NOOP, R-MATCH-FULL]}
+- {id: V-M014, expr: 'ab$', value: 'ab', expect: match, req: [R-MATCH-ANCHOR-NOOP]}
+- {id: V-M015, expr: 'ab$', value: 'xab', expect: pattern_value_mismatch, req: [R-MATCH-ANCHOR-NOOP, R-MATCH-FULL]}
+- {id: V-M016, expr: 'a\$', value: 'a$', expect: match, req: [R-BODY-ANCHORS, R-MATCH-ESCAPE]}
+- {id: V-M017, expr: 'a\$', value: 'a', expect: pattern_value_mismatch, req: [R-BODY-ANCHORS]}
+- {id: V-M018, expr: 'a\\$', value: {seq: ['a', [92, 1]]}, expect: match, req: [R-BODY-ANCHORS, R-MATCH-ESCAPE]}
+- {id: V-M019, expr: 'a\\$', value: {seq: ['a', [92, 1], '$']}, expect: pattern_value_mismatch, req: [R-BODY-ANCHORS]}
+- {id: V-M020, expr: '^abc$', value: 'abc', expect: match, req: [R-MATCH-NO-TRAILING-LF]}
+- {id: V-M021, expr: '^abc$', value: {seq: ['abc', [10, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-NO-TRAILING-LF]}
+- {id: V-M022, expr: 'abc', value: {seq: ['abc', [10, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-NO-TRAILING-LF, R-MATCH-FULL]}
+- {id: V-M023, expr: '^abc$', value: {seq: ['abc', [13, 1], [10, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-NO-TRAILING-LF]}
+- {id: V-M024, expr: 'abc$', value: {seq: ['abc', [10, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-NO-TRAILING-LF]}
+- {id: V-M025, expr: '^abc$', value: {seq: [[10, 1], 'abc']}, expect: pattern_value_mismatch, req: [R-MATCH-NO-TRAILING-LF]}
+- {id: V-M026, expr: '^abc$', value: {seq: ['abc', [13, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-NO-TRAILING-LF]}
+# ---- the dot
+- {id: V-D001, expr: 'a.c', value: 'abc', expect: match, req: [R-MATCH-DOT]}
+- {id: V-D002, expr: 'a.c', value: {seq: ['a', [10, 1], 'c']}, expect: pattern_value_mismatch, req: [R-MATCH-DOT]}
+- {id: V-D003, expr: 'a.c', value: {seq: ['a', [13, 1], 'c']}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D004, expr: 'a.c', value: {seq: ['a', [0, 1], 'c']}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D005, expr: 'a.c', value: {seq: ['a', [8232, 1], 'c']}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D006, expr: 'a.c', value: {seq: ['a', [233, 1], 'c']}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D007, expr: 'a.c', value: {seq: ['a', [128512, 1], 'c']}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D008, expr: 'a.c', value: {seq: ['a', [233, 2], 'c']}, expect: pattern_value_mismatch, req: [R-MATCH-DOT]}
+- {id: V-D009, expr: 'a.c', value: 'ac', expect: pattern_value_mismatch, req: [R-MATCH-DOT]}
+- {id: V-D010, expr: '.', value: '', expect: pattern_value_mismatch, req: [R-MATCH-DOT, R-MATCH-EMPTY]}
+- {id: V-D011, expr: '.', value: {seq: [[10, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-DOT]}
+- {id: V-D012, expr: '.', value: {seq: [[128512, 1]]}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D013, expr: '.+', value: {seq: ['ab', [10, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-DOT, R-MATCH-QUANT]}
+- {id: V-D014, expr: '.*', value: '', expect: match, req: [R-MATCH-DOT, R-MATCH-EMPTY]}
+- {id: V-D015, expr: '.{3}', value: {seq: [[128512, 3]]}, expect: match, req: [R-MATCH-DOT, R-VALUE-LENGTH]}
+- {id: V-D016, expr: '.{3}', value: 'ab', expect: pattern_value_mismatch, req: [R-MATCH-DOT]}
+- {id: V-D017, expr: '.{2}', value: {seq: [[233, 1], [128512, 1]]}, expect: match, req: [R-MATCH-DOT]}
+- {id: V-D018, expr: '.*', value: {seq: ['a', [10, 1], 'b']}, expect: pattern_value_mismatch, req: [R-MATCH-DOT]}
+# ---- classes
+- {id: V-K001, expr: '[a-c]', value: 'b', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K002, expr: '[a-c]', value: 'd', expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K003, expr: '[a-c]', value: 'A', expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K004, expr: '[a-c]', value: {seq: [[233, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K005, expr: '[a-c]', value: '', expect: pattern_value_mismatch, req: [R-MATCH-CLASS, R-MATCH-EMPTY]}
+- {id: V-K006, expr: '[a-c]+', value: 'abcabc', expect: match, req: [R-MATCH-CLASS, R-MATCH-QUANT]}
+- {id: V-K007, expr: '[0-9a-f]{4}', value: '00ff', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K008, expr: '[0-9a-f]{4}', value: '00fg', expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K009, expr: '[0-9a-f]{4}', value: '00F0', expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K010, expr: '[+-]', value: '+', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K011, expr: '[+-]', value: '-', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K012, expr: '[+-]', value: '*', expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K013, expr: '[a-]', value: '-', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K014, expr: '[.]', value: '.', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K015, expr: '[.]', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K016, expr: '[0-9]', value: {seq: [[1635, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K017, expr: '[0-9]', value: {seq: [[65297, 1]]}, expect: pattern_value_mismatch, req: [R-MATCH-CLASS]}
+- {id: V-K018, expr: '[\]]', value: ']', expect: match, req: [R-MATCH-CLASS, R-MATCH-ESCAPE]}
+- {id: V-K019, expr: '[\^]', value: '^', expect: match, req: [R-MATCH-CLASS, R-MATCH-ESCAPE]}
+- {id: V-K020, expr: '[a^b]', value: '^', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K021, expr: '[a-a]', value: 'a', expect: match, req: [R-MATCH-CLASS]}
+- {id: V-K022, expr: '[a&b]', value: '&', expect: match, req: [R-MATCH-CLASS]}
+# ---- alternation, groups, quantifiers, escapes, the empty value
+- {id: V-A001, expr: 'a|bc', value: 'a', expect: match, req: [R-MATCH-ALT]}
+- {id: V-A002, expr: 'a|bc', value: 'bc', expect: match, req: [R-MATCH-ALT]}
+- {id: V-A003, expr: 'a|bc', value: 'abc', expect: pattern_value_mismatch, req: [R-MATCH-ALT, R-MATCH-FULL]}
+- {id: V-A004, expr: 'a|bc', value: 'b', expect: pattern_value_mismatch, req: [R-MATCH-ALT]}
+- {id: V-A005, expr: 'a|bc', value: '', expect: pattern_value_mismatch, req: [R-MATCH-ALT, R-MATCH-EMPTY]}
+- {id: V-A006, expr: '(a|b)c', value: 'bc', expect: match, req: [R-MATCH-ALT, R-MATCH-GROUP]}
+- {id: V-A007, expr: '(a|b)c', value: 'c', expect: pattern_value_mismatch, req: [R-MATCH-GROUP]}
+- {id: V-A008, expr: 'ab|cd', value: 'abcd', expect: pattern_value_mismatch, req: [R-MATCH-ALT, R-MATCH-FULL]}
+- {id: V-A009, expr: 'a|b|c', value: 'c', expect: match, req: [R-MATCH-ALT]}
+- {id: V-G001, expr: '(ab){1,3}', value: 'ab', expect: match, req: [R-MATCH-GROUP, R-MATCH-QUANT]}
+- {id: V-G002, expr: '(ab){1,3}', value: 'ababab', expect: match, req: [R-MATCH-GROUP, R-MATCH-QUANT]}
+- {id: V-G003, expr: '(ab){1,3}', value: '', expect: pattern_value_mismatch, req: [R-MATCH-GROUP, R-MATCH-EMPTY]}
+- {id: V-G004, expr: '(ab){1,3}', value: 'abababab', expect: pattern_value_mismatch, req: [R-MATCH-GROUP, R-MATCH-QUANT]}
+- {id: V-G005, expr: '(ab){1,3}', value: 'aba', expect: pattern_value_mismatch, req: [R-MATCH-GROUP]}
+- {id: V-G006, expr: '(ab){2}', value: 'abab', expect: match, req: [R-MATCH-GROUP, R-MATCH-QUANT]}
+- {id: V-G007, expr: '(ab){2}', value: 'ab', expect: pattern_value_mismatch, req: [R-MATCH-GROUP, R-MATCH-QUANT]}
+- {id: V-Q001, expr: 'a*', value: '', expect: match, req: [R-MATCH-QUANT, R-MATCH-EMPTY]}
+- {id: V-Q002, expr: 'a*', value: 'aaa', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q003, expr: 'a*', value: 'b', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q004, expr: 'a+', value: '', expect: pattern_value_mismatch, req: [R-MATCH-QUANT, R-MATCH-EMPTY]}
+- {id: V-Q005, expr: 'a+', value: 'a', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q006, expr: 'a?', value: '', expect: match, req: [R-MATCH-QUANT, R-MATCH-EMPTY]}
+- {id: V-Q007, expr: 'a?', value: 'a', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q008, expr: 'a?', value: 'aa', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q009, expr: 'a{3}', value: 'aaa', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q010, expr: 'a{3}', value: 'aa', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q011, expr: 'a{3}', value: 'aaaa', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q012, expr: 'a{2,4}', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q013, expr: 'a{2,4}', value: 'aa', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q014, expr: 'a{2,4}', value: 'aaaa', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q015, expr: 'a{2,4}', value: 'aaaaa', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q016, expr: 'a{2,}', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-QUANT]}
+- {id: V-Q017, expr: 'a{2,}', value: 'aa', expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q018, expr: 'a{2,}', value: {seq: [[97, 255]]}, expect: match, req: [R-MATCH-QUANT]}
+- {id: V-Q019, expr: 'a{0}', value: '', expect: match, req: [R-MATCH-QUANT, R-MATCH-EMPTY, R-PI-ZERO-REPEAT]}
+- {id: V-Q020, expr: 'a{0}', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-QUANT, R-PI-ZERO-REPEAT]}
+- {id: V-Q021, expr: 'a{0}b', value: 'b', expect: match, req: [R-PI-ZERO-REPEAT]}
+- {id: V-Q022, expr: '(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0}b', value: 'b', expect: match, req: [R-PI-ZERO-REPEAT]}
+- {id: V-Q023, expr: '(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0}b', value: 'ab', expect: pattern_value_mismatch, req: [R-PI-ZERO-REPEAT]}
+- {id: V-E001, expr: '\.', value: '.', expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E002, expr: '\.', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-ESCAPE]}
+- {id: V-E003, expr: 'a\*b', value: 'a*b', expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E004, expr: 'a\*b', value: 'aab', expect: pattern_value_mismatch, req: [R-MATCH-ESCAPE]}
+- {id: V-E005, expr: '\\', value: {seq: [[92, 1]]}, expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E006, expr: 'a\|b', value: 'a|b', expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E007, expr: 'a\|b', value: 'a', expect: pattern_value_mismatch, req: [R-MATCH-ESCAPE, R-MATCH-ALT]}
+- {id: V-E008, expr: '\(a\)', value: '(a)', expect: match, req: [R-MATCH-ESCAPE, R-MATCH-GROUP]}
+- {id: V-E009, expr: '\{2\}', value: '{2}', expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E010, expr: 'a\-b', value: 'a-b', expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E011, expr: '\$', value: '$', expect: match, req: [R-MATCH-ESCAPE, R-BODY-ANCHORS]}
+- {id: V-E012, expr: '\^', value: '^', expect: match, req: [R-MATCH-ESCAPE]}
+- {id: V-E013, expr: '\[\]', value: '[]', expect: match, req: [R-MATCH-ESCAPE]}
+# ---- the value rules: scalar values, the length limit, the order
+- {id: V-L001, expr: 'a*', value: {seq: [[97, 256]]}, expect: match, req: [R-LIM-VALUE, R-VALUE-LENGTH]}
+- {id: V-L002, expr: 'a*', value: {seq: [[97, 257]]}, expect: pattern_value_too_long, req: [R-LIM-VALUE, R-VALUE-LENGTH]}
+- {id: V-L003, expr: '.*', value: {seq: [[128512, 256]]}, expect: match, req: [R-VALUE-LENGTH, R-LIM-VALUE]}
+- {id: V-L004, expr: '.*', value: {seq: [[128512, 257]]}, expect: pattern_value_too_long, req: [R-VALUE-LENGTH, R-LIM-VALUE]}
+- {id: V-L005, expr: 'a{0,255}', value: {seq: [[97, 256]]}, expect: pattern_value_mismatch, req: [R-VALUE-LENGTH, R-VALUE-MISMATCH]}
+- {id: V-L006, expr: 'a{0,255}', value: {seq: [[97, 257]]}, expect: pattern_value_too_long, req: [R-VALUE-LENGTH, R-VALUE-ORDER]}
+- {id: V-L007, expr: 'a*', value: {seq: [[98, 300]]}, expect: pattern_value_too_long, req: [R-VALUE-ORDER, R-VALUE-LENGTH]}
+- {id: V-L008, expr: '.*', value: {seq: [[233, 256]]}, expect: match, req: [R-VALUE-LENGTH]}
+- {id: V-L009, expr: 'a*b', value: {seq: [[97, 255], 'b']}, expect: match, req: [R-LIM-VALUE]}
+- {id: V-L010, expr: 'a*b', value: {seq: [[97, 256], 'b']}, expect: pattern_value_too_long, req: [R-LIM-VALUE, R-VALUE-LENGTH]}
+- {id: V-U001, expr: '.*', value: {seq: [[55296, 1]]}, expect: pattern_value_not_unicode_scalar, req: [R-VALUE-SCALAR]}
+- {id: V-U002, expr: '.*', value: {seq: ['a', [57343, 1], 'b']}, expect: pattern_value_not_unicode_scalar, req: [R-VALUE-SCALAR]}
+- {id: V-U003, expr: 'a*', value: {seq: [[97, 300], [55296, 1]]}, expect: pattern_value_not_unicode_scalar, req: [R-VALUE-SCALAR, R-VALUE-ORDER]}
+- {id: V-U004, expr: 'a', value: {seq: [[55296, 1]]}, expect: pattern_value_not_unicode_scalar, req: [R-VALUE-SCALAR, R-VALUE-ORDER]}
+# ---- the nine existing contracts (R-COMPAT-CONTRACTS): values written by hand; 'shape only' vectors (a month 13, 999.999.999.999) are matches by design (the profile says nothing about calendar or range validity: P4)
+- {id: V-C101, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '0.0.0', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C102, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '1.2.3', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C103, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '10.20.30', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C104, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '01.2.3', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C105, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '1.02.3', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C106, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '00.1.2', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C107, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '1.2', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C108, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '1.2.3.4', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C109, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: {seq: ['1.2.3', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF]}
+- {id: V-C110, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-EMPTY]}
+- {id: V-C111, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: 'v1.2.3', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C112, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: '1.2.3 ', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C113, expr: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$', value: {seq: ['1.2.', [51, 300]]}, expect: pattern_value_too_long, req: [R-COMPAT-CONTRACTS, R-VALUE-LENGTH, R-LIM-VALUE]}
+- {id: V-C201, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40Z', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C202, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40.123Z', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C203, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40+01:00', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C204, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40-05:30', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C205, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22t14:42:40Z', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C206, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22 14:42:40Z', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C207, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C208, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-13-45T25:61:61Z', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C209, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40.Z', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C210, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40z', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C211, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: {seq: ['2026-11-22T14:42:40Z', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF]}
+- {id: V-C212, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$', value: '2026-11-22T14:42:40+0100', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C301, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', value: '2026-11-22', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C302, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', value: '2026-1-22', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C303, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', value: {seq: ['2026-11-22', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF]}
+- {id: V-C304, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', value: '2026-11-22T', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C305, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', value: {seq: [[1634, 1], [1632, 1], [1634, 1], [1638, 1], '-11-22']}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-CLASS]}
+- {id: V-C306, expr: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$', value: '2026-13-45', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C401, expr: '^[0-9a-f]{40}$', value: {seq: [[48, 40]]}, expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C402, expr: '^[0-9a-f]{40}$', value: {seq: [[102, 40]]}, expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C403, expr: '^[0-9a-f]{40}$', value: {seq: [[48, 39]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C404, expr: '^[0-9a-f]{40}$', value: {seq: [[48, 41]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C405, expr: '^[0-9a-f]{40}$', value: {seq: [[65, 40]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-CLASS]}
+- {id: V-C406, expr: '^[0-9a-f]{40}$', value: {seq: ['g', [48, 39]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C407, expr: '^[0-9a-f]{40}$', value: {seq: [[48, 40], [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF]}
+- {id: V-C501, expr: '^sha256:[0-9a-f]{64}$', value: {seq: ['sha256:', [48, 64]]}, expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C502, expr: '^sha256:[0-9a-f]{64}$', value: {seq: ['sha256:', [48, 63]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C503, expr: '^sha256:[0-9a-f]{64}$', value: {seq: ['sha256:', [48, 65]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C504, expr: '^sha256:[0-9a-f]{64}$', value: {seq: ['sha256:', [71, 64]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-CLASS]}
+- {id: V-C505, expr: '^sha256:[0-9a-f]{64}$', value: {seq: ['SHA256:', [48, 64]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C506, expr: '^sha256:[0-9a-f]{64}$', value: {seq: [[48, 64]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C507, expr: '^sha256:[0-9a-f]{64}$', value: 'sha256:', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C601, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[65, 43], '=']}, expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C602, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[65, 42], '=']}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C603, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[65, 43]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C604, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[45, 43], '=']}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-CLASS]}
+- {id: V-C605, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[65, 43], '==']}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C606, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[43, 43], '=']}, expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C607, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[47, 43], '=']}, expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C608, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[65, 44], '=']}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C609, expr: '^[A-Za-z0-9+/]{43}=$', value: {seq: [[95, 43], '=']}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-CLASS]}
+- {id: V-C701, expr: '^vault:v1:.+$', value: 'vault:v1:abc', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C702, expr: '^vault:v1:.+$', value: 'vault:v1:', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C703, expr: '^vault:v1:.+$', value: 'vault:v1:a b', expect: match, req: [R-COMPAT-CONTRACTS, R-MATCH-DOT]}
+- {id: V-C704, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:a', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF, R-MATCH-DOT]}
+- {id: V-C705, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-DOT]}
+- {id: V-C706, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:a', [13, 1]]}, expect: match, req: [R-COMPAT-CONTRACTS, R-MATCH-DOT]}
+- {id: V-C707, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:', [233, 1]]}, expect: match, req: [R-COMPAT-CONTRACTS, R-MATCH-DOT]}
+- {id: V-C708, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:', [128512, 1]]}, expect: match, req: [R-COMPAT-CONTRACTS, R-MATCH-DOT]}
+- {id: V-C709, expr: '^vault:v1:.+$', value: 'vault:v2:abc', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C710, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:', [97, 247]]}, expect: match, req: [R-COMPAT-CONTRACTS, R-LIM-VALUE]}
+- {id: V-C711, expr: '^vault:v1:.+$', value: {seq: ['vault:v1:', [97, 248]]}, expect: pattern_value_too_long, req: [R-COMPAT-CONTRACTS, R-LIM-VALUE, R-VALUE-LENGTH]}
+- {id: V-C801, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: 'a', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C802, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: 'a.b/c_d:e-f', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C803, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: '.a', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C804, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: 'a b', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C805, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: 'A', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-CLASS]}
+- {id: V-C806, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: '', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-EMPTY]}
+- {id: V-C807, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: {seq: ['a', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF]}
+- {id: V-C808, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: '0', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C809, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: 'a-', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C810, expr: '^[a-z0-9][a-z0-9./_:-]*$', value: '-a', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C901, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '10.0.0.0/8', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C902, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '192.168.1.255/24', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C903, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '1.2.3/8', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C904, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '1.2.3.4', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C905, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '1.2.3.4/', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C906, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '1.2.3.4/123', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C907, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '1234.1.1.1/8', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C908, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: {seq: ['1.2.3.4/8', [10, 1]]}, expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS, R-MATCH-NO-TRAILING-LF]}
+- {id: V-C909, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '999.999.999.999/99', expect: match, req: [R-COMPAT-CONTRACTS]}
+- {id: V-C910, expr: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$', value: '1.2.3.4.5/8', expect: pattern_value_mismatch, req: [R-COMPAT-CONTRACTS]}
+# Schemas: a pin state and the pattern contracts of the schema in document order. pin.state: ok (version stated and known), missing, unknown (a version that is not known),
+# conflict (two different versions declared). Version 1 is the only known version. `at` is the 1-based position of the refused contract in document order.
+schemas:
+- {id: S-001, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^[a-z]+$'}, {path: '$.b', expr: '^[0-9]{4}$'}], expect: accept, req: [R-SCHEMA-ORDER, R-PIN-FIRST]}
+- {id: S-002, pin: {state: missing}, contracts: [{path: '$.a', expr: '^[a-z]+$'}], expect: refuse, code: pattern_profile_missing, req: [R-PIN-MISSING]}
+- {id: S-003, pin: {state: unknown, version: 99}, contracts: [{path: '$.a', expr: '^[a-z]+$'}], expect: refuse, code: pattern_profile_unknown, req: [R-PIN-UNKNOWN]}
+- {id: S-004, pin: {state: conflict, versions: [1, 2]}, contracts: [{path: '$.a', expr: '^[a-z]+$'}], expect: refuse, code: pattern_profile_conflict, req: [R-PIN-CONFLICT]}
+- {id: S-005, pin: {state: missing}, contracts: [{path: '$.a', expr: '(?i)a'}], expect: refuse, code: pattern_profile_missing, req: [R-PIN-MISSING, R-PIN-FIRST]}
+- {id: S-006, pin: {state: unknown, version: 2}, contracts: [{path: '$.a', expr: '[^a]'}], expect: refuse, code: pattern_profile_unknown, req: [R-PIN-UNKNOWN, R-PIN-FIRST]}
+- {id: S-007, pin: {state: conflict, versions: [1, 3]}, contracts: [{path: '$.a', expr: ''}], expect: refuse, code: pattern_profile_conflict, req: [R-PIN-CONFLICT, R-PIN-FIRST]}
+- {id: S-008, pin: {state: missing}, contracts: [], expect: accept, req: [R-PIN-ONLY-IF-PATTERN]}
+- {id: S-009, pin: {state: ok, version: 1}, contracts: [], expect: accept, req: [R-PIN-ONLY-IF-PATTERN]}
+- {id: S-010, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^a$'}, {path: '$.b', expr: '(?i)b'}, {path: '$.c', expr: 'c{300}'}], expect: refuse, code: pattern_group_extension, at: 2, req: [R-SCHEMA-ORDER, R-SCHEMA-WHOLE]}
+- {id: S-011, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: 'c{300}'}, {path: '$.b', expr: '(?i)b'}], expect: refuse, code: pattern_repeat_count_too_large, at: 1, req: [R-SCHEMA-ORDER]}
+- {id: S-012, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: 'a{0,255}a{0,255}a{0,255}a{0,255}a{0,4}a'}, {path: '$.b', expr: '(?i)b'}], expect: refuse, code: pattern_program_too_large, at: 1, req: [R-SCHEMA-ORDER, R-T3-SIZE, R-PREC-TIER]}
+- {id: S-013, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '(?i)b'}, {path: '$.b', expr: 'a{0,255}a{0,255}a{0,255}a{0,255}a{0,4}a'}], expect: refuse, code: pattern_group_extension, at: 1, req: [R-SCHEMA-ORDER, R-PREC-TIER]}
+- {id: S-014, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^a$'}, {path: '$.b', expr: '^b$'}, {path: '$.c', expr: '^c$'}, {path: '$.d', expr: '^d$'}, {path: '$.e', expr: '^e$'}, {path: '$.f', expr: '^f$'}, {path: '$.g', expr: '^g$'}, {path: '$.h', expr: '^h$'}, {path: '$.i', expr: '^i$'}, {path: '$.j', expr: '[z-a]'}], expect: refuse, code: pattern_class_range_order, at: 10, req: [R-SCHEMA-WHOLE, R-SCHEMA-ORDER]}
+- {id: S-015, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^a$'}, {path: '$.b', expr: '^a$'}, {path: '$.c', expr: '^a$'}], expect: accept, req: [R-SCHEMA-ORDER]}
+- {id: S-016, pin: {state: ok, version: 1}, contracts: [{path: '$.a', expr: '^[0-9a-f]{40}$'}, {path: '$.b', expr: '^sha256:[0-9a-f]{64}$'}, {path: '$.c', expr: '^vault:v1:.+$'}], expect: accept, req: [R-COMPAT-CONTRACTS, R-SCHEMA-WHOLE]}
