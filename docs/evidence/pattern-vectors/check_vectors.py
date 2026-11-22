@@ -11,6 +11,11 @@ fails = []
 
 # The accepted decisions (O2 of #48 and the limits of #46), written here independently of the vector file: the file's own metadata is checked AGAINST them (review F2 of #49).
 DECIDED_LIMITS = {"length": 256, "repeat_count": 255, "group_depth": 4, "repeat_product": 1000, "unbounded_quantifiers": 3, "pi_max": 2048, "value_code_points": 256}
+# The profile version identifier (owner decision of 2026-11-22), held HERE, independently of the vector file: a positive integer; the current profile knows only version 1; there is no implicit default
+# version (a missing pin is pattern_profile_missing); an unknown version is refused (pattern_profile_unknown); a change of the semantics or of the normative limits above needs a NEW profile version,
+# so these constants are the version-1 values and a deliberate change of them is the introduction of version 2.
+DECIDED_PROFILE_VERSION = 1
+KNOWN_PROFILE_VERSIONS = {1}
 DECIDED_CODES = {
     "expression": {"pattern_empty", "pattern_too_long", "pattern_not_ascii_printable", "pattern_empty_branch", "pattern_unbalanced_group", "pattern_group_extension", "pattern_escape_unsupported",
                    "pattern_metachar_unexpected", "pattern_anchor_misplaced", "pattern_class_empty", "pattern_class_negated", "pattern_class_unterminated", "pattern_class_range_order",
@@ -104,7 +109,8 @@ def main(path=None):
     # ---- the normative metadata against the accepted decisions, and against the vectors' own boundaries (review F2 of #49)
     expect("meta.profile.name", d.get("profile", {}).get("name") == "pattern", "profile.name is %r" % (d.get("profile", {}).get("name"),))
     ver = d.get("profile", {}).get("version")
-    expect("meta.profile.version", isinstance(ver, int) and ver >= 1, "profile.version must be a positive integer (a working assumption until the pin decision)")
+    expect("meta.profile.version.type", type(ver) is int and ver >= 1, "profile.version must be a positive integer of the exact type int (not a bool, not a float: Python's True == 1 and 1.0 == 1), got %s %r" % (type(ver).__name__, ver))
+    expect("meta.profile.version", type(ver) is int and ver == DECIDED_PROFILE_VERSION, "the vector file declares profile version %r; the approved identifier is %d (a file that is consistent in itself but declares another version is refused)" % (ver, DECIDED_PROFILE_VERSION))
     lim = d.get("limits", {})
     expect("meta.limits.keys", set(lim) == set(DECIDED_LIMITS), "limits keys %s" % sorted(lim))
     for k, want in DECIDED_LIMITS.items():
@@ -120,11 +126,11 @@ def main(path=None):
     vl = [(len(V.dec(x["value"])), x["expect"]) for x in d["values"] if x["id"].startswith("V-L")]
     expect("meta.boundary.value_code_points", (lim.get("value_code_points"), "match") in vl and ((lim.get("value_code_points") or 0) + 1, "pattern_value_too_long") in vl, "no value vector at the value limit matching and at limit + 1 too long")
     sc_ok = [x["pin"].get("version") for x in d["schemas"] if x["pin"].get("state") == "ok"]
-    expect("meta.pin.known-version", bool(sc_ok) and set(sc_ok) == {ver}, "the schema vectors with a known pin use version %s, the profile says %r" % (sorted(set(sc_ok)), ver))
-    expect("meta.pin.unknown-differs", all(x["pin"].get("version") != ver for x in d["schemas"] if x["pin"].get("state") == "unknown"), "an `unknown` pin vector uses the known version")
+    expect("meta.pin.known-version", bool(sc_ok) and set(sc_ok) <= KNOWN_PROFILE_VERSIONS and set(sc_ok) == {ver}, "the schema vectors with a known pin use version %s; the known versions are %s and the file declares %r" % (sorted(set(sc_ok)), sorted(KNOWN_PROFILE_VERSIONS), ver))
+    expect("meta.pin.unknown-differs", all(x["pin"].get("version") not in KNOWN_PROFILE_VERSIONS for x in d["schemas"] if x["pin"].get("state") == "unknown"), "an `unknown` pin vector uses a known version (the known versions are %s)" % sorted(KNOWN_PROFILE_VERSIONS))
     for x in d["schemas"]:
         if x["pin"].get("state") == "declared" and isinstance(x["pin"].get("versions"), list) and x["pin"]["versions"]:
-            same = x["pin"]["versions"][0] == ver
+            same = x["pin"]["versions"][0] in KNOWN_PROFILE_VERSIONS
             expect("meta.pin.declared.%s" % x["id"], same == (x.get("code") != "pattern_profile_unknown"), "identical declarations of version %s against the profile version %s must %s" % (x["pin"]["versions"][0], ver, "not be unknown" if same else "be pattern_profile_unknown"))
     for r in req:
         expect("coverage.requirement.%s" % r, r in byreq, "no vector exercises this requirement")
