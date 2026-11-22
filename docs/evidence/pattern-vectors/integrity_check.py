@@ -4,10 +4,15 @@ character on its way into a file). An ISOLATED tool-chain check, not a CI gate, 
 Two mechanisms that cover different errors:
   canary  : the raw bytes of the file, BEFORE any decoding (no YAML or text parser is involved), must contain the expected representation of every escape-shaped text. The expected bytes are held
             here as INTEGER byte values, so this source file holds no escape text that a faulty writer could have turned into another character; the expectation does not depend on the writer.
-  sha256  : the SHA-256 of the whole file must equal a reference value that was computed from the intended bytes BEFORE they were written, and that is also stated in the PR description, where the
-            review checks it. A reference computed from the written file would prove nothing, so it is refused as a source (the reference comes from --expect-sha256 or integrity-reference.json).
+  sha256  : the SHA-256 of the whole file must equal a reference value. The tool VERIFIES that the file equals the reference; it cannot AUTHENTICATE the reference, because it cannot establish when or from
+            which bytes the value was computed (a value computed from an already damaged file passes the verification: the canary is what still sees that damage). The authentication is a PROCEDURE,
+            not a property of the tool: the value stated in the PR description, recomputed independently by the review from the git objects, and supplied EXPLICITLY in the acceptance run
+            (--acceptance --expect-sha256 VALUE). The repository reference file (integrity-reference.json) is a convenience for the default run and is NOT an independent basis of trust.
+Fail-closed: --no-canary together with --no-sha is refused (exit 2): a run that checks nothing must not report success. Each switch alone stays available (the self-test needs them to show that the
+two mechanisms differ).
 Exit: 0 all held, 1 a FAIL-EXPECT line (a damaged file or a wrong reference), 2 infrastructure (a file or the reference is missing / unreadable): never a result.
-Usage: integrity_check.py [--file PATH] [--expect-sha256 HEX] [--reference PATH] [--no-canary] [--no-sha] [--docs DIR]"""
+Usage: integrity_check.py [--file PATH] [--expect-sha256 HEX] [--reference PATH] [--no-canary] [--no-sha] [--docs DIR] [--acceptance]
+  --acceptance: the review run; requires an explicit --expect-sha256 and refuses --reference, --no-sha and --no-canary (exit 2)"""
 import hashlib, json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -53,6 +58,12 @@ def read(path):
 def main(argv):
     def opt(name):
         return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else None
+    if "--no-canary" in argv and "--no-sha" in argv:
+        print("INCOMPLETE: --no-canary together with --no-sha selects no check; a run that checks nothing must not report success"); return 2
+    acceptance = "--acceptance" in argv
+    if acceptance:
+        if opt("--expect-sha256") is None or "--reference" in argv or "--no-sha" in argv or "--no-canary" in argv:
+            print("INCOMPLETE: --acceptance needs an explicit --expect-sha256 (the independently approved value) and refuses --reference, --no-sha and --no-canary"); return 2
     path = opt("--file") or VEC
     data = read(path)
     if "--no-canary" not in argv:
@@ -66,13 +77,16 @@ def main(argv):
                 expect("canary.doc.%s" % d, bytes(DOC_CANARY) in body, "the escape sequence stated in prose is not in the document")
     if "--no-sha" not in argv:
         ref = opt("--expect-sha256")
+        source = "the value supplied on the command line" if ref is not None else "the repository reference file"
         if ref is None:
             try:
                 ref = json.loads(read(opt("--reference") or REF).decode("ascii"))["vector_file_sha256"]
             except (ValueError, KeyError) as e:
                 print("INCOMPLETE: the reference value is missing or unreadable: %r" % (e,)); return 2
         got = hashlib.sha256(data).hexdigest()
-        print("sha256 of %s: %s (reference %s)" % (os.path.basename(path), got, ref))
+        print("sha256 of %s: %s (reference %s, from %s)" % (os.path.basename(path), got, ref, source))
+        print("mode: %s" % ("ACCEPTANCE: verified against an explicit value; the value is authenticated by the review procedure (PR description, independent recomputation), not by this tool" if acceptance
+                            else "verification only: the reference is %s, which is NOT an independent basis of trust" % source))
         expect("sha256", got == ref, "the file differs from the bytes the reference was computed from")
     if fails:
         print("FAILED: %d expectation(s); the file was not touched" % len(fails)); return 1

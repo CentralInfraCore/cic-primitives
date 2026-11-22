@@ -8,6 +8,15 @@ I damage outside the canaries: only the SHA-256 sees it                         
 I damage outside the canaries: the canary alone misses it (the mechanisms differ)    OK exit=0
 I a reference computed from the damaged file passes the SHA-256, the canary still rejects it OK exit=1
 I an intact file against a wrong reference value: rejected                           OK exit=1
+F both switches together select no check: refused, exit 2 (INCOMPLETE), never a success OK exit=2
+F ... also on a damaged file: exit 2, not 0                                          OK exit=2
+A acceptance run with the explicit, independently approved value: passes and says so OK exit=0
+A acceptance run without an explicit value: refused, exit 2                          OK exit=2
+A acceptance run with a reference file as well: refused, exit 2                      OK exit=2
+A acceptance run with a switch off: refused, exit 2                                  OK exit=2
+A acceptance run on the damaged file with the approved value: rejected               OK exit=1
+A acceptance run with a value taken from the damaged file: the tool cannot tell (SHA-256 passes), the canary still rejects it OK exit=1
+V default run states that the repository reference is verification only, not an independent basis OK exit=0
 C infra: the file is missing (exit 2, not a detection)                               OK exit=2
 C infra: the reference is missing (exit 2, not a detection)                          OK exit=2
 D positive control: the documents state the escape sequence                          OK exit=0
