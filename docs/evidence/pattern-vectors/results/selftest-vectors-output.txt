@@ -1,0 +1,41 @@
+A positive control (unmodified vector file)                OK exit=0
+A planted: a requirement without a vector                  OK exit=1 needle=coverage.requirement.R-T1-EMPTY
+A planted: a code without a vector                         OK exit=1 needle=coverage.code.pattern_empty
+A planted: an unknown requirement                          OK exit=1 needle=req.known.V-M001.R-NOPE
+A planted: a duplicate id                                  OK exit=1 needle=id.unique.X-A001
+A planted: an unknown code                                 OK exit=1 needle=code.known.X-S110
+A planted: a non-ASCII character in an expression          OK exit=1 needle=enc.X-A001
+A planted: the only pin-missing vectors removed            OK exit=1 needle=coverage.code.pattern_profile_missing
+A planted: a limit without its refusing side               OK exit=1 needle=boundary.R-LIM-DEPTH
+A planted: an accepted expression without its PI           OK exit=1 needle=pi.present.X-A001
+A planted: a value vector with a verdict of another kind   OK exit=1 needle=expect.V-M001
+A planted: a schema refusal without its position           OK exit=1 needle=schema.at.required.S-010
+A planted: a pin refusal that carries a position           OK exit=1 needle=schema.at.forbidden.S-002
+A planted: a schema refusal with a position outside the schema OK exit=1 needle=schema.at.required.S-010
+A planted: the declared pi_max changed to 4096             OK exit=1 needle=meta.limits.pi_max
+A planted: the declared length limit changed to 255        OK exit=1 needle=meta.limits.length
+A planted: the profile name changed                        OK exit=1 needle=meta.profile.name
+A planted: a decided code removed from the code list       OK exit=1 needle=meta.codes.expression
+A planted: every accepted PI-boundary vector moved away from pi_max OK exit=1 needle=meta.boundary.pi_max
+A planted: the known pin version of the schema vectors changed OK exit=1 needle=meta.pin.known-version
+B positive control (all implementations, native)           OK exit=0
+B planted: CIC_CODES_PLANT=charset-before-length           OK exit=1 needle='DISAGREE P X-T107'
+B planted: CIC_CODES_PLANT=size-off-by-one                 OK exit=1 needle='DISAGREE P X-Z101'
+B planted: CIC_CODES_PLANT=no-size-tier                    OK exit=1 needle='DISAGREE P X-Z102'
+B planted: CIC_CODES_PLANT=size-undercount                 OK exit=1 needle='DISAGREE P.pi X-A013'
+B planted: CIC_CODES_PLANT=row-removed                     OK exit=1 needle='DISAGREE P X-Q130'
+B planted: CIC_CODES_PLANT=value-mismatch-before-length    OK exit=1 needle='DISAGREE P V-L007'
+B planted: CIC_CODES_PLANT=early-size                      OK exit=1 needle='DISAGREE P X-A027'
+B planted: CIC_SPEC_PLANT=no-class-precheck-spec           OK exit=1 needle='DISAGREE S X-K101'
+B planted: CIC_SPEC_PLANT=count-before-bounds-spec         OK exit=1 needle='DISAGREE S X-Q108'
+B planted: CIC_SPEC_PLANT=depth-before-extension-spec      OK exit=1 needle='DISAGREE S X-S124'
+B planted: CIC_CONFORM_PLANT=last-refused                  OK exit=1 needle='DISAGREE P.schema S-010'
+B planted: CIC_CONFORM_PLANT=pin-after-expressions         OK exit=1 needle='DISAGREE P.schema S-005'
+B vector file: S-010 with the position of the third contract OK exit=1 needle='DISAGREE P.schema S-010'
+B vector file: pi_max declared as 4096                     OK exit=1 needle='DISAGREE P.meta limits.pi_max'
+B planted: the Go runner matches any line feed (canary)    OK exit=3
+B planted: the Go runner matches a line feed after abc (vectors) OK exit=1 needle='DISAGREE G V-M021'
+C infra: the vector file is unreadable (check)             OK exit=2
+C infra: the vector file is unreadable (conform)           OK exit=2
+C infra: the Go toolchain is missing                       OK exit=2
+self-test: all as expected
