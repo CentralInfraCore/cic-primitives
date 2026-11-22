@@ -1,4 +1,4 @@
-vectors: 278 expressions, 215 values, 16 schemas; 65 requirements (4 not testable by vectors); 31 codes
+vectors: 278 expressions, 215 values, 20 schemas; 66 requirements (4 not testable by vectors); 31 codes
 ## requirement -> vectors
 R-MATCH-FULL                12  V-M001 V-M002 V-M003 V-M004 V-M005 V-M006 ...
 R-MATCH-ANCHOR-NOOP          7  X-A030 V-M010 V-M011 V-M012 V-M013 V-M014 ...
@@ -57,13 +57,14 @@ R-PREC-READING-ORDER        13  X-S103 X-S117 X-S118 X-K133 X-P109 X-P110 ...
 R-PREC-CLASS-ORDER          15  X-K106 X-K107 X-K108 X-K109 X-K110 X-K121 ...
 R-PREC-REPEAT-ORDER         13  X-Q108 X-Q124 X-Q134 X-Q135 X-Q143 X-Q155 ...
 R-PREC-GROUP-EXT-DEPTH       3  X-S124 X-P107 X-P108
-R-SCHEMA-ORDER               7  S-001 S-010 S-011 S-012 S-013 S-014 ...
+R-SCHEMA-ORDER               8  S-001 S-010 S-011 S-012 S-013 S-014 ...
 R-SCHEMA-WHOLE               3  S-010 S-014 S-016
 R-PIN-MISSING                2  S-002 S-005
-R-PIN-UNKNOWN                2  S-003 S-006
-R-PIN-CONFLICT               2  S-004 S-007
+R-PIN-UNKNOWN                3  S-003 S-006 S-019
+R-PIN-CONFLICT               3  S-004 S-007 S-017
 R-PIN-FIRST                  4  S-001 S-005 S-006 S-007
 R-PIN-ONLY-IF-PATTERN        2  S-008 S-009
+R-PIN-IDENTICAL              4  S-017 S-018 S-019 S-020
 R-COMPAT-CONTRACTS          95  X-C001 X-C002 X-C003 X-C004 X-C005 X-C006 ...
 R-LINEAR                    --  not testable by a verdict vector: a timing gate on adversarial input (HOLD)
 R-INDEPENDENT-CHECK         --  not testable by a verdict vector: the implementations of the producer and the verifier (HOLD)
@@ -75,7 +76,7 @@ pattern_too_long                         6
 pattern_not_ascii_printable              6
 pattern_empty_branch                    12
 pattern_unbalanced_group                 7
-pattern_group_extension                  9
+pattern_group_extension                 10
 pattern_escape_unsupported              21
 pattern_metachar_unexpected              9
 pattern_anchor_misplaced                 8
@@ -99,6 +100,6 @@ pattern_value_not_unicode_scalar         4
 pattern_value_too_long                   7
 pattern_value_mismatch                 111
 pattern_profile_missing                  2
-pattern_profile_unknown                  2
+pattern_profile_unknown                  3
 pattern_profile_conflict                 2
 all expectations held

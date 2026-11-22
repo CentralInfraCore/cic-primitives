@@ -1,0 +1,2 @@
+approved entries checked: 509 vectors, 65 requirements; added vectors ['S-017', 'S-018', 'S-019', 'S-020'], added requirements ['R-PIN-IDENTICAL']; lines 665 -> 670
+all expectations held

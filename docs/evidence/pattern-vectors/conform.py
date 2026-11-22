@@ -79,6 +79,14 @@ def schema_verdict(sc):
                 return "refuse", code, i
     if cons:
         st = sc["pin"]["state"]
+        if st == "declared":                          # identical declarations count as one declaration (owner decision of 2026-11-22); different ones are a conflict
+            vs = set(sc["pin"]["versions"])
+            if CPLANT == "identical-is-conflict":
+                return "refuse", "pattern_profile_conflict", None
+            if len(vs) > 1:
+                return "refuse", "pattern_profile_conflict", None
+            if vs != {1}:                             # the known profile version of the vectors is 1
+                return "refuse", "pattern_profile_unknown", None
         if st == "missing":
             return "refuse", "pattern_profile_missing", None
         if st == "unknown":

@@ -83,7 +83,11 @@ def main(path=None):
                 expect("expect.%s" % i, v.get("expect") == "match" or v.get("expect") in value_codes, "expect %r is neither match nor a value code" % v.get("expect"))
                 bycode[v.get("expect")].append(i)
             else:
-                expect("pin.%s" % i, isinstance(v.get("pin"), dict) and v["pin"].get("state") in ("ok", "missing", "unknown", "conflict"))
+                expect("pin.%s" % i, isinstance(v.get("pin"), dict) and v["pin"].get("state") in ("ok", "missing", "unknown", "conflict", "declared"))
+                if v.get("pin", {}).get("state") == "declared":      # the list of the declarations of one schema; identical declarations count as one (owner decision of 2026-11-22)
+                    vs = v["pin"].get("versions")
+                    expect("pin.declared.%s" % i, isinstance(vs, list) and len(vs) >= 2 and all(isinstance(x, int) for x in vs) and len(set(vs)) == 1,
+                           "a `declared` pin lists at least two IDENTICAL integer versions (different ones are the `conflict` state)")
                 for c in v.get("contracts", []):
                     expect("enc.contract.%s" % i, enc_ok(c.get("expr")) and "path" in c)
                 if v.get("expect") == "refuse":
@@ -118,6 +122,10 @@ def main(path=None):
     sc_ok = [x["pin"].get("version") for x in d["schemas"] if x["pin"].get("state") == "ok"]
     expect("meta.pin.known-version", bool(sc_ok) and set(sc_ok) == {ver}, "the schema vectors with a known pin use version %s, the profile says %r" % (sorted(set(sc_ok)), ver))
     expect("meta.pin.unknown-differs", all(x["pin"].get("version") != ver for x in d["schemas"] if x["pin"].get("state") == "unknown"), "an `unknown` pin vector uses the known version")
+    for x in d["schemas"]:
+        if x["pin"].get("state") == "declared" and isinstance(x["pin"].get("versions"), list) and x["pin"]["versions"]:
+            same = x["pin"]["versions"][0] == ver
+            expect("meta.pin.declared.%s" % x["id"], same == (x.get("code") != "pattern_profile_unknown"), "identical declarations of version %s against the profile version %s must %s" % (x["pin"]["versions"][0], ver, "not be unknown" if same else "be pattern_profile_unknown"))
     for r in req:
         expect("coverage.requirement.%s" % r, r in byreq, "no vector exercises this requirement")
     for r in nt:

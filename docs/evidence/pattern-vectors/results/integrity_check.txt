@@ -1,0 +1,2 @@
+sha256 of pattern-profile.yaml: e7ece43a9486187c16a482a96a86d22cf82407711be940920155f4e3abe277e0 (reference e7ece43a9486187c16a482a96a86d22cf82407711be940920155f4e3abe277e0)
+all expectations held
