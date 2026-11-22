@@ -23,6 +23,17 @@ cases:
 - {id: E-PIN-15, req: [R-PIN-ONLY-IF-PATTERN, R-PIN-CONFLICT], pin: [1, 2], schema: "a: {type: string}", expect: {outcome: accept}}
 - {id: E-PIN-16, req: [R-PIN-IDENTICAL], pin: [1, 1, 1], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: accept}}
 - {id: E-PIN-17, req: [R-PIN-FIRST], pin: [true], schema: "a: {contract: [{type: pattern, expression: '(?i)a'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+# ---- the identity of declared values (review F1 of #52): a recursive, TYPE-SENSITIVE rule of the specification, not a serialisation. Same type class; null; bool; int; float by the binary64 bit pattern (all NaN identical, 0.0 and -0.0 different); str by code points; list in order; map as a set of entries whose keys count with their type
+- {id: E-PIN-18, req: [R-PIN-CONFLICT], pin: [{1: a}, {'1': a}], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-19, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [{1: a}, {1: a}], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-20, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [{a: 1, b: 2}, {b: 2, a: 1}], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-21, req: [R-PIN-CONFLICT], pin: [[1, 2], [2, 1]], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-22, req: [R-PIN-CONFLICT], pin: [1, 1.0], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-23, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [{1: a, x: b}, {x: b, 1: a}], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-24, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [.nan, .nan], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-25, req: [R-PIN-CONFLICT], pin: [0.0, -0.0], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-26, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [[1, [2, {3: a}]], [1, [2, {3: a}]]], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-27, req: [R-PIN-CONFLICT], pin: [[1, [2, {3: a}]], [1, [2, {'3': a}]]], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
 # ---- traversal of nested contracts: depth-first, pre-order, mapping entries in SOURCE order, sequence items by index; a contract is visited where its key `contract` stands among its siblings
 - id: E-TRV-01
   req: [R-SCHEMA-ORDER]

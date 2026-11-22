@@ -4,7 +4,7 @@ Status: **a draft specification, documentation and isolated tooling only. This i
 
 It builds on what is decided and merged: the profile (`GRAMMAR-PATTERN-PROFILE-DESIGN.md`, #46), the evaluator direction (`GRAMMAR-PATTERN-ENGINE-SELECTION.md`, #47: E1 own automaton, E2 optional google-re2 cross-check, E3 version evidence), the limits and codes (`GRAMMAR-PATTERN-LIMITS-AND-ERRORS.md`, #48), the 513 vectors (`GRAMMAR-PATTERN-VECTORS.md`, #49 to #51) and the profile version `1`. **The 513 approved vectors stay the unchanged reference** (the SHA-256 of the vector file, `e7ece43a...`, is held by the check of this package). New cases appear only as a **separately reviewed extension** (section 10); none is added to the approved file.
 
-The machine-readable companions: `docs/design/pattern-profile-spec/obligations.yaml` (25 obligations and 9 plan items, traced to the requirements), `docs/design/pattern-profile-spec/extension-cases.yaml` (30 proposed cases), and the tooling in `docs/evidence/pattern-spec-trace/`.
+The machine-readable companions: `docs/design/pattern-profile-spec/obligations.yaml` (26 obligations and 11 plan items, traced to the requirements), `docs/design/pattern-profile-spec/extension-cases.yaml` (40 proposed cases), and the tooling in `docs/evidence/pattern-spec-trace/`.
 
 ## 1. Roles and the boundary between them
 
@@ -42,10 +42,24 @@ The profile version identifier is the positive integer `1` (decision of 2026-11-
 **O-VA-01 Resolution**, over the declarations in document order, **in this order**:
 
 1. no declaration: `pattern_profile_missing`;
-2. the declarations are not all identical **in type and value**: `pattern_profile_conflict` (this precedes unknown: `[1, 99]` is a conflict);
+2. the declarations are not all **identical** (the identity rule below): `pattern_profile_conflict` (this precedes unknown: `[1, 99]` is a conflict);
 3. identical declarations count as **one** declaration; the single value that is not exactly the **int `1`** (type `int`, value `1`) is `pattern_profile_unknown`.
 
-**A wrong-typed pin** (`true`, `1.0`, the text `1`, `null`, `0`, a negative number, a list, a mapping) is therefore **`pattern_profile_unknown`**: it is a value that is not a member of the set of known versions `{1}`, and **no new code is introduced** (a new code would change the version-1 code set, which needs a new profile version). Two identical wrong-typed declarations are unknown; two different ones are a conflict. Examples: `E-PIN-01` to `E-PIN-13`, `E-PIN-16`.
+**The identity of declared values (review F1 of #52).** The identity is a rule of this specification, **not** a property of any serialisation (a JSON or `str` rendering would let a mapping with the key `1` and one with the text key `1` look alike, differ in their sort behavior on mixed key types, or turn different types into the same text). Two values are identical iff they have the **same type class** and:
+
+| Type class | Identical when |
+|---|---|
+| null | both are null |
+| bool | the same truth value (a bool is **not** an int: `true` and `1` are different) |
+| int | the same integer |
+| float | the same IEEE-754 binary64 bit pattern; **all NaN are identical to each other**; `0.0` and `-0.0` are different; a float is never identical to an int (`1.0` and `1` differ) |
+| string | the same sequence of Unicode code points |
+| list | the same length and pairwise identical items **in the same order** |
+| mapping | the same number of entries and every entry of one has an entry of the other with an **identical key (the key's type class counts: the int `1` and the text `1` are different keys)** and an identical value; **the order of the entries is irrelevant** |
+
+The rule is recursive. A mapping key that is not a scalar is a **reader error** (outside the pattern codes). The resolution depends only on the **set** of the declarations, not on their order. Examples: `E-PIN-18` to `E-PIN-27` (a `1` key against a text `1` key is a conflict; the same mapping in another entry order is identical; `[1, 2]` against `[2, 1]` is a conflict; `1` against `1.0` is a conflict; NaN with NaN is identical; `0.0` against `-0.0` is a conflict; nested values).
+
+**A wrong-typed pin** (`true`, `1.0`, the text `1`, `null`, `0`, a negative number, a list, a mapping) is therefore **`pattern_profile_unknown`**: it is a value that is not a member of the set of known versions `{1}`, and **no new code is introduced** (a new code would change the version-1 code set, which needs a new profile version). Two identical wrong-typed declarations are unknown; two different ones are a conflict. Examples: `E-PIN-01` to `E-PIN-13`, `E-PIN-16`, `E-PIN-18` to `E-PIN-27`.
 
 **O-VA-02 When.** The pin is evaluated **only when the schema has at least one pattern contract**, and **before every expression** (a bad pin is reported even when an expression is also bad: `E-PIN-17`). A schema without a pattern contract needs no pin; its declarations, whatever they are, are not evaluated (`E-PIN-14`, `E-PIN-15`; this reading of the existing vectors `S-008`, `S-009` is one of the points for the owner in section 12).
 
@@ -63,13 +77,22 @@ The profile version identifier is the positive integer `1` (decision of 2026-11-
 * Within one expression the order is that of limits doc 3.2 (O-VA-03 to O-VA-08, already covered by the 513 vectors).
 * Within step 3 the first violating value in the record reader's order decides; a verifier may collect more, with no normative weight.
 
+### 4.1 Binding a result to its input: the delivery digest (review F2 of #52, obligation O-GT-02)
+
+Which refusal is reported first depends on the **delivery order**, which for a source-order traversal depends on the **source order** of the document. A canonical representation that sorts the keys would erase exactly that difference, so its hash alone cannot identify the input of a validation **result**. The specification separates two things:
+
+* **the class of the verdict** (accepted or refused) does **not** depend on the delivery order (a schema is accepted iff every expression is accepted and the pin resolves; the pin resolution depends only on the set of the declarations). A result may therefore be reused **for the class** by the **content digest** (the order-erasing digest of the contracts);
+* **the reported code and path** depend on the delivery order. A result is reused **for the code and the path only by the delivery digest**: SHA-256 over a **length-prefixed** encoding of the **ordered** list of `(path, expression)` pairs as the reader delivered them (each path as typed segments, an index or a text; each expression as UTF-8; no serialisation library is part of the definition).
+
+The evidence of a validation result names the **delivery digest**, the profile version identifier and the implementation that ran (E3). Two documents with the same canonical content and a different source order have the same content digest, **different delivery digests**, the same class and, where the first refusals differ, a different code (`E-TRV-01` against `E-TRV-02`). The rule of the composition (how schema parts are merged and in which order) stays on hold (D7); what is fixed here is that **whatever order the reader delivers is part of the input identity of the result**. Property test: plan item P-10, `check_spec_trace.py` (section 9).
+
 ## 5. Producer and verifier obligations
 
 **Producer** (O-PR-01, O-PR-02): when building a release, resolve the pin of the composed schema and classify every expression in document order, **refuse the build** on a pin error or a refused expression (no fallback to a native engine, no partial acceptance); check every pattern-constrained value it emits and **refuse to emit a violating one**, checking it itself.
 
 **Verifier** (O-VF-01 to O-VF-04):
 
-* **O-VF-01** repeat steps 0 to 3 **independently**: never rely on a producer-supplied verdict, version or classification;
+* **O-VF-01** repeat steps 0 to 3 **independently**, **the document reader included**: never rely on a producer-supplied verdict, version, classification or delivery order;
 * **O-VF-02** a refused schema is refused before any value is evaluated;
 * **O-VF-03** a verifier of untrusted input applies **its own total work budget** (the unit `PI x code points`, summed over the values; not milliseconds), reported with **its own code, not a pattern code**; each distinct expression is compiled once; the profile bounds one expression and one value, not a document (limits doc 2.5);
 * **O-VF-04** (producer too) the run evidence names the implementation that actually ran (name, version, hash of the evaluator source) and earlier conformance evidence is not inherited (E3).
@@ -78,7 +101,11 @@ The review remark that a verifier's total budget must not rest only on `PI x val
 
 ## 6. The evaluator (obligation O-VA-13) and language notes
 
-**O-VA-13** The evaluator is **linear** in the program size times the value length and **never backtracks** (an automaton or an RE2-class evaluator; a backtracking engine is not eligible). Informative notes that the vectors cannot express:
+**O-VA-13** The evaluator is **linear** in the program size times the value length and **never backtracks** (an automaton or an RE2-class evaluator; a backtracking engine is not eligible). Its **deterministic work** `W` (a count of state visits, not milliseconds) is bounded by
+
+`W <= c x (PI + 1) x (N + 1)`
+
+and **not** by `c x PI x N` (review F3 of #52): the latter allows zero work for a zero-size program (`PI = 0`, accepted by the profile: `a{0}`) and for the empty value (`N = 0`), and both cost something (the start state is entered and the accept state is checked). `work_bound.py` measures it on a corpus that includes the zero-size programs and the empty value (95 pairs, 27 of them with `PI = 0` or `N = 0`): the largest observed ratio `W / ((PI+1)(N+1))` is 1.36, the provisional constant 8 holds on every pair, and the first form is refuted by measurement for every `c` by those 27 pairs. The exact constant and the counted operations are fixed in the implementation measurement plan; a measured ratio is not a guarantee. Informative notes that the vectors cannot express:
 
 * a length is counted in **code points**: Go's `len` and Rust's `len` count bytes, UTF-16 languages count units (O-VA-12);
 * the native Go `regexp` and Rust `regex` take the translated body (`\A(?:body)\z`) only **after** the expression was accepted by the validator's own classification; they are never the classifier (the vectors compare them, rule D);
@@ -86,7 +113,9 @@ The review remark that a verifier's total budget must not rest only on `PI x val
 
 ## 7. Traceability: the 66 requirements and the obligations
 
-`obligations.yaml` names, for each of the 25 obligations, its roles, its requirements and how it is verified (the approved vectors, a plan item, or both); `check_spec_trace.py` refuses the package if **any** of the 66 requirements, or any of the 4 that a verdict vector cannot test, is not named by an obligation (`results/check_spec_trace.txt` prints the matrix both ways). In groups:
+**What this table and the check prove, and what not (review F4 of #52):** the check shows **structural traceability** (every requirement is named by an obligation, every cited plan item exists) **and** that each requirement of an obligation is actually *covered* by what the obligation cites (the approved vectors that name it, or a cited plan item whose own requirement list includes it), and that the text and the machine-readable contract agree where an obligation carries a must-contain phrase (for example O-VF-01: steps 0 to 3). It does **not** show that the plan items, once executed, give full **semantic** coverage; that is what the plan's evidence is for.
+
+`obligations.yaml` names, for each of the 26 obligations, its roles, its requirements and how it is verified (the approved vectors, a plan item, or both); `check_spec_trace.py` refuses the package if **any** of the 66 requirements, or any of the 4 that a verdict vector cannot test, is not named by an obligation (`results/check_spec_trace.txt` prints the matrix both ways). In groups:
 
 | Obligations | Requirements | Verified by |
 |---|---|---|
@@ -102,7 +131,8 @@ The review remark that a verifier's total budget must not rest only on `PI x val
 | O-VA-10 | `R-COMPAT-CONTRACTS` | the vectors |
 | O-VA-11 | `R-MATCH-*` | the vectors |
 | O-VA-13, O-GT-01 | `R-LINEAR` | plan P-01 |
-| O-PR-01, O-PR-02, O-VF-01, O-VF-02 | `R-INDEPENDENT-CHECK`, `R-PIN-FIRST`, `R-PREC-TIER` | plan P-02, P-07 |
+| O-PR-01, O-PR-02, O-VF-01, O-VF-02 | `R-INDEPENDENT-CHECK`, `R-PIN-FIRST`, `R-PREC-TIER`, `R-PIN-MISSING`, `R-SCHEMA-*`, `R-VALUE-ORDER` | plan P-02, P-07, P-11 |
+| O-GT-02 | `R-SCHEMA-ORDER`, `R-VERSION-EVIDENCE` | plan P-10, P-03 |
 | O-VF-03 | `R-VERIFIER-BUDGET` | plan P-04 |
 | O-VF-04, O-GT-01 | `R-VERSION-EVIDENCE` | plan P-03 |
 
@@ -110,26 +140,30 @@ The review remark that a verifier's total budget must not rest only on `PI x val
 
 | Item | Covers | Kind | Method (short) |
 |---|---|---|---|
-| P-01 | `R-LINEAR` | non-vector test | a timing gate on the adversarial corpus of #47 and #48 with a deterministic work counter bounded by `c x PI x N`, and a generous wall-time bound where counting is not possible |
-| P-02 | `R-INDEPENDENT-CHECK` | non-vector test | a producer stub that reports success for violating values and refused expressions; the verifier must refuse them; and a verifier fed a disagreeing producer verdict |
+| P-01 | `R-LINEAR` | non-vector test | a timing gate on the adversarial corpus of #47 and #48, zero-size programs and the empty value included, with a deterministic work counter bounded by `c x (PI + 1) x (N + 1)` (measured in `work_bound.py`), and a generous wall-time bound where counting is not possible |
+| P-02 | `R-INDEPENDENT-CHECK`, `R-PREC-TIER` | non-vector test | a producer stub that reports success for violating values and refused expressions; the verifier must refuse them; a verifier fed a disagreeing producer verdict; a refused schema with violating values must be reported as a schema refusal with no value evaluated |
 | P-03 | `R-VERSION-EVIDENCE` | non-vector test | the run evidence lists interpreter or toolchain, package versions, the hash of the evaluator source and the lock files; a run without it is INCOMPLETE |
 | P-04 | `R-VERIFIER-BUDGET` | non-vector test | synthetic schemas of K worst-case contracts and records of M worst-case values; the verifier stops at its budget with its own code; a fixed cost per contract and per value is included |
 | P-05 | `R-VALUE-SCALAR`, `R-VALUE-LENGTH`, `R-LIM-VALUE` | non-vector test | a per-language harness that passes a value as code points (a lone surrogate cannot be a Go or Rust string) and counts code points, not bytes |
 | P-06 | `R-SCHEMA-WHOLE`, `R-SCHEMA-ORDER` | reader test | a duplicate key, a syntax error, an expression that is not a string are reader errors with no pattern code; source order is kept in every implementation language |
-| P-07 | the pin requirements | proposed extension | `E-PIN-01` to `E-PIN-17` |
+| P-07 | the pin requirements | proposed extension | `E-PIN-01` to `E-PIN-27` (the identity rule included) |
 | P-08 | `R-SCHEMA-ORDER`, `R-SCHEMA-WHOLE` | proposed extension | `E-TRV-01` to `E-TRV-07` |
 | P-09 | `R-SCHEMA-ORDER` | proposed extension (open) | after the composition of the release schemas is specified: pin declarations from different parts, the order of several violating values in one record |
+| P-10 | `R-SCHEMA-ORDER`, `R-VERSION-EVIDENCE` | non-vector test | the class is invariant under every permutation of the delivery order, the code and path are not; the content digest ties, the delivery digest tells two delivery orders apart; the evidence names the delivery digest |
+| P-11 | `R-PIN-MISSING`, `R-SCHEMA-WHOLE`, `R-SCHEMA-ORDER`, `R-VALUE-ORDER` | non-vector test | the approved schema vectors and the extension cases through the producer's build entry point, the value vectors through its emit check: it must refuse exactly as the validator does |
 
 ## 9. Evidence of this package
 
 `docs/evidence/pattern-spec-trace/` (typed exits: 0 ok, 1 a measured failure, 2 infrastructure):
 
-* `check_spec_trace.py`, `results/check_spec_trace.txt`: the approved vector file is byte-identical to the approved one; every one of the 66 + 4 requirements is named by an obligation; an obligation that names a requirement without a verdict vector has a plan item; an obligation verified by vectors names only requirements that have vectors; every role and every plan item is used; the text mentions every obligation and plan id; and **the executable reading** `spec_model.py` evaluates the 30 extension cases (0 differences) and reproduces the verdicts and the positions of the **20 schema vectors of the approved set** under the new rules (reader, pin, traversal): 0 differences.
-* `selftest_spec_trace.py`, `results/selftest-spec-trace-output.txt` (15 checks): the check can fail, for the right reason: a positive control, planted faults in copies of the obligations, the text, the cases and the vector file (a requirement without an obligation, an unknown requirement, an obligation without verification, an unused plan item, a missing mention, a requirement without a vector claimed as verified by vectors, a role without an obligation, a duplicate id, a changed case expectation, a modified approved vector file), planted defects of the model (the version compared by Python equality, which accepts `true` and `1.0`; the own contract visited after the children), and infrastructure controls that exit 2.
+* `check_spec_trace.py`, `results/check_spec_trace.txt`: the approved vector file is byte-identical to the approved one; every one of the 66 + 4 requirements is named by an obligation and **actually covered** by what the obligation cites (the approved vectors, or a cited plan item that lists it); an obligation that names a requirement without a verdict vector has a plan item; an obligation verified by vectors names only requirements that have vectors; every role and every plan item is used; the text mentions every obligation and plan id; and **the executable reading** `spec_model.py` evaluates the 40 extension cases (0 differences) and reproduces the verdicts and the positions of the **20 schema vectors of the approved set** under the new rules (reader, pin, traversal): 0 differences.
+* the **property and digest checks** of `check_spec_trace.py` (review F2): the accept/refuse class of every multi-contract schema (the approved schema vectors and the traversal cases) is invariant under **every permutation** of the delivery order, while the reported code and path are not (at least one case shows it); the content digest of `E-TRV-01` and `E-TRV-02` is equal and their delivery digests differ.
+* `work_bound.py`, `results/work_bound.txt` (review F3): the deterministic work of the own evaluator on 95 (expression, value) pairs, 27 of them with `PI = 0` or `N = 0`: the largest observed ratio `W / ((PI+1)(N+1))` is 1.36, the provisional constant 8 holds on every pair, and the first form `c x PI x N` is refuted by those 27 pairs. Typed exits.
+* `selftest_spec_trace.py`, `results/selftest-spec-trace-output.txt` (26 checks): the tooling can fail, for the right reason: a positive control; **14 planted faults** in copies of the obligations, the text, the cases and the vector file (a requirement without an obligation, an unknown requirement, an obligation without verification, an unused plan item, a missing mention, a no-vector requirement claimed as verified by vectors, a role without an obligation, a duplicate id, a case expectation that no longer follows the rules, a case group without a plan item, the approved vector file modified, and, for review F4, **a plan item that does not list the requirement an obligation relies on it for, an obligation text that names fewer steps than the specification, a specification that no longer says steps 0 to 3**); **6 planted defects of the model** (the version compared by Python equality, which accepts `true` and `1.0`; the own contract visited after the children; **identity by a serialisation, which treats a `1` key and a text `1` key alike and crashes on mixed key types, caught both as a wrong verdict and as a model that raised; a verdict class that depends on the delivery order; a delivery digest that erases the order**); **4 checks of the work bound** (the positive control, a planted quadratic evaluator, a constant that is too small, a corpus without a zero-size program or an empty value); and an infrastructure control that exits 2. Each is counted only with the intended `FAIL-EXPECT` line, or the intended exit code.
 
 ## 10. The proposed extension cases
 
-`extension-cases.yaml` has 30 cases in three groups: the pin (`E-PIN-*`), the traversal (`E-TRV-*`) and the reader boundary (`E-RDR-*`). Their expected results are derived from the text and evaluated by the executable reading, **not** by an implementation of the profile. **They are not part of the approved vector file.** The path to the normative set: this specification is accepted; the owner decides which cases become vectors; the extension is a package of its own with its own review, a separate file or a version-1 addition decided then, with the same integrity checks; the 513 vectors and their expectations stay as they are.
+`extension-cases.yaml` has 40 cases in three groups: the pin (`E-PIN-*`, 27), the traversal (`E-TRV-*`, 7) and the reader boundary (`E-RDR-*`, 6). Their expected results are derived from the text and evaluated by the executable reading, **not** by an implementation of the profile. **They are not part of the approved vector file.** The path to the normative set: this specification is accepted; the owner decides which cases become vectors; the extension is a package of its own with its own review, a separate file or a version-1 addition decided then, with the same integrity checks; the 513 vectors and their expectations stay as they are.
 
 ## 11. Not verified
 

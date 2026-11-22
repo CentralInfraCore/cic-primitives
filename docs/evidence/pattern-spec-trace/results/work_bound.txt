@@ -1,0 +1,5 @@
+corpus: 95 (expression, value) pairs, of them 27 with PI = 0 or N = 0
+largest observed ratio W / ((PI+1)(N+1)): 1.360 at ((a?){10}.*[a{0}){0,4}(a|b{0,aa|b{0,2aaa (N=256, PI=509, W=178284)
+the first form W <= c x PI x N is refuted for every c by 27 corpus pairs (PI = 0 or N = 0 with W > 0)
+provisional constant c = 8.0 (a measurement, not a guarantee; the exact constant and the counted operations belong to the implementation measurement plan)
+all expectations held

@@ -5,8 +5,13 @@ Checks (a failure is a FAIL-EXPECT line, exit 1; an unreadable input is INCOMPLE
   coverage   every one of the 66 requirements and the 4 requirements that a verdict vector cannot test is named by at least one obligation; an obligation that names a requirement without a verdict vector
              has a plan item; an obligation verified by vectors names only requirements that have at least one vector; every role has an obligation; every plan item is used
   spec       the specification text mentions every obligation id and every plan id
+  covers     every requirement of an obligation is actually COVERED by what the obligation cites: by the approved vectors (when it cites them and a vector names the requirement) or by a cited plan
+             item whose own requirements include it (a plan id that merely exists is not enough); an obligation may carry spec_must_contain phrases that must stand in the text and in the specification
+  property   the accept/refuse CLASS of a schema is invariant under every permutation of the delivery order (the reported code and path are not), and the delivery digest, unlike the content digest, tells
+             two delivery orders apart
   extension  the proposed extension cases are consistent with the rules of the text (the executable reading spec_model.py), every case group belongs to a plan item, and the same model reproduces the
              verdicts and positions of the 20 schema vectors of the approved set
+This is STRUCTURAL traceability plus the consistency checks above: it shows that the package is complete and self-consistent, NOT that the plan items, once executed, give full semantic coverage.
 Usage: check_spec_trace.py [--obligations PATH] [--spec PATH] [--vectors PATH] [--cases PATH]"""
 import hashlib, os, sys, collections
 
@@ -70,6 +75,14 @@ def main(argv):
             rolecount[role] += 1
         ver = o.get("verify") or {}
         pl = ver.get("plan") or []
+        planreqs = {p["id"]: set(p.get("reqs", [])) for p in plan}
+        for r in rs:
+            by_vec = ver.get("vectors") is True and r in reqs and r in byreq
+            by_plan = any(r in planreqs.get(p, set()) for p in pl)
+            expect("obligation.covers.%s.%s" % (i, r), by_vec or by_plan, "neither the cited vectors nor a cited plan item that lists this requirement covers it")
+        for phrase in o.get("spec_must_contain", []):
+            expect("consistency.text.%s" % i, phrase.lower() in str(o.get("text", "")).lower(), "the obligation text lacks %r" % phrase)
+            expect("consistency.spec.%s" % i, phrase.lower() in spec.lower(), "the specification lacks %r" % phrase)
         expect("obligation.verify.%s" % i, ver.get("vectors") is True or bool(pl), "an obligation must be verified by vectors or by a plan item")
         for p in pl:
             expect("obligation.plan.known.%s.%s" % (i, p), p in pids)
@@ -102,7 +115,11 @@ def main(argv):
         expect("extension.group.%s" % c["id"], g in GROUP_PLAN and GROUP_PLAN[g] in pids, "the case group has no plan item")
         for r in c.get("req", []):
             expect("extension.req.known.%s.%s" % (c["id"], r), r in reqs)
-        got = M.validate(c["schema"], c["pin"]); e = c["expect"]
+        try:
+            got = M.validate(c["schema"], c["pin"])
+        except BaseException as ex:                      # a model that crashes is a failed check, never a pass and never an infrastructure problem
+            got = ("model_raised", type(ex).__name__)
+        e = c["expect"]
         if e["outcome"] == "accept":
             ok = got == ("accept",)
         elif e["outcome"] == "refuse":
@@ -122,6 +139,40 @@ def main(argv):
             at = None if s.get("at") is None else "n%d/contract/0" % s["at"]
             ok = got[0] == "refuse" and got[1] == s["code"] and got[2] == at
         expect("approved.schema-vectors.model.%s" % s["id"], ok, "model %s, vector %s %s at %s" % (got, s["expect"], s.get("code"), s.get("at")))
+    # the binding of a result to its input: the class is order independent, the code and the path are not, and the delivery digest sees the order
+    import itertools
+    seen_code_change = False
+    def classes(decl, items, label):
+        nonlocal seen_code_change
+        outs = [M.validate_delivered(decl, list(pm)) for pm in itertools.permutations(items)]
+        cl = {o[0] for o in outs}
+        expect("property.class-order-independent.%s" % label, len(cl) == 1, "the class changes with the delivery order: %s" % sorted(cl))
+        if len({o[1:] for o in outs}) > 1:
+            seen_code_change = True
+    for c in cases["cases"]:
+        if c["id"].startswith("E-TRV"):
+            try:
+                items = M.deliver(c["schema"])
+            except Exception:
+                continue
+            if 1 < len(items) <= 5:
+                classes(c["pin"], items, c["id"])
+    for sv in vec["schemas"]:
+        if len(sv["contracts"]) >= 2 and sv["pin"]["state"] in ("ok", "declared"):
+            items = [(("n%d" % i, "contract", 0), __import__("vectors_lib").dec(c["expr"])) for i, c in enumerate(sv["contracts"], 1)]
+            decl = sv["pin"]["versions"] if sv["pin"]["state"] == "declared" else [sv["pin"]["version"]]
+            if len(items) <= 5:
+                classes(decl, items, sv["id"])
+    expect("property.code-depends-on-order", seen_code_change, "no case shows that the reported code or path depends on the delivery order (the corpus does not demonstrate the difference)")
+    cmap = {c["id"]: c for c in cases["cases"]}
+    try:
+        a, b = M.deliver(cmap["E-TRV-01"]["schema"]), M.deliver(cmap["E-TRV-02"]["schema"])
+        expect("digest.content-equal", M.content_digest(a) == M.content_digest(b), "the two documents have different content")
+        expect("digest.order-sensitive", M.delivery_digest(a) != M.delivery_digest(b), "the delivery digest does not tell the two delivery orders apart")
+        ra, rb = M.validate(cmap["E-TRV-01"]["schema"], [1]), M.validate(cmap["E-TRV-02"]["schema"], [1])
+        expect("digest.class-equal-code-differs", ra[0] == rb[0] == "refuse" and ra[1] != rb[1], "the two orders must give the same class and a different code: %s %s" % (ra, rb))
+    except KeyError as ex:
+        expect("digest.cases-present", False, "missing case %s" % ex)
     print("obligations %d, plan items %d, requirements %d (+%d not testable by vectors), extension cases %d, approved schema vectors %d" % (len(obs), len(plan), len(reqs), len(nt), len(cases["cases"]), len(vec["schemas"])))
     print("## requirement -> obligations")
     for r in sorted(reqs | nt):
