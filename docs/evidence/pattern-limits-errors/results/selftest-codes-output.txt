@@ -6,6 +6,10 @@ planted: size-undercount           exit=1 expected check 'boundary.PI == PI_MAX 
 planted: row-removed               exit=1 expected check 'totality'                               DETECTED
 planted: nondeterministic          exit=1 expected check 'determinism'                            DETECTED
 planted: value-mismatch-before-length exit=1 expected check 'value.too-long-and-not-matching'        DETECTED
+planted: early-size                exit=1 expected check 'pi.zero-repeat-big-subtree'             DETECTED
+planted (spec): no-class-precheck-spec exit=1 expected check 'differential'                           DETECTED
+planted (spec): count-before-bounds-spec exit=1 expected check 'differential'                           DETECTED
+planted (spec): depth-before-extension-spec exit=1 expected check 'differential'                           DETECTED
 infra: prototype module missing    exit=2 OK (not a detection)
 infra: prototype module crashes    exit=2 OK (not a detection)
 self-test: all as expected

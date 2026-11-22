@@ -76,6 +76,17 @@ def rows_of(reason):
     return [i for i, (rx, c) in enumerate(ROWS) if re.fullmatch(rx + r".*", reason, re.S)]
 
 
+def _inner_nodes(node):
+    """every repeated sub-expression of the tree (used only by the planted 'early-size' defect: a size check that ignores a later {0})"""
+    k = node[0]
+    if k in ("cat", "alt"):
+        for c in node[1]:
+            yield from _inner_nodes(c)
+    elif k == "rep":
+        yield node[1]
+        yield from _inner_nodes(node[1])
+
+
 def map_reason(reason):
     hits = [ROWS[i][1] for i in rows_of(reason)]
     if not hits:
@@ -98,7 +109,10 @@ def classify(p):
         return map_reason(r.reason), r.reason
     if PLANT == "no-size-tier":
         return "", ""
-    pi = size(N.parse_ast(p))
+    tree = N.parse_ast(p)
+    pi = size(tree)
+    if PLANT == "early-size" and any(size(inner) > PI_MAX for inner in _inner_nodes(tree)):
+        return "pattern_program_too_large", "a subtree alone is above the limit (checked before the repeat factor is known)"
     limit = PI_MAX - 1 if PLANT == "size-off-by-one" else PI_MAX
     if pi > limit:
         return "pattern_program_too_large", "PI=%d > %d" % (pi, limit)

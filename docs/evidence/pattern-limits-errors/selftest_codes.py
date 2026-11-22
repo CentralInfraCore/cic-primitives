@@ -19,11 +19,18 @@ MUTANTS = [
     ("row-removed", "totality"),
     ("nondeterministic", "determinism"),
     ("value-mismatch-before-length", "value.too-long-and-not-matching"),
+    ("early-size", "pi.zero-repeat-big-subtree"),
+]
+# planted in the implementation of the SPECIFICATION TEXT (spec_classifier.py): the differential of the probe must see that the text and the prototype no longer agree
+SPEC_MUTANTS = [
+    ("no-class-precheck-spec", "differential"),
+    ("count-before-bounds-spec", "differential"),
+    ("depth-before-extension-spec", "differential"),
 ]
 
 
 def run(env_extra=None, probe=PROBE, cwd=HERE):
-    env = dict(os.environ); env.pop("CIC_CODES_PLANT", None); env.update(env_extra or {})
+    env = dict(os.environ); env.pop("CIC_CODES_PLANT", None); env.pop("CIC_SPEC_PLANT", None); env.update(env_extra or {})
     r = subprocess.run([sys.executable, probe], capture_output=True, text=True, env=env, cwd=cwd, timeout=900)
     return r.returncode, r.stdout + r.stderr
 
@@ -40,12 +47,18 @@ def main():
         det = rc == 1 and bool(named)
         print("%-34s exit=%d expected check %-40r %s" % ("planted: " + plant, rc, needle, "DETECTED" if det else "NOT DETECTED"))
         bad += not det
+    for plant, needle in SPEC_MUTANTS:
+        rc, o = run({"CIC_SPEC_PLANT": plant})
+        named = [l for l in o.splitlines() if l.startswith("FAIL-EXPECT") and needle in l]
+        det = rc == 1 and bool(named)
+        print("%-34s exit=%d expected check %-40r %s" % ("planted (spec): " + plant, rc, needle, "DETECTED" if det else "NOT DETECTED"))
+        bad += not det
     # infrastructure controls: a copy of the directory without / with a broken prototype module
     for name, mutate in (("infra: prototype module missing", lambda d: os.remove(os.path.join(d, "pattern_codes.py"))),
                          ("infra: prototype module crashes", lambda d: open(os.path.join(d, "pattern_codes.py"), "w").write("raise RuntimeError('planted')\n"))):
         d = tempfile.mkdtemp()
         try:
-            for f in ("codes_probe.py", "pattern_codes.py"):
+            for f in ("codes_probe.py", "pattern_codes.py", "spec_classifier.py"):
                 shutil.copy(os.path.join(HERE, f), d)
             mutate(d)
             rc, o = run(probe=os.path.join(d, "codes_probe.py"), cwd=d)

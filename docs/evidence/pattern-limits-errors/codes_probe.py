@@ -17,6 +17,7 @@ _tmp = tempfile.mkdtemp()
 sys.argv = [_argv[0], _tmp]      # probe_engines reads argv[1] as an output directory at import time; give it a scratch directory that is removed again
 try:
     import pattern_codes as C
+    import spec_classifier as SP
     import nfa_engine as N
     import probe_engines as PE
 except BaseException as e:
@@ -67,6 +68,40 @@ PRECEDENCE = [
     ("size", BIG, "pattern_program_too_large"),
     ("size-after-syntax", BIG + "(a", "pattern_unbalanced_group"),
     ("product-beats-size-wherever-it-stands", BIG + "(a{200}){6}", "pattern_repeat_product_too_large"),
+    # review F1 of #48: inside a class and inside a repeat construct the order is the explicit rule order C1.. / Q1.., not the reading order
+    ("class.C1-before-C2", "[^a&&b]", "pattern_class_set_operator"),
+    ("class.C1-before-range-order", "[z-a&&b]", "pattern_class_set_operator"),
+    ("class.C1-before-escape", "[\\d--]", "pattern_class_set_operator"),
+    ("class.C1-sees-an-unterminated-class", "[ab&&", "pattern_class_set_operator"),
+    ("class.escaped-pair-is-no-operator", "[a\\-\\-b]", ""),
+    ("class.C2-before-C3", "[^[", "pattern_class_negated"),
+    ("class.C3-first-error-wins", "[\\d z-a]", "pattern_escape_unsupported"),
+    ("class.range-order-before-later-escape", "[z-a\\d]", "pattern_class_range_order"),
+    ("class.escape-in-range-end-before-order", "[z-\\d]", "pattern_escape_unsupported"),
+    ("class.nested-before-range-order", "[z-[a]", "pattern_class_nested_or_posix"),
+    ("class.empty-only-when-first", "[]a]", "pattern_class_empty"),
+    ("class.unterminated", "[ab", "pattern_class_unterminated"),
+    ("repeat.Q3-before-Q4", "a{03,2}", "pattern_quantifier_leading_zero"),
+    ("repeat.Q4-before-count", "a{300,2}", "pattern_quantifier_bounds_order"),
+    ("repeat.Q3-before-count", "a{01,300}", "pattern_quantifier_leading_zero"),
+    ("repeat.Q5-count-before-count-limit", "a*a*a*a{256,}", "pattern_unbounded_too_many"),
+    ("repeat.Q5b-count-limit-on-open-brace", "a{256,}", "pattern_repeat_count_too_large"),
+    ("repeat.Q5-then-on-group", "(a){2,}", "pattern_unbounded_on_group"),
+    ("repeat.Q1-before-Q2", "a*a*a*(a)*", "pattern_unbounded_too_many"),
+    ("repeat.count-before-product", "(a{256}){5}", "pattern_repeat_count_too_large"),
+    ("repeat.count-before-stacked", "a{300}*", "pattern_repeat_count_too_large"),
+    ("repeat.product-before-stacked", "(a{200}){6}*", "pattern_repeat_product_too_large"),
+    ("repeat.stacked-after-brace", "a{2}{3}", "pattern_quantifier_not_greedy"),
+    ("repeat.stacked-after-question", "a??", "pattern_quantifier_not_greedy"),
+    ("repeat.malformed", "a{,3}", "pattern_quantifier_malformed"),
+    ("repeat.malformed-unclosed", "a{3", "pattern_quantifier_malformed"),
+    ("group.extension-before-depth", "(((((?:a)))))", "pattern_group_extension"),
+    ("group.depth-5", "((((((a", "pattern_nesting_too_deep"),
+    ("group.empty-before-unbalanced", "(", "pattern_empty_branch"),
+    ("anchor.escaped-dollar-is-a-literal", "a\\$", ""),
+    ("anchor.double-backslash-then-dollar-is-the-anchor", "a\\\\$", ""),
+    ("anchor.escaped-dollar-after-class", "[a]\\$", ""),
+    ("size.zero-repeat-of-a-big-subtree", "(" + "a{0,255}" * 5 + "){0}b", ""),
     ("accepted", "^[a-z]{1,8}$", ""),
 ]
 
@@ -148,6 +183,104 @@ def digest():
     return hashlib.sha256("\n".join("%s=%s" % (p, C.classify(p)[0]) for p in ps).encode("utf-8", "replace")).hexdigest()
 
 
+# ---------------------------------------------------------------- review F3 of #48: PI per construct (hand-derived), no overflow, zero repeats
+PI_TABLE = [   # (expression, PI derived by hand from the recurrence of section 2.1)
+    ("a", 1), (".", 1), ("[a-z]", 1), ("ab", 2), ("a|b", 3), ("(a|b)", 3), ("a|b|c", 4), ("(a|b)(c|d)", 6),
+    ("a?", 2), ("a*", 2), ("a+", 3), ("a{3}", 3), ("a{2,5}", 8), ("a{2,}", 4), ("a{0}b", 1), ("a{0,255}", 510),
+    ("(ab){2}", 4), ("(a|b){0,2}", 8), ("(a{2}){3}", 6), ("((a?){2}){3}", 12),
+]
+PI_INTERMEDIATE_MAX = 512000      # the bound of section 2.1: 256 text characters x a factor of at most 2000 per character
+
+
+def traced(node, acc):
+    """PI with every intermediate product and sum recorded in acc (the bottom-up evaluation an implementation would do)"""
+    k = node[0]
+    if k in ("lit", "any", "cls"):
+        return 1
+    if k == "cat":
+        v = 0
+        for c in node[1]:
+            v += traced(c, acc); acc.append(v)
+        return v
+    if k == "alt":
+        v = 1
+        for c in node[1]:
+            v += traced(c, acc); acc.append(v)
+        return v
+    _, inner, lo, hi = node
+    x = traced(inner, acc)
+    if hi is None:
+        t = (lo + 1) * x; acc.append(t); v = 1 + t
+    else:
+        a = lo * x; b = (hi - lo) * (1 + x); acc += [a, b]; v = a + b
+    acc.append(v)
+    return v
+
+
+def size_table():
+    for p, want in PI_TABLE:
+        tree = N.parse_ast(p); got = C.size(tree); st = N.Matcher(p).states
+        ok = got == want and st == want + 1
+        print("%-8s PI(%s) = %d (hand-derived %d), NFA states %d" % ("ok" if ok else "FAIL", p, got, want, st))
+        expect("pi.%s" % p, ok, "PI %d, hand %d, states %d" % (got, want, st))
+    code, detail = C.classify("(" + "a{0,255}" * 5 + "){0}b")
+    st = N.Matcher("(" + "a{0,255}" * 5 + "){0}b").states
+    print("%-8s zero repeat of a big subtree: accepted=%s (%s), NFA states %d" % ("ok" if code == "" and st == 2 else "FAIL", code == "", detail, st))
+    expect("pi.zero-repeat-big-subtree", code == "" and st == 2, "code %r states %d" % (code, st))
+
+
+def pi_bound():
+    import limit_space as L
+    pats = [p for p, _ in PI_TABLE] + [p for _, p, w in PRECEDENCE if w == "" and p] + [L.solve_pat(), "(a{255,}){0,3}", "((a{255,}){0,3}|b{250}){0,4}", "((((a|b){0,4}|c){0,4}|d){0,4}|e){0,4}"] + soup(30000, 5)
+    top = 0; n = 0
+    for p in pats:
+        if not C.S.parse(p).ok:        # tiers 1 and 2 only: the bound must hold for everything that reaches tier 3, also above PI_MAX
+            continue
+        acc = []; traced(N.parse_ast(p), acc); n += 1
+        top = max(top, max(acc) if acc else 0)
+    print("%-8s PI bound: %d expressions that pass tiers 1 and 2 (also above PI_MAX), the largest intermediate value of a bottom-up evaluation is %d (bound %d = 256 x 2000; the DP optimum is among them)" % ("ok" if top <= PI_INTERMEDIATE_MAX else "FAIL", n, top, PI_INTERMEDIATE_MAX))
+    expect("pi.bound", top <= PI_INTERMEDIATE_MAX, "largest intermediate %d" % top)
+    expect("pi.fits-in-32-bit", top < 2 ** 31)
+
+
+# ---------------------------------------------------------------- review F1 of #48: the text alone determines the verdict (a second implementation from the specification text)
+FRAG_ATOMS = ["a", "b", ".", "[a-z]", "[0-9a]", "\\.", "\\d", "[^a]", "[a&&b]", "[z-a]", "[a-\\d]", "[[:x:]]", "[]", "[a", "[a\\-\\-b]", "[a--b]", "[~~]", "^", "$", "\\", "*", "{", "}", "]", "|"]
+FRAG_QUANT = ["", "", "", "*", "+", "?", "{2}", "{0,3}", "{2,}", "{300}", "{256,}", "{01}", "{3,2}", "{,2}", "{", "{0}", "{250}", "{4}", "??", "{2}{3}", "*?"]
+
+
+def gen(rnd, depth):
+    parts = []
+    for _ in range(rnd.randrange(1, 4)):
+        if depth > 0 and rnd.random() < 0.35:
+            inner = gen(rnd, depth - 1)
+            a = "(" + ("?:" if rnd.random() < 0.05 else "") + inner + ("" if rnd.random() > 0.03 else ")") + ")"
+            if rnd.random() < 0.05:
+                a = a[:-1]
+        else:
+            a = rnd.choice(FRAG_ATOMS)
+        parts.append(a + rnd.choice(FRAG_QUANT))
+    s = "".join(parts)
+    if rnd.random() < 0.15:
+        s += "|" + gen(rnd, depth - 1) if depth > 0 else ""
+    return s
+
+
+def differential(n=40000, seed=20261123):
+    rnd = random.Random(seed)
+    ps = [p for _, p, _ in PRECEDENCE] + soup(30000, 20261122) + [gen(rnd, 4) for _ in range(n)] + [c["p"] for c in PE.construct_cases()]
+    dis = []; refused = set()
+    for p in ps:
+        a, b = C.classify(p)[0], SP.classify(p)
+        if b:
+            refused.add(b)
+        if a != b:
+            dis.append((p, a, b))
+    for p, a, b in dis[:8]:
+        print("FAIL-EXPECT differential %r prototype=%s spec=%s" % (p[:60], a or "(accepted)", b or "(accepted)"))
+    print("%-8s differential: %d expressions (precedence cases, %d random texts, %d generated multi-defect texts, the constructs), %d disagreements between the prototype and the implementation of the text; %d distinct codes seen" % ("ok" if not dis else "FAIL", len(ps), 30000, n, len(dis), len(refused)))
+    expect("differential", not dis, "%d disagreements" % len(dis))
+
+
 def determinism():
     ds = {}
     for seed in ("0", "1", "2", "424242"):
@@ -169,6 +302,8 @@ if __name__ == "__main__":
         print("## boundary"); boundary()
         print("## value"); value()
         print("## totality and coverage"); totality_coverage()
+        print("## PI per construct, zero repeats, bound"); size_table(); pi_bound()
+        print("## differential against the implementation of the specification text"); differential()
         print("## determinism"); determinism()
     except SystemExit:
         raise

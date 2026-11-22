@@ -42,10 +42,22 @@ A second, deterministic view (group *cost*, a family of repeated `a{0,255}`, 256
 | a literal, `.`, a class | 1 |
 | a sequence | the sum of its items |
 | an alternation | 1 + the sum of its branches |
-| a bounded repeat `x{lo,hi}` (`?` is `{0,1}`) | lo x PI(x) + (hi - lo) x (1 + PI(x)) |
-| an unbounded repeat (`*`, `+`, `{lo,}`) | 1 + (lo + 1) x PI(x) |
+| a bounded repeat `x{lo,hi}` (`?` is `{0,1}`, `{n}` is `{n,n}`) | lo x PI(x) + (hi - lo) x (1 + PI(x)) |
+| an unbounded repeat (`*` is lo = 0, `+` is lo = 1, `{lo,}`) | 1 + (lo + 1) x PI(x) |
 
-For the reference construction of `nfa_engine.py` the number of NFA states is exactly PI + 1 (the accept state): confirmed on all 151 patterns of group *size* (the DP optimum, the 9 contracts, random mutations) and on the two boundary expressions of the probe. PI is arithmetic on the parsed tree; **no program is built before the check**, and the numbers stay small because the existing limits (length 256, count 255, product 1000) bound every term.
+**Derivation (review F3 of #48).** The recurrence restates the construction of `nfa_engine.py` (`_Prog.build`), construct by construct; the accept state is one state more, so the NFA has PI + 1 states:
+
+* a literal, `.` or a class: `build` makes one state with one consuming edge: 1;
+* a sequence: the items are chained back to front and no state is created for the sequence itself: the sum;
+* an alternation: one new state with an epsilon edge to each branch (all branches end in the same continuation): 1 + the sum of the branches;
+* a bounded repeat: `lo` mandatory copies of the inner expression (lo x PI(x)) and `hi - lo` optional copies, each preceded by one optional state with an epsilon edge to the copy and one to the exit ((hi - lo) x (1 + PI(x)));
+* an unbounded repeat: one loop state whose epsilon edges lead to one copy of the inner expression (which returns to the loop state) and to the exit, plus `lo` mandatory copies in front: 1 + (lo + 1) x PI(x).
+
+The equality is not only observed: 20 constructs have a hand-derived PI (`codes_probe.txt`, group *PI per construct*: `a|b` 3, `a?` 2, `a+` 3, `a{2,5}` 8, `a{2,}` 4, `(a|b){0,2}` 8, `((a?){2}){3}` 12, `a{0,255}` 510, `a{0}b` 1, ...) and each is compared with the recurrence and with the state count of the NFA; the 151 patterns of `limit_space.txt` (group *size*: the DP optimum, the 9 contracts, random mutations) confirm it on larger shapes.
+
+**Arithmetic (review F3).** For every expression that passed tiers 1 and 2 of section 3.2, **every sum and every product of a bottom-up evaluation of PI is at most 512 000 (= 256 x 2000)**; a signed 32-bit integer suffices and no saturation is needed. Argument: the repeat-product limit bounds, for every chain of enclosing brace quantifiers, the product of their counts (`?` counts 1) by 1000; `*`, `+` and `{lo,}` apply to a single atom only and multiply by at most lo + 1 <= 2 x max(lo, 1). So every atom, alternation node, repeat operator is counted at most 2000 times in the total, and each of them uses at least one of the at most 256 characters of the text. Measured: the largest intermediate value over the 3833 expressions that pass tiers 1 and 2 (also those above PI_MAX, among them the DP optimum) is 241 250 (`codes_probe.txt`, *PI bound*). The check is arithmetic on the parsed tree: no program is built before it.
+
+**Zero repeats and early refusal (review F3).** A repeat with `hi = 0` contributes 0: `(a{0,255}a{0,255}a{0,255}a{0,255}a{0,255}){0}b` has PI 1 (2 NFA states) although the group alone would have 2550. A large sub-tree is therefore not a large final program. Rules: **PI is a function of the whole tree and is decided after tiers 1 and 2**; an implementation must not refuse on the size of a sub-expression before the multiplicity of its enclosing repeats is known. It *may* stop early only on the running sum of the completed items of the **outermost** sequence or alternation (depth 0): those contributions are final and can only grow. The probe has the zero-repeat case, and a planted defect that checks sub-trees early is detected by it (section 3.4).
 
 ### 2.2 The values
 
@@ -69,6 +81,25 @@ For the reference construction of `nfa_engine.py` the number of NFA states is ex
 ### 2.4 Where the check sits
 
 It is the **last tier** of the refusal order (section 3.2): it runs only for an expression that passed every syntactic and counting rule, on the parsed tree. A refusal therefore never depends on how far an unparsable text could be read (the principle of F4 of #46 is kept), and a size violation never hides a syntax error.
+
+### 2.5 The aggregate cost of many contracts, and the responsibility boundary (review F2 of #48)
+
+PI limits **one expression**, the value limit **one value**. The cost of a whole document is a sum over many of them, measured in `results/aggregate_cost.txt`:
+
+| What | Measured |
+|---|---|
+| the three real release records (55, 17, 55 pattern-constrained values; 7 distinct expressions; each distinct expression compiled once) | compile 0.37 ms and match 1.1 / 0.3 / 1.1 ms **per whole record** |
+| K distinct contracts, each the slowest expression found under PI <= 2048, one 256-code-point value each | 46 / 91 / 190 / 396 / 819 / 1600 ms for K = 1 / 2 / 4 / 8 / 16 / 32: **additive**, 45 to 51 ms per contract (a factor of 1.13) |
+| one such contract, M values of 256 code points | 48 ms each (M = 1, 10, 100), compile once 1.9 ms |
+
+The model is additive: total = the sum over the distinct expressions of the compile cost + the sum over the values of the match cost. Each term is bounded by the profile; **the number of contracts of a schema and of pattern-constrained values of a record is not**. An extrapolation, not a measurement: 1000 worst-case contract-and-value pairs would take about 50 s.
+
+Where the responsibility lies (a proposal; **no new normative limit is asked for**):
+
+1. **The pattern profile bounds one expression and one value**, and says so; it does not bound a document. A statement that "the profile makes verification cost bounded" would be false.
+2. **The number of pattern contracts in a schema and of values in a record belongs to the limits of the schema and the record layer** (the input limits of the producer and of the verifier), not to this profile. None is proposed here.
+3. **A verifier that reads untrusted schemas or records applies its own total budget** and reports its exhaustion with its own code; the budget unit that carries no machine dependence is the work PI x code points, summed over the values (state visits, not milliseconds). A budget exhaustion is not a property of one expression or value, so **the pattern code set contains no budget code on purpose**. The producer builds schemas it trusts; the budget therefore lives with the verifier.
+4. **Each distinct expression is compiled once** per verification (the real schemas have 7 distinct expressions for 55 values).
 
 ## 3. O3: normative error codes (proposal)
 
@@ -96,28 +127,63 @@ One refused expression gets exactly one code. The set is part of the pinned prof
 
 The working names of #46 (`pattern_syntax_unsupported`, `pattern_value_too_long`) are replaced: one umbrella code would not name the construct, and 3.5 of #46 requires the refusal to name it.
 
-### 3.2 Deterministic precedence
+### 3.2 Deterministic precedence (specification text, review F1 of #48)
 
-1. **Tier 1, whole text, fixed order:** `pattern_empty`, `pattern_too_long`, `pattern_not_ascii_printable`.
-2. **Tier 2, one left-to-right scan:** the first rule violated **in reading order** wins; the limits counted as the text is read (nesting on entry of a group, a repeat count, the product, the number of unbounded quantifiers) belong here and fire where they are read; at one position the fixed order of the rules of the scan decides. A product violation therefore wins over a size violation wherever it stands, and a stacked quantifier before the fourth unbounded quantifier wins over `pattern_unbounded_too_many`, which in turn wins over a later stacked quantifier.
-3. **Tier 3, program size:** `pattern_program_too_large`, only for an expression that passed tiers 1 and 2.
-4. **A schema with several expressions** is refused with the code of the **first refused expression in document order**; the refused node's path is the detail, further refusals may be listed but carry no normative weight. The three pin errors precede every expression check; a schema that cannot be read as YAML is a different, earlier error of the reader.
-5. **A value** (after the expression was accepted): `pattern_value_not_unicode_scalar`, then `pattern_value_too_long` (the matcher is **not** run: no work is spent on an over-limit value), then match or `pattern_value_mismatch`.
+The text below is meant to be implementable **without the Python code**. It is checked in two ways (3.3): a second implementation written from this text only (`spec_classifier.py`, which imports neither the classifier nor the prototype) is compared with the prototype over 70 149 expressions, and the review's counter-examples are cases of the probe. One refused expression gets exactly one code: the first rule that fires, in the order below.
+
+**Input.** The expression text `t`. Tier 1 looks at the whole text. The scan looks at the **body**: `t` without a leading `^` and without a trailing `$` that is preceded by an even number (zero included) of consecutive backslashes (`a\$` ends in an escaped dollar, a literal; `a\\$` ends in an anchor).
+
+**Tier 1, whole text, in this order:** T1.1 the empty text: `pattern_empty`. T1.2 more than 256 characters (anchors included): `pattern_too_long`. T1.3 a character outside 0x20..0x7E: `pattern_not_ascii_printable`.
+
+**Tier 2, one left-to-right scan of the body.** The first rule that fires ends the scan. Depth of the body is 0. A running count of unbounded quantifiers is kept over the whole scan.
+
+* **S1** entering an alternation (the body, or the content of a group) at depth d: d > 4 is `pattern_nesting_too_deep`.
+* **S2** a sequence ends at `|`, `)` or the end of the body; a sequence without any item is `pattern_empty_branch`, at the position where it ends.
+* **S3** an atom, by its first character:
+  * `(`: **first** `(?` is `pattern_group_extension`; only then S1 for the new group (so `(((((?:a)))))` is a group extension, not a nesting error); after the content, a missing `)` is `pattern_unbalanced_group`;
+  * `[`: the class rules C1 to C4;
+  * `.`: an atom;
+  * `\`: the next character must exist and be one of `\ . [ ] ( ) { } * + ? | ^ $ -`, else `pattern_escape_unsupported`;
+  * `^` or `$` (they can only stand here when misplaced): `pattern_anchor_misplaced`;
+  * any of `* + ? { } ]`: `pattern_metachar_unexpected`;
+  * any other character is a literal.
+* **Classes**, entered at `[` (the class text runs to the first `]` that is not escaped, or to the end of the body if there is none):
+  * **C1** in the class text, with every escaped pair (a backslash and the character after it) replaced by two neutral characters, the pairs `&&`, `--` or `~~`: `pattern_class_set_operator`. **This is a pre-check of the whole class text: it fires before any other class rule, wherever in the class the pair stands, also in an unterminated class.**
+  * **C2** a first character `^`: `pattern_class_negated`.
+  * **C3** then the items from left to right: end of the text before `]` is `pattern_class_unterminated`; `[` is `pattern_class_nested_or_posix`; a backslash must be followed by a character of the list of S3, else `pattern_escape_unsupported`; if an item is followed by `-` and then neither `]` nor the end, the range end is read by the same rules and a range end below its start is `pattern_class_range_order` (so `[z-\d]` is an escape error and `[z-a\d]` is a range-order error, the range being completed before the next item is read);
+  * **C4** a class with no item (`[]...`) is `pattern_class_empty`.
+* **Quantifiers**, after an atom (`?` is `{0,1}`):
+  * **Q1** `*` or `+`: the count of unbounded quantifiers grows; above 3 is `pattern_unbounded_too_many`;
+  * **Q2** then, if the atom is a group, `pattern_unbounded_on_group`;
+  * `{`: the text must be `{n}`, `{n,m}` or `{n,}` with decimal digits, else `pattern_quantifier_malformed`; then in this order: **Q3** a number of two or more digits that starts with `0`: `pattern_quantifier_leading_zero`; **Q4** `{n,m}` with m < n: `pattern_quantifier_bounds_order`; **Q5** `{n,}`: the unbounded count grows (Q1), then Q2; **Q5b** a count above 255 (n, or m for `{n,m}`): `pattern_repeat_count_too_large`; **Q5c** the product of the counts of the enclosing and this repeat (a repeat counts max(m, 1), `{n,}` counts n, `?` `*` `+` count 1) above 1000: `pattern_repeat_product_too_large`;
+  * **Q6** a quantifier character (`? * + {`) directly after a complete quantifier: `pattern_quantifier_not_greedy` (covers `a??`, `a*?`, `a++`, `a{2}{3}`).
+* **S5** when the body is consumed by the scan and characters remain (only a stray `)` can): `pattern_unbalanced_group`. No other refusal exists in tier 2: the two post-scan anchor checks of the prototype classifier are unreachable and are **not** part of this specification.
+
+**Tier 3:** `pattern_program_too_large` when PI > 2048, for an expression that passed tiers 1 and 2, decided on the whole tree (2.1).
+
+**A schema with several expressions** is refused with the code of the **first refused expression in document order**; the refused node's path is the detail, further refusals may be listed but carry no normative weight. The three pin errors precede every expression check; a schema that cannot be read as YAML is a different, earlier error of the reader.
+
+**A value** (after the expression was accepted): `pattern_value_not_unicode_scalar`, then `pattern_value_too_long` (the matcher is **not** run: no work is spent on an over-limit value), then match or `pattern_value_mismatch`.
+
+Consequences worth stating: a product violation wins over a size violation wherever it stands; a stacked quantifier before the fourth unbounded quantifier wins over `pattern_unbounded_too_many`, which wins over a later stacked quantifier; a count above 255 in `{256,}` is reported as a count error (the unbounded count grows first but stays at 1).
 
 ### 3.3 What the probe shows
 
 `codes_probe.txt` (typed exits: 0 ok, 1 a measured expectation failed, 2 the probe could not run, never a detection):
 
-* **Precedence:** 32 hand-authored multi-defect expressions, each with the code the tier rule gives (authored from the rule text before the classifier was consulted); all hold. One expectation of mine was wrong (`...(` ends in an *empty group*, not an unbalanced one) and was corrected; the classifier was right.
-* **Boundary:** an expression of PI = 2048 is accepted, PI = 2049 is refused with `pattern_program_too_large`; PI + 1 equals the NFA state count.
+* **Precedence:** 65 hand-authored cases, each with the code the rules of 3.2 give (authored from the rule text before the classifier was consulted), among them the review's counter-examples `[^a&&b]` and `[z-a&&b]` and the class and repeat orders C1 to C4 and Q1 to Q6 with multi-defect texts; all hold. One expectation of mine was wrong in the first round (`...(` ends in an *empty group*, not an unbalanced one) and was corrected; the classifier was right.
+* **The previous text was wrong (RED-initial, `red-initial-f1.txt`):** the previous 3.2 said that the first violation in reading order wins also inside a class. Its implementation disagrees with the prototype on both examples of the review (`[^a&&b]`: `pattern_class_negated` against `pattern_class_set_operator`; `[z-a&&b]`: `pattern_class_range_order` against `pattern_class_set_operator`). The prototype and the earlier design text (F2 of #46: the operator check runs before the range rules) agree; the text of 3.2 was corrected, not the prototype.
+* **The text determines the verdict:** a second implementation written from the rules of 3.2 only is compared with the prototype over 70 149 expressions (the precedence cases, 30 000 seeded random texts, 40 000 generated multi-defect texts, the 84 constructs): **0 disagreements**, 25 distinct codes seen. It is by the same author and shares the language; the independence is of the code path, so this is evidence for the text, not a proof of it.
+* **Boundary:** an expression of PI = 2048 is accepted, PI = 2049 is refused with `pattern_program_too_large`; PI + 1 equals the NFA state count; the zero-repeat case is accepted (PI 1).
+* **PI per construct and arithmetic:** 20 hand-derived values hold; the largest intermediate value of a bottom-up evaluation over the 3833 expressions that pass tiers 1 and 2 is 241 250, below the bound of 512 000.
 * **Value order:** 7 cases, including a 300-code-point value that does not match (still `pattern_value_too_long`) and a lone surrogate after an over-limit prefix.
-* **Totality:** 30 154 texts (the 84 constructs, the limit cases, the precedence cases, 30 000 seeded random texts): 3727 accepted, 26 427 refused, **every refusal got exactly one code** (0 unmapped, 0 ambiguous); 25 distinct codes reached.
-* **Coverage finding:** two rows of the mapping, the post-parse checks `'^' is allowed only at the outer start` and `'$' ... end` of the existing classifier, are **never reached**: an inner `^` or `$` already stops the scan as an unexpected metacharacter, which the mapping names `pattern_anchor_misplaced`. The two checks are dead code of the prototype classifier (reported, not removed; no classifier is changed here).
+* **Totality:** 30 187 texts (the 84 constructs, the limit cases, the precedence cases, 30 000 seeded random texts): 3732 accepted, 26 455 refused, **every refusal got exactly one code** (0 unmapped, 0 ambiguous); 25 distinct codes reached.
+* **Coverage finding:** two rows of the mapping, the post-parse anchor checks of the existing classifier, are **never reached** (an inner `^` or `$` stops the scan earlier as `pattern_anchor_misplaced`); dead code of the prototype classifier, reported, not removed (no classifier is changed here).
 * **Determinism:** the codes of 3000 random texts, the constructs and the precedence cases are identical under four different `PYTHONHASHSEED` values.
 
 ### 3.4 The probe can fail, for the right reason
 
-`selftest-codes-output.txt`: an unmodified positive control (exit 0); 7 planted defects, each counted only when the probe exits 1 **and** prints a `FAIL-EXPECT` line of the check meant to catch it: charset check before the length check, an off-by-one in the size limit, the size tier missing, PI that forgets the extra state of optional copies, a mapping row removed (an unmapped refusal), a code chosen by the hash seed, the value matcher run before the length check: 7/7; and 2 infrastructure controls (the prototype module missing, crashing) that must exit 2 and are not detections: 2/2.
+`selftest-codes-output.txt`: an unmodified positive control (exit 0); **11 planted defects**, each counted only when the probe exits 1 **and** prints a `FAIL-EXPECT` line of the check meant to catch it. In the prototype: the charset check before the length check, an off-by-one in the size limit, the size tier missing, PI that forgets the extra state of optional copies, a mapping row removed (an unmapped refusal), a code chosen by the hash seed, the value matcher run before the length check, a size check on sub-trees before the repeat factor is known (refuses the zero-repeat case). In the implementation of the text: the class pre-check missing, the count check before the bounds-order check, the nesting check before the group-extension check (these three must show up as a disagreement of the differential): 11/11; and 2 infrastructure controls (the prototype module missing, crashing) that must exit 2 and are not detections: 2/2.
 
 ## 4. Producer and verifier responsibilities (proposal)
 
@@ -154,6 +220,9 @@ Nothing here makes the Forms or the reference verifier evaluate a schema pattern
 | the codes, their precedence and totality | `codes_probe.txt` (*precedence*, *value*, *totality*, *determinism*) |
 | the probe can fail | `selftest-codes-output.txt` |
 | the two dead classifier rows | `codes_probe.txt` *UNREACHED-ROW* |
+| the class and repeat rule orders C1-C4, Q1-Q6; the previous text was wrong | `codes_probe.txt` *precedence* (class.*, repeat.*, group.*); `red-initial-f1.txt`; `codes_probe.txt` *differential* with `spec_classifier.py` |
+| PI per construct, arithmetic bound, zero repeats | `codes_probe.txt` *PI per construct, zero repeats, bound* |
+| aggregate cost and the responsibility boundary | `results/aggregate_cost.txt` (*real*, *synthetic*, *values*) |
 
 ## 7. Not verified
 
@@ -162,14 +231,25 @@ Nothing here makes the Forms or the reference verifier evaluate a schema pattern
 * Go and Rust: one cold run each, the match only; no repeated or warmed timing; the RE2 wheels (`google-re2`) were not run here.
 * The pin errors (O1) and the document-order rule for several expressions: specified, **not exercised** (the prototype reads no schema).
 * That the codes are the right granularity: 25 expression codes are a proposal; a coarser set (fewer codes plus a construct field) is possible and would not change the precedence.
+* The second implementation (`spec_classifier.py`) is by the same author as the prototype: it shares the reading of the problem; a third reader, in another language, from the text only, is the real test and belongs to the (held) vector and gate work.
+* The aggregate figures (2.5) are one machine, the own evaluator, one expression family; the 50 s for 1000 pairs is an extrapolation. No limit on the number of contracts or values exists anywhere yet.
+* The bound of 512 000 for PI is an argument from the product rule, checked on 3833 expressions, not a machine-checked proof.
 * Any behavior of the Forms or of a verifier: none evaluates a schema pattern today; no vectors, no gate, no implementation exist.
 
 ## 8. For the owner
 
+The external review of 2026-11-22 recommends the decisions below (O2 and O3 stay the owner's; the review's F1 to F3 are answered in 2.1, 2.5 and 3.2):
+
 | # | Point | Recommendation |
 |---|---|---|
-| O2 | add the rule PI <= N; the other limits unchanged | N = 2048 (1024 or 4096 are equally supported by the data); decide the number and whether PI is part of the first pinned version |
-| O3 | the code set, tier order, document-order rule for a schema, the value-time order | accept the set of 3.1 and the order of 3.2 as the specification input; the working names of #46 are replaced |
-| O5 follow-up | none: E1 to E3 are decided in #47 | the vectors for PI boundaries and for the code precedence are a later, separate step (on hold) |
+| O2 | PI ceiling | **2048** (1024 or 4096 are equally supported by the data) |
+| O2 | the other limits | unchanged |
+| O2 | PI is part of the profile version | GO |
+| O3 | the 25 expression codes | GO, as a specification input |
+| O3 | the 3 value codes | GO |
+| O3 | precedence | the explicit order of 3.2 (after the correction of F1) |
+| O3 | producer and verifier check independently | GO |
+| aggregate | no new normative limit; the responsibility boundary of 2.5 documented | accept the boundary |
+| follow-up | vectors for PI boundaries and for the code precedence; a third implementation from the text | a later, separate step (on hold) |
 
 Everything not named here stays on hold: P2, P4, Forms #166/#167, the schema finalization, the Relay #162 implementation, an implementation of P1, the normative vectors, the CI gate.
