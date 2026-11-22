@@ -1,0 +1,16 @@
+A positive control (the package as it is)                                                    OK exit=0
+A planted: a requirement no obligation names (R-LINEAR)                                      OK exit=1 needle=coverage.requirement.R-LINEAR
+A planted: an obligation that names an unknown requirement                                   OK exit=1 needle=obligation.reqs.known.O-VA-11.R-NOPE
+A planted: an obligation without any verification                                            OK exit=1 needle=obligation.verify.O-VA-10
+A planted: a plan item that no obligation uses                                               OK exit=1 needle=plan.referenced.P-09
+A planted: the specification text without a mention of an obligation (O-VA-07)               OK exit=1 needle=spec.mentions.O-VA-07
+A planted: an obligation for a requirement no vector can test, without a plan item           OK exit=1 needle=obligation.nt-needs-plan.O-VA-13
+A planted: a role without an obligation (gate)                                               OK exit=1 needle=roles.coverage.gate
+A planted: a duplicate obligation id                                                         OK exit=1 needle=obligation.id.unique.O-VA-09
+A planted: an extension case whose expectation no longer follows the rules                   OK exit=1 needle=extension.model.E-PIN-01
+A planted: an extension case of a group with no plan item                                    OK exit=1 needle=extension.group.E-ZZ-01
+A planted: the approved vector file modified by one appended comment line (the 513 vectors are a reference) OK exit=1 needle=approved.unchanged
+B planted model defect: equality-version                                                     OK exit=1 needle=extension.model.E-PIN-01
+B planted model defect: contract-last                                                        OK exit=1 needle=extension.model.E-TRV-01
+C infra: the obligations file is unreadable (exit 2, not a detection)                        OK exit=2
+self-test: all as expected

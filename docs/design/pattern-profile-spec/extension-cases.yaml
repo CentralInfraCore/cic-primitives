@@ -1,0 +1,97 @@
+# PROPOSED extension cases of the implementation specification (docs/en/GRAMMAR-PATTERN-IMPLEMENTATION-SPEC.md). They are NOT part of the 513 approved vectors and the approved vector file is untouched: new cases
+# appear as a separately reviewed extension (a decision of the owner and a review of their own), only after this specification is accepted. The expected results are derived from the TEXT of the specification;
+# docs/evidence/pattern-spec-trace/spec_model.py is an executable reading of those rules and evaluates them here, so that the examples are checked against the rules, not against an implementation of the profile.
+# schema: the schema document (YAML text, as the reader sees it). pin: the pin declarations the reader found, in document order, as typed YAML values ([] = no declaration).
+# expect.outcome: accept | refuse | reader_error; for refuse: code and at (the path of the refused contract, or null for a pin error); for reader_error: kind.
+extension_format: 1
+cases:
+# ---- pin resolution: the exact type, identical declarations count as one, conflict before unknown, missing without a declaration
+- {id: E-PIN-01, req: [R-PIN-UNKNOWN], pin: [true], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-02, req: [R-PIN-UNKNOWN], pin: [1.0], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-03, req: [R-PIN-UNKNOWN], pin: ['1'], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-04, req: [R-PIN-UNKNOWN], pin: [null], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-05, req: [R-PIN-UNKNOWN], pin: [0], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-06, req: [R-PIN-UNKNOWN], pin: [-1], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-07, req: [R-PIN-UNKNOWN], pin: [[1]], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-08, req: [R-PIN-UNKNOWN], pin: [{version: 1}], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-09, req: [R-PIN-CONFLICT], pin: [1, true], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-10, req: [R-PIN-CONFLICT], pin: [1, '1'], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-11, req: [R-PIN-CONFLICT, R-PIN-UNKNOWN], pin: [1, 99], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-12, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [true, true], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-13, req: [R-PIN-MISSING], pin: [], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_missing, at: null}}
+- {id: E-PIN-14, req: [R-PIN-ONLY-IF-PATTERN], pin: [99], schema: "a: {type: string}", expect: {outcome: accept}}
+- {id: E-PIN-15, req: [R-PIN-ONLY-IF-PATTERN, R-PIN-CONFLICT], pin: [1, 2], schema: "a: {type: string}", expect: {outcome: accept}}
+- {id: E-PIN-16, req: [R-PIN-IDENTICAL], pin: [1, 1, 1], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: accept}}
+- {id: E-PIN-17, req: [R-PIN-FIRST], pin: [true], schema: "a: {contract: [{type: pattern, expression: '(?i)a'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+# ---- traversal of nested contracts: depth-first, pre-order, mapping entries in SOURCE order, sequence items by index; a contract is visited where its key `contract` stands among its siblings
+- id: E-TRV-01
+  req: [R-SCHEMA-ORDER]
+  pin: [1]
+  schema: |
+    n:
+      contract: [{type: pattern, expression: '(?i)a'}]
+      fields:
+      - {name: x, contract: [{type: pattern, expression: 'c{300}'}]}
+  expect: {outcome: refuse, code: pattern_group_extension, at: n/contract/0}
+- id: E-TRV-02
+  req: [R-SCHEMA-ORDER]
+  pin: [1]
+  schema: |
+    n:
+      fields:
+      - {name: x, contract: [{type: pattern, expression: 'c{300}'}]}
+      contract: [{type: pattern, expression: '(?i)a'}]
+  expect: {outcome: refuse, code: pattern_repeat_count_too_large, at: n/fields/0/contract/0}
+- id: E-TRV-03
+  req: [R-SCHEMA-ORDER]
+  pin: [1]
+  schema: |
+    n:
+      item_fields:
+      - {name: y, contract: [{type: pattern, expression: '[z-a]'}]}
+      fields:
+      - {name: x, contract: [{type: pattern, expression: '(a'}]}
+  expect: {outcome: refuse, code: pattern_class_range_order, at: n/item_fields/0/contract/0}
+- id: E-TRV-04
+  req: [R-SCHEMA-ORDER]
+  pin: [1]
+  schema: |
+    n:
+      fields:
+      - {name: x, contract: [{type: pattern, expression: '^a$'}, {type: pattern, expression: '(a'}]}
+      - {name: y, contract: [{type: pattern, expression: '[z-a]'}]}
+  expect: {outcome: refuse, code: pattern_unbalanced_group, at: n/fields/0/contract/1}
+- id: E-TRV-05
+  req: [R-SCHEMA-ORDER, R-SCHEMA-WHOLE]
+  pin: [1]
+  schema: |
+    a:
+      b:
+        c:
+          contract: [{type: pattern, expression: '^a$'}]
+      d:
+        contract: [{type: pattern, expression: '^b$'}, {type: pattern, expression: 'a{01}'}]
+  expect: {outcome: refuse, code: pattern_quantifier_leading_zero, at: a/d/contract/1}
+- id: E-TRV-06
+  req: [R-SCHEMA-ORDER]
+  pin: [1]
+  schema: |
+    n:
+      contract: [{type: pattern, expression: '^a$'}, {type: string}, {type: pattern, expression: '(?i)a'}]
+  expect: {outcome: refuse, code: pattern_group_extension, at: n/contract/2}
+- id: E-TRV-07
+  req: [R-SCHEMA-ORDER]
+  pin: [1]
+  schema: |
+    n:
+      contract: [{type: pattern, expression: '^a$'}]
+      fields:
+      - {name: x, contract: [{type: pattern, expression: '^b$'}]}
+  expect: {outcome: accept}
+# ---- the boundary of the document reader: nothing of this ever reaches the pattern validator, and none of it has a pattern code
+- {id: E-RDR-01, req: [R-SCHEMA-WHOLE], pin: [1], schema: "a: {contract: [{type: pattern, expression: '^a$'}], contract: [{type: pattern, expression: '(?i)a'}]}", expect: {outcome: reader_error, kind: duplicate_key}}
+- {id: E-RDR-02, req: [R-SCHEMA-WHOLE], pin: [1], schema: "a: {contract: [{type: pattern, expression: 5}]}", expect: {outcome: reader_error, kind: expression_not_a_string}}
+- {id: E-RDR-03, req: [R-SCHEMA-WHOLE], pin: [1], schema: "a: {contract: [{type: pattern}]}", expect: {outcome: reader_error, kind: expression_not_a_string}}
+- {id: E-RDR-04, req: [R-SCHEMA-WHOLE], pin: [1], schema: "a: {contract: [{type: pattern, expression: null}]}", expect: {outcome: reader_error, kind: expression_not_a_string}}
+- {id: E-RDR-05, req: [R-SCHEMA-WHOLE], pin: [1], schema: "a: [", expect: {outcome: reader_error, kind: yaml_syntax}}
+- {id: E-RDR-06, req: [R-PIN-FIRST], pin: [true], schema: "a: {contract: [{type: pattern, expression: 5}]}", expect: {outcome: reader_error, kind: expression_not_a_string}}

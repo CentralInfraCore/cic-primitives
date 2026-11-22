@@ -1,0 +1,83 @@
+obligations 25, plan items 9, requirements 66 (+4 not testable by vectors), extension cases 30, approved schema vectors 20
+## requirement -> obligations
+R-BODY-ANCHORS             O-VA-03
+R-C1-SET-OPERATOR          O-VA-05
+R-C2-NEGATED               O-VA-05
+R-C3-ESCAPE                O-VA-05
+R-C3-NESTED                O-VA-05
+R-C3-RANGE-ORDER           O-VA-05
+R-C3-UNTERMINATED          O-VA-05
+R-C4-EMPTY                 O-VA-05
+R-COMPAT-CONTRACTS         O-VA-10
+R-INDEPENDENT-CHECK        O-PR-02 O-VF-01
+R-LIM-COUNT                O-VA-06
+R-LIM-DEPTH                O-VA-04
+R-LIM-LENGTH               O-VA-03
+R-LIM-PI                   O-VA-07
+R-LIM-PRODUCT              O-VA-06
+R-LIM-UNBOUNDED            O-VA-06
+R-LIM-VALUE                O-VA-12
+R-LINEAR                   O-VA-13 O-GT-01
+R-MATCH-ALT                O-VA-11
+R-MATCH-ANCHOR-NOOP        O-VA-11
+R-MATCH-CLASS              O-VA-11
+R-MATCH-DOT                O-VA-11
+R-MATCH-EMPTY              O-VA-11
+R-MATCH-ESCAPE             O-VA-11
+R-MATCH-FULL               O-VA-11
+R-MATCH-GROUP              O-VA-11
+R-MATCH-NO-TRAILING-LF     O-VA-11
+R-MATCH-QUANT              O-VA-11
+R-PI-RECURRENCE            O-VA-07
+R-PI-ZERO-REPEAT           O-VA-07
+R-PIN-CONFLICT             O-RD-04 O-VA-01
+R-PIN-FIRST                O-VA-02 O-VF-02
+R-PIN-IDENTICAL            O-RD-04 O-VA-01
+R-PIN-MISSING              O-RD-04 O-VA-01 O-PR-01
+R-PIN-ONLY-IF-PATTERN      O-VA-02
+R-PIN-UNKNOWN              O-RD-04 O-VA-01
+R-PREC-CLASS-ORDER         O-VA-05
+R-PREC-GROUP-EXT-DEPTH     O-VA-04
+R-PREC-READING-ORDER       O-VA-08
+R-PREC-REPEAT-ORDER        O-VA-06
+R-PREC-TIER                O-VA-08 O-VF-02
+R-Q-MALFORMED              O-VA-06
+R-Q1-UNBOUNDED-COUNT       O-VA-06
+R-Q2-UNBOUNDED-GROUP       O-VA-06
+R-Q3-LEADING-ZERO          O-VA-06
+R-Q4-BOUNDS-ORDER          O-VA-06
+R-Q5-OPEN-BRACE            O-VA-06
+R-Q5B-COUNT                O-VA-06
+R-Q5C-PRODUCT              O-VA-06
+R-Q6-STACKED               O-VA-06
+R-S1-DEPTH                 O-VA-04
+R-S2-EMPTY-BRANCH          O-VA-04
+R-S3-ANCHOR                O-VA-04
+R-S3-ESCAPE                O-VA-04
+R-S3-GROUP-EXT             O-VA-04
+R-S3-METACHAR              O-VA-04
+R-S3-UNBALANCED            O-VA-04
+R-SCHEMA-ORDER             O-RD-01 O-RD-03 O-VA-09 O-PR-01
+R-SCHEMA-WHOLE             O-RD-02 O-VA-09 O-PR-01
+R-T1-ASCII                 O-VA-03
+R-T1-EMPTY                 O-VA-03
+R-T1-LENGTH                O-VA-03
+R-T1-ORDER                 O-VA-03
+R-T3-SIZE                  O-VA-07
+R-VALUE-LENGTH             O-VA-12
+R-VALUE-MISMATCH           O-VA-12
+R-VALUE-ORDER              O-VA-12 O-PR-02
+R-VALUE-SCALAR             O-RD-05 O-VA-12
+R-VERIFIER-BUDGET          O-VF-03
+R-VERSION-EVIDENCE         O-VF-04 O-GT-01
+## plan item -> obligations
+P-01  non-vector-test    O-VA-13 O-GT-01
+P-02  non-vector-test    O-PR-01 O-PR-02 O-VF-01 O-VF-02
+P-03  non-vector-test    O-VF-04 O-GT-01
+P-04  non-vector-test    O-VF-03
+P-05  non-vector-test    O-RD-05 O-VA-12
+P-06  reader-test        O-RD-01 O-RD-02
+P-07  proposed-extension O-RD-04 O-VA-01 O-VA-02 O-VF-02
+P-08  proposed-extension O-RD-01 O-RD-03 O-VA-09
+P-09  proposed-extension O-RD-03
+all expectations held

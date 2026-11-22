@@ -1,0 +1,9 @@
+3ba7306b7c8b251dc64f7bed0d0749ee59caf21ec436bc7b507be353689721f5  README.md
+a3f14aedec1c06f188ce589c220ec5cf5285924bc6c71b1fedf7b6a125e1c5ea  check_spec_trace.py
+5ebe8ed9e665d82f1af202526c1bb36fa659ce2d7dc55a75be717f3ceccaae53  selftest_spec_trace.py
+1a0ef3a6f015f84826c82732f3fe7cfe7b7f6cfe0295cf08daaa0388ae15750a  spec_model.py
+8cc79523d65a434869eb106894eed94a1d279e6380468f8899148aecaee3ce4a  results/check_spec_trace.txt
+d133f1179c14296cf73aa028a711df7e8170ffe55e6135ee75e1a7c9df8a288e  results/selftest-spec-trace-output.txt
+e360310c9cec8e20c74df99154533a13933b69bfe5d6d39ee8af61eae54f5761  ../../design/pattern-profile-spec/extension-cases.yaml
+1e131d7c8b2ca4417f77dd90c303892b73f75b673d8146330576027adf6b3eec  ../../design/pattern-profile-spec/obligations.yaml
+6352fa38bb8bacfb9e600636aa319366ed2945e0c3bdcf617d0d25227f9f32d4  ../../en/GRAMMAR-PATTERN-IMPLEMENTATION-SPEC.md
