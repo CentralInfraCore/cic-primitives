@@ -35,8 +35,29 @@ def report(label, ok, extra=""):
     bad += not ok
 
 
+def moved_to_version(text, v):
+    """the vector file moved, consistently, to another profile version: the declaration, every known pin, every identical declaration; the unknown ones are kept different from it"""
+    t = text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: %d\n" % v, 1)
+    t = t.replace("pin: {state: ok, version: 1}", "pin: {state: ok, version: %d}" % v)
+    t = t.replace("versions: [1, 1", "versions: [%d, %d" % (v, v))
+    t = t.replace("pin: {state: unknown, version: %d}" % v, "pin: {state: unknown, version: %d}" % (v + 1))
+    return t
+
+
+def internally_consistent(text):
+    """the consistency the OLD check knew: the profile version equals the version of every known pin and of every identical declaration, and an unknown pin differs from it"""
+    import yaml
+    d = yaml.safe_load(text); ver = d["profile"]["version"]
+    ok = {x["pin"]["version"] for x in d["schemas"] if x["pin"]["state"] == "ok"} == {ver}
+    unk = all(x["pin"]["version"] != ver for x in d["schemas"] if x["pin"]["state"] == "unknown")
+    dec = all((x["pin"]["versions"][0] == ver) == (x.get("code") != "pattern_profile_unknown") for x in d["schemas"] if x["pin"]["state"] == "declared")
+    return ok and unk and dec
+
+
 def faults():
     text = open(VEC, encoding="utf-8").read()
+    v2 = moved_to_version(text, 2)
+    assert internally_consistent(text) and internally_consistent(v2) and v2 != text, "the moved file must be consistent in itself (the point of the test)"
     def drop(*ids):
         t = text
         for i in ids:
@@ -63,6 +84,10 @@ def faults():
         ("every accepted PI-boundary vector moved away from pi_max", text.replace("expect: accept, pi: 2048,", "expect: accept, pi: 2047,"), "meta.boundary.pi_max"),
         ("the known pin version of the schema vectors changed", text.replace("pin: {state: ok, version: 1}", "pin: {state: ok, version: 2}"), "meta.pin.known-version"),
         ("a `declared` pin with different versions", text.replace(line_of(text, "S-017"), line_of(text, "S-017").replace("versions: [1, 1]", "versions: [1, 2]")), "pin.declared.S-017"),
+        ("the file moved consistently to the NOT approved version 2 (consistent in itself)", v2, "meta.profile.version"),
+        ("the profile version is not an integer (the text 1)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: '1'\n", 1), "meta.profile.version.type"),
+        ("the profile version is 0 (not positive)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: 0\n", 1), "meta.profile.version.type"),
+        ("an unknown pin vector that uses the known version", text.replace("pin: {state: unknown, version: 99}", "pin: {state: unknown, version: 1}", 1), "meta.pin.unknown-differs"),
         ("identical unknown declarations expected to be accepted", text.replace(line_of(text, "S-019"), line_of(text, "S-019").replace("versions: [99, 99]", "versions: [1, 1]")), "meta.pin.declared.S-019"),
     ]
 
@@ -94,7 +119,8 @@ def main():
     # vector files with a wrong position or wrong metadata: the conformance run must see it (the whole triple is compared, the declared limits are compared with the implementation)
     text = open(VEC, encoding="utf-8").read()
     for name, content, needle in (("S-010 with the position of the third contract", text.replace(line_of(text, "S-010"), line_of(text, "S-010").replace("at: 2,", "at: 3,")), "DISAGREE P.schema S-010"),
-                                  ("pi_max declared as 4096", text.replace("  pi_max: 2048", "  pi_max: 4096"), "DISAGREE P.meta limits.pi_max")):
+                                  ("pi_max declared as 4096", text.replace("  pi_max: 2048", "  pi_max: 4096"), "DISAGREE P.meta limits.pi_max"),
+                                  ("profile version 2 (consistent in itself, not approved)", moved_to_version(text, 2), "DISAGREE P.meta profile.version")):
         d = tempfile.mkdtemp()
         try:
             f = os.path.join(d, "v.yaml"); open(f, "w", encoding="utf-8").write(content)

@@ -170,6 +170,7 @@ def main():
     for k, got in (("length", C.S.LIMITS["length"]), ("repeat_count", C.S.LIMITS["repeat"]), ("group_depth", C.S.LIMITS["depth"]), ("repeat_product", C.S.LIMITS["repeat_product"]),
                    ("unbounded_quantifiers", C.S.LIMITS["unbounded"]), ("pi_max", C.PI_MAX), ("value_code_points", C.VALUE_MAX)):
         check("P.meta", "limits." + k, lim.get(k), got)
+    check("P.meta", "profile.version", d.get("profile", {}).get("version"), 1)       # the decided profile version identifier (owner decision of 2026-11-22)
     if LEGACY:
         n = bad = 0; lf_red = False
         for v in va:
