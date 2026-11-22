@@ -1,0 +1,37 @@
+A positive control (the package as it is)                                                    OK exit=0
+A planted: a requirement no obligation names (R-LINEAR)                                      OK exit=1 needle=coverage.requirement.R-LINEAR
+A planted: an obligation that names an unknown requirement                                   OK exit=1 needle=obligation.reqs.known.O-VA-11.R-NOPE
+A planted: an obligation without any verification                                            OK exit=1 needle=obligation.verify.O-VA-10
+A planted: a plan item that no obligation uses                                               OK exit=1 needle=plan.referenced.P-09
+A planted: the specification text without a mention of an obligation (O-VA-07)               OK exit=1 needle=spec.mentions.O-VA-07
+A planted: an obligation for a requirement no vector can test, without a plan item           OK exit=1 needle=obligation.nt-needs-plan.O-VA-13
+A planted: a role without an obligation (gate)                                               OK exit=1 needle=roles.coverage.gate
+A planted: a duplicate obligation id                                                         OK exit=1 needle=obligation.id.unique.O-VA-09
+A planted: an extension case whose expectation no longer follows the rules                   OK exit=1 needle=extension.model.E-PIN-01
+A planted: an extension case of a group with no plan item                                    OK exit=1 needle=extension.group.E-ZZ-01
+A planted: the approved vector file modified by one appended comment line (the 513 vectors are a reference) OK exit=1 needle=approved.unchanged
+A planted: review F4: a plan item that does not list the requirement the obligation relies on it for (R-PIN-IDENTICAL) OK exit=1 needle=obligation.covers.O-RD-04.R-PIN-IDENTICAL
+A planted: review F4: the machine-readable text of O-VF-01 names fewer steps than the specification (steps 1 to 3) OK exit=1 needle=consistency.text.O-VF-01
+A planted: review F5: the specification no longer states the scope of the keys (a successful document read) OK exit=1 needle=consistency.spec.O-GT-02
+A planted: review F6: the specification no longer lists a domain tag (cic.pattern.contracts.delivery/1) OK exit=1 needle=spec.tag.cic.pattern.contracts.delivery/1
+A planted: review F4: the specification no longer says steps 0 to 3                          OK exit=1 needle=consistency.spec.O-VF-01
+B planted model defect: equality-version                                                     OK exit=1 needle=extension.model.E-PIN-01
+B planted model defect: contract-last                                                        OK exit=1 needle=extension.model.E-TRV-01
+B planted model defect: json-identity                                                        OK exit=1 needle=extension.model.E-PIN-18
+B planted model defect: json-identity                                                        OK exit=1 needle=model_raised
+B planted model defect: stop-at-first-accept                                                 OK exit=1 needle=property.class-order-independent.S-010
+B planted model defect: digest-sorted                                                        OK exit=1 needle=digest.order-sensitive
+B planted model defect: key-without-pin                                                      OK exit=1 needle=evidence.pin-bound.class-keys-distinct
+B planted model defect: key-without-pin                                                      OK exit=1 needle=evidence.pin-change-no-reuse
+B planted model defect: reuse-by-partial                                                     OK exit=1 needle=evidence.pin-change-no-reuse
+B planted model defect: python-keys                                                          OK exit=1 needle=extension.model.E-PIN-28
+B planted model defect: python-keys                                                          OK exit=1 needle=extension.model.E-PIN-32
+B planted model defect: no-domain-tags                                                       OK exit=1 needle=evidence.domain-separation.components-distinct
+B planted model defect: no-domain-tags                                                       OK exit=1 needle=evidence.domain-separation.content-vs-delivery
+B planted model defect: key-on-reader-error                                                  OK exit=1 needle=evidence.scope.reader-error-no-key
+F positive control of the work bound (c x (PI+1) x (N+1), the first form refuted)            OK exit=0
+F planted: a quadratic evaluator (work multiplied by N + 1) violates the bound               OK exit=1
+F planted: a constant that is too small is rejected                                          OK exit=1
+F planted: a corpus without a zero-size program and without the empty value cannot refute the first form OK exit=1
+C infra: the obligations file is unreadable (exit 2, not a detection)                        OK exit=2
+self-test: all as expected
