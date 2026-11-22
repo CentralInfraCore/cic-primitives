@@ -23,14 +23,27 @@ class ReaderError(Exception):
         Exception.__init__(self, kind); self.kind, self.path = kind, path
 
 
+class TMap(object):
+    """a TYPE-PRESERVING mapping: a list of (key, value) pairs with typed keys. A host-language dict is not used for a pin value, because Python merges the keys 1, True and 1.0 (they are equal and hash alike)
+    while the specification defines three keys of three type classes."""
+    def __init__(self, pairs):
+        self.pairs = list(pairs)
+
+    def __repr__(self):
+        return "TMap(%r)" % (self.pairs,)
+
+
 class _OrderedLoader(yaml.SafeLoader):
-    """the DOCUMENT READER: mapping entries stay in source order (Python dicts keep insertion order) and a duplicate key is a READER error, never a pattern code"""
+    """the DOCUMENT READER for the schema: mapping entries stay in source order; EVERY mapping key of the schema document must be a string (a non-string key is a reader error, an unambiguous input
+    restriction: no type clash is possible); a duplicate key is a READER error, never a pattern code. The pin declarations are NOT read by this loader (see _TypedLoader)."""
 
 
 def _mapping(loader, node, deep=False):
     seen = set()
     for knode, _ in node.value:
         k = loader.construct_object(knode, deep=deep)
+        if not isinstance(k, str):
+            raise ReaderError("non_string_key", repr(k))
         if k in seen:
             raise ReaderError("duplicate_key", str(k))
         seen.add(k)
@@ -47,6 +60,43 @@ def read(text):
         raise
     except yaml.YAMLError:
         raise ReaderError("yaml_syntax")
+
+
+class _TypedLoader(yaml.SafeLoader):
+    """the reader of a PIN VALUE: scalars keep their resolved type (int, bool, float, str, null), sequences are lists, and EVERY mapping is a TMap whose keys keep their type; a duplicate key is detected by
+    the IDENTITY RULE OF THE SPECIFICATION (1, true and 1.0 are three different keys, 0.0 and -0.0 two), never by the host language's equality; a mapping key that is not a scalar is a reader error"""
+
+
+def _typed_mapping(loader, node, deep=False):
+    pairs = []
+    for knode, vnode in node.value:
+        if not isinstance(knode, yaml.ScalarNode):
+            raise ReaderError("non_scalar_key")
+        k = loader.construct_object(knode, deep=True)
+        v = loader.construct_object(vnode, deep=True)
+        if PLANT == "python-keys":                         # planted: the host language's equality decides (1 == True == 1.0)
+            if any(k == k2 for k2, _ in pairs):
+                raise ReaderError("duplicate_key", repr(k))
+        elif any(identical(k, k2) for k2, _ in pairs):
+            raise ReaderError("duplicate_key", repr(k))
+        pairs.append((k, v))
+    return TMap(pairs)
+
+
+_TypedLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _typed_mapping)
+
+
+def read_pin(text):
+    """the pin declarations as the reader delivers them, from YAML text: a list of typed values. Raises ReaderError."""
+    try:
+        v = yaml.load(text, Loader=_TypedLoader)
+    except ReaderError:
+        raise
+    except yaml.YAMLError:
+        raise ReaderError("yaml_syntax")
+    if not isinstance(v, list):
+        raise ReaderError("pin_declarations_not_a_list")
+    return v
 
 
 def contracts(node, path=()):
@@ -82,9 +132,13 @@ def kind(v):
         return "str"
     if isinstance(v, list):
         return "list"
-    if isinstance(v, dict):
+    if isinstance(v, (dict, TMap)):
         return "map"
     raise ReaderError("unsupported_yaml_value")
+
+
+def _pairs(m):
+    return list(m.pairs) if isinstance(m, TMap) else list(m.items())
 
 
 def identical(a, b):
@@ -104,10 +158,11 @@ def identical(a, b):
         return (a != a and b != b) or struct.pack(">d", a) == struct.pack(">d", b)
     if ka == "list":
         return len(a) == len(b) and all(identical(x, y) for x, y in zip(a, b))
-    if len(a) != len(b):
+    pa, pb = _pairs(a), _pairs(b)
+    if len(pa) != len(pb):
         return False
-    rest = list(b.items())
-    for k, v in a.items():
+    rest = list(pb)
+    for k, v in pa:
         for n, (k2, v2) in enumerate(rest):
             if identical(k, k2) and identical(v, v2):
                 del rest[n]; break
@@ -167,6 +222,75 @@ def content_digest(items):
     return h.hexdigest()
 
 
+_NAN_BITS = struct.pack(">Q", 0x7ff8000000000000)
+
+
+def enc(v):
+    """the TYPED CANONICAL ENCODING of a declared value (a rule of the specification): a type tag, then the payload, so that two values have the same encoding IF AND ONLY IF they are identical in the sense of
+    `identical`. null N; bool B0/B1; int I + length-prefixed decimal ASCII; float F + 8 bytes (the binary64 bit pattern, every NaN as one canonical NaN); str S + length-prefixed UTF-8;
+    list L + count + the encodings in order; mapping M + count + the entry encodings (key encoding + value encoding) SORTED as byte strings (the entry order is irrelevant)."""
+    k = kind(v)
+    if k == "null":
+        return b"N"
+    if k == "bool":
+        return b"B1" if v else b"B0"
+    if k == "int":
+        return b"I" + _lp(str(v).encode("ascii"))
+    if k == "float":
+        return b"F" + (_NAN_BITS if v != v else struct.pack(">d", v))
+    if k == "str":
+        return b"S" + _lp(v.encode("utf-8"))
+    if k == "list":
+        return b"L" + struct.pack(">Q", len(v)) + b"".join(enc(x) for x in v)
+    ents = sorted(enc(a) + enc(b) for a, b in _pairs(v))
+    return b"M" + struct.pack(">Q", len(ents)) + b"".join(ents)
+
+
+def pin_ordered_digest(declarations):
+    """a COMPONENT: the declarations as delivered, in order, typed"""
+    h = hashlib.sha256(b"cic.pattern.pin.ordered/1" + struct.pack(">Q", len(declarations)))
+    for d in declarations:
+        h.update(_lp(enc(d)))
+    return h.hexdigest()
+
+
+def pin_set_digest(declarations):
+    """a COMPONENT: the SET of the distinct declared values (identity classes), typed and sorted; the pin resolution depends only on this set"""
+    encs = sorted({enc(d) for d in declarations})
+    h = hashlib.sha256(b"cic.pattern.pin.set/1" + struct.pack(">Q", len(encs)))
+    for e in encs:
+        h.update(_lp(e))
+    return h.hexdigest()
+
+
+def _key(tag, profile_version, contracts_digest, pin_digest, implementation, conformance_ref):
+    h = hashlib.sha256(tag)
+    h.update(enc(profile_version)); h.update(_lp(contracts_digest.encode("ascii")))
+    if PLANT != "key-without-pin":                     # planted: a key that does not bind the pin declarations (the review's FALSE_REUSE)
+        h.update(_lp(pin_digest.encode("ascii")))
+    h.update(_lp(implementation.encode("utf-8"))); h.update(_lp(conformance_ref.encode("ascii")))
+    return h.hexdigest()
+
+
+def class_key(profile_version, items, declarations, implementation, conformance_ref):
+    """the key under which the accept/refuse CLASS of a validation may be reused: the profile version, the contracts WITHOUT their order (content digest), the pin declarations as a typed SET,
+    the implementation identity and the conformance reference (the approved vector file hash)"""
+    return _key(b"cic.pattern.class/1", profile_version, content_digest(items), pin_set_digest(declarations), implementation, conformance_ref)
+
+
+def result_key(profile_version, items, declarations, implementation, conformance_ref):
+    """THE FULL EVIDENCE IDENTIFIER of a validation result: the same context, with the contracts and the pin declarations IN THE ORDER DELIVERED. Only an equal result key makes the reported code and path reusable."""
+    return _key(b"cic.pattern.result/1", profile_version, delivery_digest(items), pin_ordered_digest(declarations), implementation, conformance_ref)
+
+
+def may_reuse(prev, cur, what):
+    """prev, cur: dicts with class_key, result_key, content (the contracts content digest) and delivery (the contracts delivery digest). what: 'class' | 'code_path' | 'result'.
+    A COMPONENT digest alone is never a reuse key."""
+    if PLANT == "reuse-by-partial":                    # planted: the contracts digest alone decides
+        return prev["content"] == cur["content"] if what == "class" else prev["delivery"] == cur["delivery"]
+    return prev["class_key"] == cur["class_key"] if what == "class" else prev["result_key"] == cur["result_key"]
+
+
 def deliver(schema_text):
     """the reader's output for a schema text: [(path, expression)] in document order, or raises ReaderError"""
     doc = read(schema_text)
@@ -192,6 +316,15 @@ def validate_delivered(declarations, items):
         if PLANT == "stop-at-first-accept":            # planted: the verdict class then depends on the delivery order
             return ("accept",)
     return ("accept",)
+
+
+def validate_case(schema_text, pin=None, pin_text=None):
+    """a case of the extension file: the pin declarations as typed values (pin) or as YAML text read by the type-preserving reader (pin_text); a reader error of the pin is an outcome, not a crash"""
+    try:
+        decl = read_pin(pin_text) if pin_text is not None else pin
+    except ReaderError as r:
+        return ("reader_error", r.kind, None)
+    return validate(schema_text, decl)
 
 
 def validate(schema_text, declarations):

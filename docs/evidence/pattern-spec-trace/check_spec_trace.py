@@ -9,6 +9,9 @@ Checks (a failure is a FAIL-EXPECT line, exit 1; an unreadable input is INCOMPLE
              item whose own requirements include it (a plan id that merely exists is not enough); an obligation may carry spec_must_contain phrases that must stand in the text and in the specification
   property   the accept/refuse CLASS of a schema is invariant under every permutation of the delivery order (the reported code and path are not), and the delivery digest, unlike the content digest, tells
              two delivery orders apart
+  evidence   the EVIDENCE IDENTIFIER (review F2 of #52, second round) binds the whole validation input: the profile version, the contracts, the typed pin declarations, the implementation identity and the
+             conformance reference. A changed pin with unchanged contracts changes both keys and must never make an earlier result reusable; a component digest alone is never a reuse key; the typed
+             canonical encoding of a declared value is equal for two values iff they are identical
   extension  the proposed extension cases are consistent with the rules of the text (the executable reading spec_model.py), every case group belongs to a plan item, and the same model reproduces the
              verdicts and positions of the 20 schema vectors of the approved set
 This is STRUCTURAL traceability plus the consistency checks above: it shows that the package is complete and self-consistent, NOT that the plan items, once executed, give full semantic coverage.
@@ -116,7 +119,7 @@ def main(argv):
         for r in c.get("req", []):
             expect("extension.req.known.%s.%s" % (c["id"], r), r in reqs)
         try:
-            got = M.validate(c["schema"], c["pin"])
+            got = M.validate_case(c["schema"], c.get("pin"), c.get("pin_text"))
         except BaseException as ex:                      # a model that crashes is a failed check, never a pass and never an infrastructure problem
             got = ("model_raised", type(ex).__name__)
         e = c["expect"]
@@ -170,9 +173,73 @@ def main(argv):
         expect("digest.content-equal", M.content_digest(a) == M.content_digest(b), "the two documents have different content")
         expect("digest.order-sensitive", M.delivery_digest(a) != M.delivery_digest(b), "the delivery digest does not tell the two delivery orders apart")
         ra, rb = M.validate(cmap["E-TRV-01"]["schema"], [1]), M.validate(cmap["E-TRV-02"]["schema"], [1])
+        ia, ib = M.deliver(cmap["E-TRV-01"]["schema"]), M.deliver(cmap["E-TRV-02"]["schema"])
+        ka = M.class_key(1, ia, [1], "impl", "ref"); kb = M.class_key(1, ib, [1], "impl", "ref")
+        expect("evidence.order-only.class-key-equal", ka == kb, "the same contracts in another delivery order must share the class key")
+        expect("evidence.order-only.result-key-differs", M.result_key(1, ia, [1], "impl", "ref") != M.result_key(1, ib, [1], "impl", "ref"), "the result key must tell the two delivery orders apart")
+        pa = dict(class_key=ka, result_key=M.result_key(1, ia, [1], "impl", "ref"), content=M.content_digest(ia), delivery=M.delivery_digest(ia))
+        pb = dict(class_key=kb, result_key=M.result_key(1, ib, [1], "impl", "ref"), content=M.content_digest(ib), delivery=M.delivery_digest(ib))
+        expect("evidence.order-only.reuse-class", M.may_reuse(pa, pb, "class") is True, "the class may be reused across a reordering")
+        expect("evidence.order-only.no-reuse-code-path", M.may_reuse(pa, pb, "code_path") is False, "the code and path must not be reused across a reordering")
         expect("digest.class-equal-code-differs", ra[0] == rb[0] == "refuse" and ra[1] != rb[1], "the two orders must give the same class and a different code: %s %s" % (ra, rb))
     except KeyError as ex:
         expect("digest.cases-present", False, "missing case %s" % ex)
+    # ---- the evidence identifier: a changed pin with unchanged contracts must never make an earlier result reusable (the FALSE_REUSE of the review)
+    items = [(("a", "contract", 0), "^a$")]
+    ctx = (1, items)
+    variants = [("[1]", [1]), ("[2]", [2]), ("[]", []), ("[1,2]", [1, 2]), ("[true]", [True]), ("[1.0]", [1.0])]
+    recs = {}
+    for name, d in variants:
+        recs[name] = dict(class_key=M.class_key(1, items, d, "impl", "ref"), result_key=M.result_key(1, items, d, "impl", "ref"), content=M.content_digest(items), delivery=M.delivery_digest(items),
+                          verdict=M.validate_delivered(d, items))
+    expect("evidence.pin-bound.class-keys-distinct", len({r["class_key"] for r in recs.values()}) == len(recs), "two pin variants with different verdicts share a class key")
+    expect("evidence.pin-bound.result-keys-distinct", len({r["result_key"] for r in recs.values()}) == len(recs), "two pin variants share a result key")
+    for name in recs:
+        if name != "[1]":
+            for what in ("class", "code_path", "result"):
+                expect("evidence.pin-change-no-reuse.%s.%s" % (name, what), M.may_reuse(recs["[1]"], recs[name], what) is False,
+                       "an earlier result (pin [1], %s) must not be reusable for %s with pin %s (%s)" % (recs["[1]"]["verdict"][0], what, name, recs[name]["verdict"]))
+    same = dict(class_key=M.class_key(1, items, [1, 1], "impl", "ref"), result_key=M.result_key(1, items, [1, 1], "impl", "ref"), content=M.content_digest(items), delivery=M.delivery_digest(items))
+    expect("evidence.pin-set.identical-declarations", M.may_reuse(recs["[1]"], same, "class") is True and M.may_reuse(recs["[1]"], same, "code_path") is False,
+           "identical declarations are one declaration for the class (same set) but another delivery for the code and path")
+    base = (M.class_key(1, items, [1], "impl", "ref"), M.result_key(1, items, [1], "impl", "ref"))
+    for label, other in (("profile-version", (M.class_key(2, items, [1], "impl", "ref"), M.result_key(2, items, [1], "impl", "ref"))),
+                         ("implementation", (M.class_key(1, items, [1], "impl2", "ref"), M.result_key(1, items, [1], "impl2", "ref"))),
+                         ("conformance-reference", (M.class_key(1, items, [1], "impl", "ref2"), M.result_key(1, items, [1], "impl", "ref2")))):
+        expect("evidence.context-bound.%s" % label, other[0] != base[0] and other[1] != base[1], "a changed %s must change both keys" % label)
+    # the typed canonical encoding is equal iff the values are identical
+    import random
+    rnd = random.Random(20261123)
+    sample = []
+    for c in cases["cases"]:
+        try:
+            sample += list(M.read_pin(c["pin_text"])) if c.get("pin_text") is not None else list(c.get("pin") or [])
+        except M.ReaderError:
+            pass
+    def gen(d):
+        k = rnd.choice(["null", "bool", "int", "float", "str", "list", "map"] if d > 0 else ["null", "bool", "int", "float", "str"])
+        if k == "null": return None
+        if k == "bool": return rnd.choice([True, False])
+        if k == "int": return rnd.choice([0, 1, -1, 2, 99])
+        if k == "float": return rnd.choice([0.0, -0.0, 1.0, float("nan"), 2.5])
+        if k == "str": return rnd.choice(["", "1", "a", "x"])
+        if k == "list": return [gen(d - 1) for _ in range(rnd.randrange(0, 3))]
+        keys = []
+        pairs = []
+        for _ in range(rnd.randrange(0, 3)):
+            kk = gen(0)
+            if not any(M.identical(kk, k2) for k2 in keys):
+                keys.append(kk); pairs.append((kk, gen(d - 1)))
+        rnd.shuffle(pairs)
+        return M.TMap(pairs)
+    sample += [gen(3) for _ in range(120)]
+    bad = 0; npairs = 0
+    for i in range(len(sample)):
+        for j in range(i, len(sample)):
+            npairs += 1
+            if M.identical(sample[i], sample[j]) != (M.enc(sample[i]) == M.enc(sample[j])):
+                bad += 1
+    expect("evidence.encoding.injective-on-identity", bad == 0, "%d of %d pairs: the encoding and the identity rule disagree" % (bad, npairs))
     print("obligations %d, plan items %d, requirements %d (+%d not testable by vectors), extension cases %d, approved schema vectors %d" % (len(obs), len(plan), len(reqs), len(nt), len(cases["cases"]), len(vec["schemas"])))
     print("## requirement -> obligations")
     for r in sorted(reqs | nt):

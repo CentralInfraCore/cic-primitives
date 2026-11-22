@@ -19,6 +19,11 @@ B planted model defect: json-identity                                           
 B planted model defect: json-identity                                                        OK exit=1 needle=model_raised
 B planted model defect: stop-at-first-accept                                                 OK exit=1 needle=property.class-order-independent.S-010
 B planted model defect: digest-sorted                                                        OK exit=1 needle=digest.order-sensitive
+B planted model defect: key-without-pin                                                      OK exit=1 needle=evidence.pin-bound.class-keys-distinct
+B planted model defect: key-without-pin                                                      OK exit=1 needle=evidence.pin-change-no-reuse
+B planted model defect: reuse-by-partial                                                     OK exit=1 needle=evidence.pin-change-no-reuse
+B planted model defect: python-keys                                                          OK exit=1 needle=extension.model.E-PIN-28
+B planted model defect: python-keys                                                          OK exit=1 needle=extension.model.E-PIN-32
 F positive control of the work bound (c x (PI+1) x (N+1), the first form refuted)            OK exit=0
 F planted: a quadratic evaluator (work multiplied by N + 1) violates the bound               OK exit=1
 F planted: a constant that is too small is rejected                                          OK exit=1

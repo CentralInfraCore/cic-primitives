@@ -1,4 +1,4 @@
-obligations 26, plan items 11, requirements 66 (+4 not testable by vectors), extension cases 40, approved schema vectors 20
+obligations 27, plan items 11, requirements 66 (+4 not testable by vectors), extension cases 47, approved schema vectors 20
 ## requirement -> obligations
 R-BODY-ANCHORS             O-VA-03
 R-C1-SET-OPERATOR          O-VA-05
@@ -58,7 +58,7 @@ R-S3-GROUP-EXT             O-VA-04
 R-S3-METACHAR              O-VA-04
 R-S3-UNBALANCED            O-VA-04
 R-SCHEMA-ORDER             O-RD-01 O-RD-03 O-VA-09 O-PR-01 O-GT-02
-R-SCHEMA-WHOLE             O-RD-02 O-VA-09 O-PR-01
+R-SCHEMA-WHOLE             O-RD-02 O-RD-06 O-VA-09 O-PR-01
 R-T1-ASCII                 O-VA-03
 R-T1-EMPTY                 O-VA-03
 R-T1-LENGTH                O-VA-03
@@ -76,8 +76,8 @@ P-02  non-vector-test    O-PR-01 O-PR-02 O-VF-01 O-VF-02
 P-03  non-vector-test    O-VF-04 O-GT-02 O-GT-01
 P-04  non-vector-test    O-VF-03
 P-05  non-vector-test    O-RD-05 O-VA-12
-P-06  reader-test        O-RD-01 O-RD-02
-P-07  proposed-extension O-RD-04 O-VA-01 O-VA-02 O-VF-02
+P-06  reader-test        O-RD-01 O-RD-02 O-RD-06
+P-07  proposed-extension O-RD-04 O-RD-06 O-VA-01 O-VA-02 O-VF-02
 P-08  proposed-extension O-RD-01 O-RD-03 O-VA-09
 P-09  proposed-extension O-RD-03
 P-10  non-vector-test    O-GT-02

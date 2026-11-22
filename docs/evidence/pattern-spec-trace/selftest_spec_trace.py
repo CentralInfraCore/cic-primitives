@@ -1,7 +1,7 @@
 """Self-test of check_spec_trace.py: can it FAIL, and for the right reason? Typed exits; infrastructure is never a detection.
 A: an unmodified positive control (exit 0); planted faults in COPIES of the obligations, the specification text, the extension cases and the vector file, each counted only when the check exits 1 AND prints
    a FAIL-EXPECT line of the intended check;
-B: planted defects of the executable reading (spec_model.py, CIC_SPECMODEL_PLANT): the version compared by Python equality (true and 1.0 pass), the own contract visited after the children;
+B: planted defects of the executable reading (spec_model.py, CIC_SPECMODEL_PLANT): the version compared by Python equality (true and 1.0 pass), the own contract visited after the children, identity by a serialisation, a verdict that depends on the delivery order, an order-erasing digest, an evidence key that omits the pin declarations (the FALSE_REUSE), a reuse decided by a component digest alone, a reader that merges the keys 1, true and 1.0;
 C: infrastructure controls: an unreadable obligations file exits 2 and is not a detection.
 Exit: 0 all as expected, 1 a mutant was not detected or a control failed, 2 the self-test itself could not run."""
 import os, shutil, subprocess, sys, tempfile
@@ -68,7 +68,9 @@ def main():
         report("A planted: " + name, rc == 1 and bool(named), "exit=%d needle=%s" % (rc, needle))
     for plant, needle in (("equality-version", "extension.model.E-PIN-01"), ("contract-last", "extension.model.E-TRV-01"),
                           ("json-identity", "extension.model.E-PIN-18"), ("json-identity", "model_raised"),
-                          ("stop-at-first-accept", "property.class-order-independent.S-010"), ("digest-sorted", "digest.order-sensitive")):
+                          ("stop-at-first-accept", "property.class-order-independent.S-010"), ("digest-sorted", "digest.order-sensitive"),
+                          ("key-without-pin", "evidence.pin-bound.class-keys-distinct"), ("key-without-pin", "evidence.pin-change-no-reuse"),
+                          ("reuse-by-partial", "evidence.pin-change-no-reuse"), ("python-keys", "extension.model.E-PIN-28"), ("python-keys", "extension.model.E-PIN-32")):
         rc, o = run([], {"CIC_SPECMODEL_PLANT": plant})
         named = [l for l in o.splitlines() if l.startswith("FAIL-EXPECT") and needle in l]
         report("B planted model defect: " + plant, rc == 1 and bool(named), "exit=%d needle=%s" % (rc, needle))

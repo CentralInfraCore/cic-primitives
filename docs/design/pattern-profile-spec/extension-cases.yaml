@@ -34,6 +34,14 @@ cases:
 - {id: E-PIN-25, req: [R-PIN-CONFLICT], pin: [0.0, -0.0], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
 - {id: E-PIN-26, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin: [[1, [2, {3: a}]], [1, [2, {3: a}]]], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
 - {id: E-PIN-27, req: [R-PIN-CONFLICT], pin: [[1, [2, {3: a}]], [1, [2, {'3': a}]]], schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+# ---- the READER keeps the types (review F1 of #52, second round): a pin value is read into a TYPE-PRESERVING tree (pin_text is YAML text read by that reader, because this case file itself is loaded by a host-language parser that would merge the keys 1, true and 1.0); duplicate keys are found by the identity rule of the specification; every mapping key of the SCHEMA document is a string
+- {id: E-PIN-28, req: [R-PIN-UNKNOWN], pin_text: "[{1: a, true: b, 1.0: c}]", schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-29, req: [R-PIN-UNKNOWN], pin_text: "[{1: a, 1: b}]", schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: reader_error, kind: duplicate_key}}
+- {id: E-PIN-30, req: [R-PIN-UNKNOWN], pin_text: "[{0.0: a, -0.0: b}]", schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-31, req: [R-PIN-IDENTICAL, R-PIN-UNKNOWN], pin_text: "[{1: a, true: b, 1.0: c}, {1.0: c, true: b, 1: a}]", schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_unknown, at: null}}
+- {id: E-PIN-32, req: [R-PIN-CONFLICT], pin_text: "[{1: a, true: b}, {1: a, 1.0: b}]", schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: refuse, code: pattern_profile_conflict, at: null}}
+- {id: E-PIN-33, req: [R-SCHEMA-WHOLE], pin: [1], schema: "a: {1: x, contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: reader_error, kind: non_string_key}}
+- {id: E-PIN-34, req: [R-PIN-UNKNOWN], pin_text: "[{? [1, 2] : a}]", schema: "a: {contract: [{type: pattern, expression: '^a$'}]}", expect: {outcome: reader_error, kind: non_scalar_key}}
 # ---- traversal of nested contracts: depth-first, pre-order, mapping entries in SOURCE order, sequence items by index; a contract is visited where its key `contract` stands among its siblings
 - id: E-TRV-01
   req: [R-SCHEMA-ORDER]
