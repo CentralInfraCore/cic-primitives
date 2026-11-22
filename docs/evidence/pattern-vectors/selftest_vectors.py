@@ -15,7 +15,7 @@ bad = 0
 
 def run(args, env_extra=None):
     env = dict(os.environ)
-    for k in ("CIC_CODES_PLANT", "CIC_SPEC_PLANT", "CIC_VECTORS"):
+    for k in ("CIC_CODES_PLANT", "CIC_SPEC_PLANT", "CIC_CONFORM_PLANT", "CIC_VECTORS"):
         env.pop(k, None)
     env.update(env_extra or {})
     r = subprocess.run([sys.executable] + args, capture_output=True, text=True, env=env, cwd=HERE, timeout=1200)
@@ -53,6 +53,15 @@ def faults():
         ("a limit without its refusing side", drop("X-S102"), "boundary.R-LIM-DEPTH"),
         ("an accepted expression without its PI", text.replace("{id: X-A001, expr: 'a', expect: accept, pi: 1,", "{id: X-A001, expr: 'a', expect: accept,"), "pi.present.X-A001"),
         ("a value vector with a verdict of another kind", text.replace(line_of(text, "V-M001"), line_of(text, "V-M001").replace("expect: match", "expect: accept")), "expect.V-M001"),
+        ("a schema refusal without its position", text.replace(line_of(text, "S-010"), line_of(text, "S-010").replace(" at: 2,", "")), "schema.at.required.S-010"),
+        ("a pin refusal that carries a position", text.replace(line_of(text, "S-002"), line_of(text, "S-002").replace("code: pattern_profile_missing,", "code: pattern_profile_missing, at: 1,")), "schema.at.forbidden.S-002"),
+        ("a schema refusal with a position outside the schema", text.replace(line_of(text, "S-010"), line_of(text, "S-010").replace("at: 2,", "at: 7,")), "schema.at.required.S-010"),
+        ("the declared pi_max changed to 4096", text.replace("  pi_max: 2048", "  pi_max: 4096"), "meta.limits.pi_max"),
+        ("the declared length limit changed to 255", text.replace("  length: 256", "  length: 255", 1), "meta.limits.length"),
+        ("the profile name changed", text.replace("  name: pattern", "  name: patterns", 1), "meta.profile.name"),
+        ("a decided code removed from the code list", text.replace("  - pattern_empty\n", "", 1), "meta.codes.expression"),
+        ("every accepted PI-boundary vector moved away from pi_max", text.replace("expect: accept, pi: 2048,", "expect: accept, pi: 2047,"), "meta.boundary.pi_max"),
+        ("the known pin version of the schema vectors changed", text.replace("pin: {state: ok, version: 1}", "pin: {state: ok, version: 2}"), "meta.pin.known-version"),
     ]
 
 
@@ -74,10 +83,22 @@ def main():
               ("CIC_CODES_PLANT", "no-size-tier", "DISAGREE P X-Z102"), ("CIC_CODES_PLANT", "size-undercount", "DISAGREE P.pi X-A013"),
               ("CIC_CODES_PLANT", "row-removed", "DISAGREE P X-Q130"), ("CIC_CODES_PLANT", "value-mismatch-before-length", "DISAGREE P V-L007"),
               ("CIC_CODES_PLANT", "early-size", "DISAGREE P X-A027"), ("CIC_SPEC_PLANT", "no-class-precheck-spec", "DISAGREE S X-K101"),
-              ("CIC_SPEC_PLANT", "count-before-bounds-spec", "DISAGREE S X-Q108"), ("CIC_SPEC_PLANT", "depth-before-extension-spec", "DISAGREE S X-S124")]
+              ("CIC_SPEC_PLANT", "count-before-bounds-spec", "DISAGREE S X-Q108"), ("CIC_SPEC_PLANT", "depth-before-extension-spec", "DISAGREE S X-S124"),
+              ("CIC_CONFORM_PLANT", "last-refused", "DISAGREE P.schema S-010"), ("CIC_CONFORM_PLANT", "pin-after-expressions", "DISAGREE P.schema S-005")]
     for var, plant, needle in plants:
         rc, o = run([CONFORM, "--no-native"], {var: plant})
         report("B planted: %s=%s" % (var, plant), rc == 1 and needle in o, "exit=%d needle=%r" % (rc, needle))
+    # vector files with a wrong position or wrong metadata: the conformance run must see it (the whole triple is compared, the declared limits are compared with the implementation)
+    text = open(VEC, encoding="utf-8").read()
+    for name, content, needle in (("S-010 with the position of the third contract", text.replace(line_of(text, "S-010"), line_of(text, "S-010").replace("at: 2,", "at: 3,")), "DISAGREE P.schema S-010"),
+                                  ("pi_max declared as 4096", text.replace("  pi_max: 2048", "  pi_max: 4096"), "DISAGREE P.meta limits.pi_max")):
+        d = tempfile.mkdtemp()
+        try:
+            f = os.path.join(d, "v.yaml"); open(f, "w", encoding="utf-8").write(content)
+            rc, o = run([CONFORM, "--no-native"], {"CIC_VECTORS": f})
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+        report("B vector file: " + name, rc == 1 and needle in o, "exit=%d needle=%r" % (rc, needle))
     # planted defects in a COPY of the Go runner. (1) any value with a line feed matches: the canary `lf_refused` of the runner must catch it (exit 3, a failed canary: no result of that runner is used);
     # (2) only a value with a line feed AND the text abc matches: all four canaries pass, so only the vectors can see it
     for label, cond, want in (("any line feed", 'bytes.Contains(in, []byte("\\n"))', None), ("a line feed after abc", 'bytes.Contains(in, []byte("\\n")) && bytes.Contains(in, []byte("abc"))', "DISAGREE G V-M021")):

@@ -18,6 +18,7 @@ import vectors_lib as V
 
 EXIT_DISAGREE, EXIT_INFRA, EXIT_CANARY = 1, 2, 3
 NO_NATIVE = "--no-native" in sys.argv
+CPLANT = os.environ.get("CIC_CONFORM_PLANT", "")      # a planted defect of the schema rule, for the self-test only
 LEGACY = "--legacy" in sys.argv
 _argv = sys.argv; _tmp = tempfile.mkdtemp(); sys.argv = [_argv[0], _tmp]
 try:
@@ -71,6 +72,11 @@ def p_value(v):
 def schema_verdict(sc):
     """The schema rule, written from the text of limits doc 3.2 (the pin errors first, then the first refused expression in document order). No other implementation of it exists."""
     cons = sc.get("contracts", [])
+    if CPLANT == "pin-after-expressions":
+        for i, c in enumerate(cons, 1):
+            code, _ = C.classify(V.dec(c["expr"]))
+            if code:
+                return "refuse", code, i
     if cons:
         st = sc["pin"]["state"]
         if st == "missing":
@@ -79,7 +85,10 @@ def schema_verdict(sc):
             return "refuse", "pattern_profile_unknown", None
         if st == "conflict" and len(set(sc["pin"]["versions"])) > 1:
             return "refuse", "pattern_profile_conflict", None
-    for i, c in enumerate(cons, 1):
+    order = list(enumerate(cons, 1))
+    if CPLANT == "last-refused":
+        order.reverse()
+    for i, c in order:
         code, _ = C.classify(V.dec(c["expr"]))
         if code:
             return "refuse", code, i
@@ -89,7 +98,7 @@ def schema_verdict(sc):
 def p_schema(sc):
     verdict, code, at = schema_verdict(sc)
     want = (sc["expect"], sc.get("code"), sc.get("at"))
-    check("P.schema", sc["id"], (verdict, code, at if sc.get("at") is not None else None), want)
+    check("P.schema", sc["id"], (verdict, code, at), want)          # the whole triple, nothing masked (review F1 of #49)
 
 
 def legacy(v):
@@ -149,6 +158,10 @@ def main():
     except BaseException as e:
         print("INCOMPLETE: the vector file cannot be read: %r" % (e,)); return EXIT_INFRA
     ex, va, sc = d["expressions"], d["values"], d["schemas"]
+    lim = d.get("limits", {})                     # the declared limits against the constants of the implementation (review F2 of #49)
+    for k, got in (("length", C.S.LIMITS["length"]), ("repeat_count", C.S.LIMITS["repeat"]), ("group_depth", C.S.LIMITS["depth"]), ("repeat_product", C.S.LIMITS["repeat_product"]),
+                   ("unbounded_quantifiers", C.S.LIMITS["unbounded"]), ("pi_max", C.PI_MAX), ("value_code_points", C.VALUE_MAX)):
+        check("P.meta", "limits." + k, lim.get(k), got)
     if LEGACY:
         n = bad = 0; lf_red = False
         for v in va:

@@ -9,6 +9,18 @@ import vectors_lib as V
 
 fails = []
 
+# The accepted decisions (O2 of #48 and the limits of #46), written here independently of the vector file: the file's own metadata is checked AGAINST them (review F2 of #49).
+DECIDED_LIMITS = {"length": 256, "repeat_count": 255, "group_depth": 4, "repeat_product": 1000, "unbounded_quantifiers": 3, "pi_max": 2048, "value_code_points": 256}
+DECIDED_CODES = {
+    "expression": {"pattern_empty", "pattern_too_long", "pattern_not_ascii_printable", "pattern_empty_branch", "pattern_unbalanced_group", "pattern_group_extension", "pattern_escape_unsupported",
+                   "pattern_metachar_unexpected", "pattern_anchor_misplaced", "pattern_class_empty", "pattern_class_negated", "pattern_class_unterminated", "pattern_class_range_order",
+                   "pattern_class_nested_or_posix", "pattern_class_set_operator", "pattern_quantifier_malformed", "pattern_quantifier_leading_zero", "pattern_quantifier_bounds_order",
+                   "pattern_quantifier_not_greedy", "pattern_nesting_too_deep", "pattern_repeat_count_too_large", "pattern_repeat_product_too_large", "pattern_unbounded_too_many",
+                   "pattern_unbounded_on_group", "pattern_program_too_large"},
+    "value": {"pattern_value_not_unicode_scalar", "pattern_value_too_long", "pattern_value_mismatch"},
+    "pin": {"pattern_profile_missing", "pattern_profile_unknown", "pattern_profile_conflict"},
+}
+
 
 def expect(label, cond, detail=""):
     if not cond:
@@ -77,8 +89,35 @@ def main(path=None):
                 if v.get("expect") == "refuse":
                     expect("code.known.%s" % i, v.get("code") in expr_codes + pin_codes, "the code %r is not known" % v.get("code"))
                     bycode[v.get("code")].append(i)
+                    n = len(v.get("contracts", []))
+                    if v.get("code") in pin_codes:     # a pin error is about the schema, not about one expression: no position
+                        expect("schema.at.forbidden.%s" % i, "at" not in v, "a pin refusal must not carry a position")
+                    else:                              # an expression refusal names the position of the refused contract in document order
+                        expect("schema.at.required.%s" % i, isinstance(v.get("at"), int) and 1 <= v["at"] <= n, "an expression refusal needs `at`, 1..%d, got %r" % (n, v.get("at")))
                 else:
                     expect("expect.%s" % i, v.get("expect") == "accept")
+                    expect("schema.at.forbidden.%s" % i, "at" not in v, "an accepted schema has no position")
+    # ---- the normative metadata against the accepted decisions, and against the vectors' own boundaries (review F2 of #49)
+    expect("meta.profile.name", d.get("profile", {}).get("name") == "pattern", "profile.name is %r" % (d.get("profile", {}).get("name"),))
+    ver = d.get("profile", {}).get("version")
+    expect("meta.profile.version", isinstance(ver, int) and ver >= 1, "profile.version must be a positive integer (a working assumption until the pin decision)")
+    lim = d.get("limits", {})
+    expect("meta.limits.keys", set(lim) == set(DECIDED_LIMITS), "limits keys %s" % sorted(lim))
+    for k, want in DECIDED_LIMITS.items():
+        expect("meta.limits.%s" % k, lim.get(k) == want, "declared %r, decided %r" % (lim.get(k), want))
+    for k in ("expression", "value", "pin"):
+        expect("meta.codes.%s" % k, set(d["codes"].get(k, [])) == DECIDED_CODES[k] and len(d["codes"].get(k, [])) == len(DECIDED_CODES[k]),
+               "the %s codes differ from the decided set (missing %s, extra %s)" % (k, sorted(DECIDED_CODES[k] - set(d["codes"].get(k, []))), sorted(set(d["codes"].get(k, [])) - DECIDED_CODES[k])))
+    xs = d["expressions"]
+    expect("meta.boundary.pi_max", any(x.get("pi") == lim.get("pi_max") and x["expect"] == "accept" for x in xs) and any(x.get("pi") == (lim.get("pi_max") or 0) + 1 and x["expect"] == "refuse" for x in xs),
+           "the declared pi_max %r has no accepted vector with PI = pi_max and no refused vector with PI = pi_max + 1" % lim.get("pi_max"))
+    lens = [(len(V.dec(x["expr"])), x["expect"]) for x in xs if x["id"].startswith("X-T")]
+    expect("meta.boundary.length", (lim.get("length"), "accept") in lens and ((lim.get("length") or 0) + 1, "refuse") in lens, "no vector at length = limit accepted and length = limit + 1 refused")
+    vl = [(len(V.dec(x["value"])), x["expect"]) for x in d["values"] if x["id"].startswith("V-L")]
+    expect("meta.boundary.value_code_points", (lim.get("value_code_points"), "match") in vl and ((lim.get("value_code_points") or 0) + 1, "pattern_value_too_long") in vl, "no value vector at the value limit matching and at limit + 1 too long")
+    sc_ok = [x["pin"].get("version") for x in d["schemas"] if x["pin"].get("state") == "ok"]
+    expect("meta.pin.known-version", bool(sc_ok) and set(sc_ok) == {ver}, "the schema vectors with a known pin use version %s, the profile says %r" % (sorted(set(sc_ok)), ver))
+    expect("meta.pin.unknown-differs", all(x["pin"].get("version") != ver for x in d["schemas"] if x["pin"].get("state") == "unknown"), "an `unknown` pin vector uses the known version")
     for r in req:
         expect("coverage.requirement.%s" % r, r in byreq, "no vector exercises this requirement")
     for r in nt:

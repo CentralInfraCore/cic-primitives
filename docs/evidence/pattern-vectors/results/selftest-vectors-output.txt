@@ -9,6 +9,15 @@ A planted: the only pin-missing vectors removed            OK exit=1 needle=cove
 A planted: a limit without its refusing side               OK exit=1 needle=boundary.R-LIM-DEPTH
 A planted: an accepted expression without its PI           OK exit=1 needle=pi.present.X-A001
 A planted: a value vector with a verdict of another kind   OK exit=1 needle=expect.V-M001
+A planted: a schema refusal without its position           OK exit=1 needle=schema.at.required.S-010
+A planted: a pin refusal that carries a position           OK exit=1 needle=schema.at.forbidden.S-002
+A planted: a schema refusal with a position outside the schema OK exit=1 needle=schema.at.required.S-010
+A planted: the declared pi_max changed to 4096             OK exit=1 needle=meta.limits.pi_max
+A planted: the declared length limit changed to 255        OK exit=1 needle=meta.limits.length
+A planted: the profile name changed                        OK exit=1 needle=meta.profile.name
+A planted: a decided code removed from the code list       OK exit=1 needle=meta.codes.expression
+A planted: every accepted PI-boundary vector moved away from pi_max OK exit=1 needle=meta.boundary.pi_max
+A planted: the known pin version of the schema vectors changed OK exit=1 needle=meta.pin.known-version
 B positive control (all implementations, native)           OK exit=0
 B planted: CIC_CODES_PLANT=charset-before-length           OK exit=1 needle='DISAGREE P X-T107'
 B planted: CIC_CODES_PLANT=size-off-by-one                 OK exit=1 needle='DISAGREE P X-Z101'
@@ -20,6 +29,10 @@ B planted: CIC_CODES_PLANT=early-size                      OK exit=1 needle='DIS
 B planted: CIC_SPEC_PLANT=no-class-precheck-spec           OK exit=1 needle='DISAGREE S X-K101'
 B planted: CIC_SPEC_PLANT=count-before-bounds-spec         OK exit=1 needle='DISAGREE S X-Q108'
 B planted: CIC_SPEC_PLANT=depth-before-extension-spec      OK exit=1 needle='DISAGREE S X-S124'
+B planted: CIC_CONFORM_PLANT=last-refused                  OK exit=1 needle='DISAGREE P.schema S-010'
+B planted: CIC_CONFORM_PLANT=pin-after-expressions         OK exit=1 needle='DISAGREE P.schema S-005'
+B vector file: S-010 with the position of the third contract OK exit=1 needle='DISAGREE P.schema S-010'
+B vector file: pi_max declared as 4096                     OK exit=1 needle='DISAGREE P.meta limits.pi_max'
 B planted: the Go runner matches any line feed (canary)    OK exit=3
 B planted: the Go runner matches a line feed after abc (vectors) OK exit=1 needle='DISAGREE G V-M021'
 C infra: the vector file is unreadable (check)             OK exit=2
