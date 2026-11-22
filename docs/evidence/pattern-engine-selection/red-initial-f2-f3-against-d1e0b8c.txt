@@ -1,0 +1,4 @@
+F2: previous probe with a missing nfa interpreter: exit=1 (the previous harness rule `returncode != 0` calls this DETECTED: yes)
+    last line: FileNotFoundError: [Errno 2] No such file or directory: '/nonexistent/python3'
+F3: previous rule on an ACCEPTED pattern without an expectation when all five linear engines answer compile_error: dis=False (a pass)
+    new rule D (an accepted pattern must compile in every linear engine): failure=True

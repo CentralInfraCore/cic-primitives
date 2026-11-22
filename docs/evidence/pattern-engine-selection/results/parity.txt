@@ -1,0 +1,12 @@
+A. conformance to the INDEPENDENT hand-authored expectation: 165 cases (117 semantic + 48 from the 24 accepted constructs, each with a counterpart); engines: nfa, re2g, re2p, go, rust ; backtracking engines (counted, not failing the run): re, regex
+   re     differs from the expectation on 0 of 165 cases
+   regex  differs from the expectation on 0 of 165 cases
+   re2g   differs from the expectation on 0 of 165 cases
+   re2p   differs from the expectation on 0 of 165 cases
+   nfa    differs from the expectation on 0 of 165 cases
+   go     differs from the expectation on 0 of 165 cases
+   rust   differs from the expectation on 0 of 165 cases
+B. DIFFERENTIAL agreement of the linear-time engines on 1500 generated patterns / 15000 fuzz cases (seed 20261121; 261 generated texts refused by the classifier and dropped): disagreements 0. (Agreement is not correctness: no independent expectation exists for these cases.)
+C. second opinion on the generated cases from the stdlib re (2 s per case): checked 15000, timed out 0, not compiled by re 0, disagreeing with the linear consensus 0
+D. classifier-ACCEPTED patterns that a linear-time engine refused to compile (each is a failure): 0
+failures in total: 0
