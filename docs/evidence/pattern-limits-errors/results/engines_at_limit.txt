@@ -1,0 +1,9 @@
+case                      PI    len | nfa (verdict, compile+match ms) | go (verdict, match ns)   | rust (verdict, match ns)
+pi.2048                 2048     38 | match            21.5 | match           2857909 | match          60960781
+pi.2049                 2049     39 | match            21.4 | match           2750432 | match          60362341
+fam.4096                4096     70 | match            68.2 | match           6686645 | match         134831478
+fam.8192                8192    135 | match           132.5 | match          12674281 | match         267977675
+fam.16320              16320    256 | match           251.7 | match          27689834 | match         378602025
+worst-work.23802       23802    256 | match           695.1 | match         115104248 | match         886066570
+dp-optimum.241250     241250    256 | nomatch         233.3 | nomatch         3540144 | nomatch        32459596
+all expectations held

@@ -1,0 +1,63 @@
+## boundary: largest accepted / smallest refused value of each candidate limit
+length                   accepted: len=256  ACCEPT | refused: len=257  REFUSE longer than the length limit 256
+repeat count             accepted: len=6    ACCEPT | refused: len=6    REFUSE a repetition count above the limit 255
+group depth              accepted: len=9    ACCEPT | refused: len=11   REFUSE group nesting deeper than the limit 4
+repeat product           accepted: len=11   ACCEPT | refused: len=11   REFUSE the product of nested repeat counts exceeds 1000
+unbounded quantifiers    accepted: len=6    ACCEPT | refused: len=8    REFUSE more than 3 unbounded quantifiers
+unbounded on a group     accepted: len=3    ACCEPT | refused: len=4    REFUSE an unbounded quantifier on a group (resource rule: it may only follow a single atom)
+length with both anchors accepted: len=256 ACCEPT | refused: len=257 REFUSE longer than the length limit 256
+value length             256 code points: True | 257 code points: False (value-length rule applied by the caller, see 3.4)
+## contracts: program size of the 9 existing contracts
+c0 states=  18 length= 51 ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$
+c1 states=  33 length= 91 ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$
+c2 states=  11 length= 28 ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+c3 states=  41 length= 14 ^[0-9a-f]{40}$
+c4 states=  72 length= 21 ^sha256:[0-9a-f]{64}$
+c5 states=  45 length= 20 ^[A-Za-z0-9+/]{43}=$
+c6 states=  13 length= 13 ^vault:v1:.+$
+c7 states=   4 length= 24 ^[a-z0-9][a-z0-9./_:-]*$
+c8 states=  28 length= 40 ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$
+largest existing contract: 72 states
+## space: the largest NFA program the candidate limits admit (DP over atoms, {0,h}, groups; no alternation, <=3 unbounded quantifiers ignored)
+DP optimum: 241250 states predicted, 241251 states built; pattern length 256; classifier stats {'length': 256, 'max_repeat': 250, 'depth': 2, 'groups': 2, 'unbounded': 0, 'alt': 0, 'repeat_product': 1000}
+DP optimum pattern: ((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa){0,4}){0,250}
+best program within  16 characters:   2500 states
+best program within  32 characters:  17250 states
+best program within  64 characters:  49250 states
+best program within 128 characters: 113250 states
+best program within 256 characters: 241250 states
+worst match at the DP optimum (value = 256 x 'a', then 256 x 'a' + 'b'):
+  value a*256    match     28.9 ms, compile    194.3 ms, compile peak  66518 kB, P=483751 (states 241251 + ranges 0 + edges 242500)
+  value a*256+b  match     29.0 ms, compile    193.0 ms, compile peak  66214 kB, P=483751 (states 241251 + ranges 0 + edges 242500)
+## size: the measure PI against the NFA states over accepted patterns (DP optimum, the 9 contracts, random mutations up to E <= 30000)
+patterns 151: the NFA has exactly PI + 1 states on every one of them
+## worksearch (PI <= 512): the pattern that maximizes the simulation work on a 256-code-point value (hill-climb, 1500 candidates, seed 20261123; values 'a' x 256 and 'a' x 255 + 'b')
+cap    512: worst work    178284 visits; pattern length 254; PI=   509; match     14.3 ms; compile    0.59 ms
+  pattern: ((a?){10}.*[a{0}){0,4}(a|b{0,aa|b{0,2aaa]a{0,50}(.[a-z](a{0,5}[a-z]){0,4}.(a{0,5}){0,4}a.{0,10}[a-z.a*].b{0,1})[aa*a{,a*a*aaa.55}*.0(a0,50,a{0,10}.)55,aaa])[aa-][a.-z][a{z][.(a5]{0,0}[(a{a*}a*,2}(a|b{0,10}a*)][a-z]{0,10}((a*){10}a*[aaa{0,3}.a..a]){0,10}a
+## worksearch (PI <= 1024): the pattern that maximizes the simulation work on a 256-code-point value (hill-climb, 1500 candidates, seed 20261123; values 'a' x 256 and 'a' x 255 + 'b')
+cap   1024: worst work    286603 visits; pattern length 256; PI=  1021; match     20.7 ms; compile    1.00 ms
+  pattern: ((a?.){10}a[(a})(a|b{0,55a},5*}|b{0,10}){0,8}0,..5.a1a{0,50}0}}(.0,1,a2(a|b{0,255})a}a)|a*ab.{0,5)(a{0,25(a|b{0,10}){0,4}{0,4a*}aa{0,10}a*(0a]){0,10}((a?){10}.){0,10}((a?){10}.[a.(a|0}a*)-za][,5aa}.{04{0,5}.0,a*.0a*}a(a.{0{a*a*a*]a*){0,10}((a?){10}){0,10}a
+## worksearch (PI <= 2048): the pattern that maximizes the simulation work on a 256-code-point value (hill-climb, 1500 candidates, seed 20261123; values 'a' x 256 and 'a' x 255 + 'b')
+cap   2048: worst work    690362 visits; pattern length 242; PI=  2046; match     50.2 ms; compile    1.92 ms
+  pattern: ((a?){10}){0,10}(([ab()0){0,2}{(a|a*{a0,2.a{a,50a*|b{0,102a{0,3})a*.}aa*z(a{0,5a{0,50}}){0(a{0,100}){0a*]a?){10}a*){0,10}((a?){10}a*){0,10}a*((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}(.(a?){10}){0,10}.((a?){10}){0,10}.aa
+## worksearch (PI <= 4096): the pattern that maximizes the simulation work on a 256-code-point value (hill-climb, 1500 candidates, seed 20261123; values 'a' x 256 and 'a' x 255 + 'b')
+cap   4096: worst work   1209261 visits; pattern length 256; PI=  3360; match     79.9 ms; compile    3.05 ms
+  pattern: ((a?){10}){0,10}((a*){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}((.?){10}){0,10}((a?){10}){0,10}((a?){10}){0,10}
+## worksearch (PI <= 8192): the pattern that maximizes the simulation work on a 256-code-point value (hill-climb, 1500 candidates, seed 20261123; values 'a' x 256 and 'a' x 255 + 'b')
+cap   8192: worst work   2722038 visits; pattern length 250; PI=  7785; match    206.6 ms; compile    6.07 ms
+  pattern: ((a{0,10}[a*abaa{a*a{a},aa0(a*{0,255a{0,10},.]){0,10}){0,10}((a{0,10}[a]){0,10}){0,10}(a{0,100}){0,4}([a-z]aaa{0,50}[a-z.]aaa|b{0,25})(a*(.{0,10}){0,10}[*aa{{0,a{0,3},1a00a})a*{0a(a{0}0,5aa0}}]{0,10}.*a*){0,10}(a|b{0,10})[a-z]a[a.a5.{a..3}3}]a.{0,3}.
+## worksearch (PI <= 30000): the pattern that maximizes the simulation work on a 256-code-point value (hill-climb, 1500 candidates, seed 20261123; values 'a' x 256 and 'a' x 255 + 'b')
+cap  30000: worst work   8737771 visits; pattern length 256; PI= 23802; match    658.3 ms; compile   20.82 ms
+  pattern: ((a{0,10}){0,10}){0,10}((a[a*]{0,10}){0,10}){0,10}((a{0,10}){0,10}){0,10}((a.{0,10}){0,10}){0,10}((a{0,10}){0,10}){0,10}a*((a.{0,10}){0,10}){0,10}((a{0,10}){0,10}){0,10}((a{0,10}){0,10}){0,10}((aa*a{0,10}){0,10}(a{0,10}){0,10}){0,10}((a{0,10}){0,10}){0,10}
+## search: independent random hill-climb on the real classifier and evaluator (4000 candidates, seed 20261122)
+candidates 4000, accepted by the classifier 561; best program found by the search: 5944 states (length 256)
+best pattern found: a.a*..(a.aaa*((a[..a.z]aa{0,5}.){0,4}(a|b{0,255}a{0,255})[-za]..a|b{0,255}aa.)aa..aaaa|[a-z]b.{0,255}aaa(aa{0,255}aa.[aa]|baa{0,100})a[a-z]).[}a][a-z][aa-z].a.(aa...{0,255}.){0,2}.(a|b{0,255}[aaa])a*[*-.a**]a{0,3}....[.]{0,100}[aa*](a.aa[a.0].aa...){0,110}
+## cost: the own evaluator against the program size (family a{0,255} repeated; value = 256 x 'a'; compile best of 3, match best of 3, one process)
+  states        P  length   compile ms     match ms      peak kB ms/(P*N)ns
+     511     1276       8         0.39         0.09           62        0.3
+    1021     2551      16         0.77         6.63          160       10.2
+    2041     5101      32         1.45        19.85          403       15.2
+    4081    10201      64         3.09        46.29         1002       17.7
+    8161    20401     128         6.11       100.98         2169       19.3
+   16321    40801     256        13.11       210.12         4736       20.1
+all expectations held

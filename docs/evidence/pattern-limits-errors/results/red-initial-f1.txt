@@ -1,0 +1,3 @@
+DISAGREE  [^a&&b]      prototype (the verdict) = pattern_class_set_operator   previous text (reading order) = pattern_class_negated       
+DISAGREE  [z-a&&b]     prototype (the verdict) = pattern_class_set_operator   previous text (reading order) = pattern_class_range_order   
+RED shown: the previous text of 3.2 contradicts the verdict on both examples of the review

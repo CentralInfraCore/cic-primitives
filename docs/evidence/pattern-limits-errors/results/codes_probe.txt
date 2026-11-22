@@ -1,0 +1,134 @@
+## precedence
+ok       empty                                        want pattern_empty                        got pattern_empty                        empty pattern
+ok       too-long-before-charset                      want pattern_too_long                     got pattern_too_long                     longer than the length limit 256
+ok       charset                                      want pattern_not_ascii_printable          got pattern_not_ascii_printable          the pattern text is not ASCII printable
+ok       too-long-before-syntax                       want pattern_too_long                     got pattern_too_long                     longer than the length limit 256
+ok       length-counts-anchors                        want pattern_too_long                     got pattern_too_long                     longer than the length limit 256
+ok       depth-before-unbalanced                      want pattern_nesting_too_deep             got pattern_nesting_too_deep             group nesting deeper than the limit 4
+ok       count-before-later-unbalanced                want pattern_repeat_count_too_large       got pattern_repeat_count_too_large       a repetition count above the limit 255
+ok       unbalanced-before-later-count                want pattern_repeat_count_too_large       got pattern_repeat_count_too_large       a repetition count above the limit 255
+ok       unbounded-count-before-stacked               want pattern_unbounded_too_many           got pattern_unbounded_too_many           more than 3 unbounded quantifiers
+ok       stacked-first                                want pattern_quantifier_not_greedy        got pattern_quantifier_not_greedy        lazy, possessive or stacked quantifier is not in the subset
+ok       operator-before-range-order                  want pattern_class_set_operator           got pattern_class_set_operator           class set operator '&&' is not in the subset (Rust regex rea
+ok       operator-in-range                            want pattern_class_set_operator           got pattern_class_set_operator           class set operator '--' is not in the subset (Rust regex rea
+ok       leading-zero                                 want pattern_quantifier_leading_zero      got pattern_quantifier_leading_zero      a repetition count with a leading zero is not in the subset
+ok       bounds-order                                 want pattern_quantifier_bounds_order      got pattern_quantifier_bounds_order      repetition bounds out of order
+ok       empty-branch                                 want pattern_empty_branch                 got pattern_empty_branch                 an empty alternative, empty group or empty body is not in th
+ok       empty-body-anchors                           want pattern_empty_branch                 got pattern_empty_branch                 an empty alternative, empty group or empty body is not in th
+ok       unbalanced                                   want pattern_unbalanced_group             got pattern_unbalanced_group             unbalanced parenthesis
+ok       stray-close                                  want pattern_unbalanced_group             got pattern_unbalanced_group             unexpected ')' at 1
+ok       escape                                       want pattern_escape_unsupported           got pattern_escape_unsupported           escape \d is not in the subset
+ok       escape-in-class                              want pattern_escape_unsupported           got pattern_escape_unsupported           escape \d in a class is not in the subset
+ok       group-extension                              want pattern_group_extension              got pattern_group_extension              group extension '(?' is not in the subset
+ok       negated-class                                want pattern_class_negated                got pattern_class_negated                negated class is not in the subset
+ok       posix-class                                  want pattern_class_nested_or_posix        got pattern_class_nested_or_posix        '[' inside a class (POSIX class or nesting) is not in the su
+ok       unbounded-on-group                           want pattern_unbounded_on_group           got pattern_unbounded_on_group           an unbounded quantifier on a group (resource rule: it may on
+ok       anchor-in-the-middle                         want pattern_anchor_misplaced             got pattern_anchor_misplaced             unexpected metacharacter '^'
+ok       end-anchor-in-the-middle                     want pattern_anchor_misplaced             got pattern_anchor_misplaced             unexpected metacharacter '$'
+ok       quantifier-without-atom                      want pattern_metachar_unexpected          got pattern_metachar_unexpected          unexpected metacharacter '*'
+ok       product                                      want pattern_repeat_product_too_large     got pattern_repeat_product_too_large     the product of nested repeat counts exceeds 1000
+ok       size                                         want pattern_program_too_large            got pattern_program_too_large            PI=6012 > 2048
+ok       size-after-syntax                            want pattern_unbalanced_group             got pattern_unbalanced_group             unbalanced parenthesis
+ok       product-beats-size-wherever-it-stands        want pattern_repeat_product_too_large     got pattern_repeat_product_too_large     the product of nested repeat counts exceeds 1000
+ok       class.C1-before-C2                           want pattern_class_set_operator           got pattern_class_set_operator           class set operator '&&' is not in the subset (Rust regex rea
+ok       class.C1-before-range-order                  want pattern_class_set_operator           got pattern_class_set_operator           class set operator '&&' is not in the subset (Rust regex rea
+ok       class.C1-before-escape                       want pattern_class_set_operator           got pattern_class_set_operator           class set operator '--' is not in the subset (Rust regex rea
+ok       class.C1-sees-an-unterminated-class          want pattern_class_set_operator           got pattern_class_set_operator           class set operator '&&' is not in the subset (Rust regex rea
+ok       class.escaped-pair-is-no-operator            want (accepted)                           got (accepted)                           PI=1
+ok       class.C2-before-C3                           want pattern_class_negated                got pattern_class_negated                negated class is not in the subset
+ok       class.C3-first-error-wins                    want pattern_escape_unsupported           got pattern_escape_unsupported           escape \d in a class is not in the subset
+ok       class.range-order-before-later-escape        want pattern_class_range_order            got pattern_class_range_order            class range out of order
+ok       class.escape-in-range-end-before-order       want pattern_escape_unsupported           got pattern_escape_unsupported           escape \d in a class is not in the subset
+ok       class.nested-before-range-order              want pattern_class_nested_or_posix        got pattern_class_nested_or_posix        '[' inside a class (POSIX class or nesting) is not in the su
+ok       class.empty-only-when-first                  want pattern_class_empty                  got pattern_class_empty                  empty class
+ok       class.unterminated                           want pattern_class_unterminated           got pattern_class_unterminated           unterminated class
+ok       repeat.Q3-before-Q4                          want pattern_quantifier_leading_zero      got pattern_quantifier_leading_zero      a repetition count with a leading zero is not in the subset
+ok       repeat.Q4-before-count                       want pattern_quantifier_bounds_order      got pattern_quantifier_bounds_order      repetition bounds out of order
+ok       repeat.Q3-before-count                       want pattern_quantifier_leading_zero      got pattern_quantifier_leading_zero      a repetition count with a leading zero is not in the subset
+ok       repeat.Q5-count-before-count-limit           want pattern_unbounded_too_many           got pattern_unbounded_too_many           more than 3 unbounded quantifiers
+ok       repeat.Q5b-count-limit-on-open-brace         want pattern_repeat_count_too_large       got pattern_repeat_count_too_large       a repetition count above the limit 255
+ok       repeat.Q5-then-on-group                      want pattern_unbounded_on_group           got pattern_unbounded_on_group           an unbounded quantifier on a group (resource rule: it may on
+ok       repeat.Q1-before-Q2                          want pattern_unbounded_too_many           got pattern_unbounded_too_many           more than 3 unbounded quantifiers
+ok       repeat.count-before-product                  want pattern_repeat_count_too_large       got pattern_repeat_count_too_large       a repetition count above the limit 255
+ok       repeat.count-before-stacked                  want pattern_repeat_count_too_large       got pattern_repeat_count_too_large       a repetition count above the limit 255
+ok       repeat.product-before-stacked                want pattern_repeat_product_too_large     got pattern_repeat_product_too_large     the product of nested repeat counts exceeds 1000
+ok       repeat.stacked-after-brace                   want pattern_quantifier_not_greedy        got pattern_quantifier_not_greedy        lazy, possessive or stacked quantifier is not in the subset
+ok       repeat.stacked-after-question                want pattern_quantifier_not_greedy        got pattern_quantifier_not_greedy        lazy, possessive or stacked quantifier is not in the subset
+ok       repeat.malformed                             want pattern_quantifier_malformed         got pattern_quantifier_malformed         malformed repetition
+ok       repeat.malformed-unclosed                    want pattern_quantifier_malformed         got pattern_quantifier_malformed         malformed repetition
+ok       group.extension-before-depth                 want pattern_group_extension              got pattern_group_extension              group extension '(?' is not in the subset
+ok       group.depth-5                                want pattern_nesting_too_deep             got pattern_nesting_too_deep             group nesting deeper than the limit 4
+ok       group.empty-before-unbalanced                want pattern_empty_branch                 got pattern_empty_branch                 an empty alternative, empty group or empty body is not in th
+ok       anchor.escaped-dollar-is-a-literal           want (accepted)                           got (accepted)                           PI=2
+ok       anchor.double-backslash-then-dollar-is-the-anchor want (accepted)                           got (accepted)                           PI=2
+ok       anchor.escaped-dollar-after-class            want (accepted)                           got (accepted)                           PI=2
+ok       size.zero-repeat-of-a-big-subtree            want (accepted)                           got (accepted)                           PI=1
+ok       accepted                                     want (accepted)                           got (accepted)                           PI=15
+## boundary
+ok       PI == PI_MAX           PI=2048 states=2049 got (accepted)
+ok       PI == PI_MAX + 1       PI=2049 states=2050 got pattern_program_too_large
+## value
+ok       value.match                            want match                                got match
+ok       value.mismatch                         want pattern_value_mismatch               got pattern_value_mismatch
+ok       value.too-long-and-matching-prefix     want pattern_value_too_long               got pattern_value_too_long
+ok       value.too-long-and-not-matching        want pattern_value_too_long               got pattern_value_too_long
+ok       value.boundary-256                     want match                                got match
+ok       value.boundary-257                     want pattern_value_too_long               got pattern_value_too_long
+ok       value.lone-surrogate-first             want pattern_value_not_unicode_scalar     got pattern_value_not_unicode_scalar
+## totality and coverage
+corpus: 3732 accepted, 26455 refused (25 distinct codes), 0 refused without exactly one code
+reached   pattern_anchor_misplaced             'a$b'
+reached   pattern_class_empty                  '[]a]'
+reached   pattern_class_negated                '[^a]'
+reached   pattern_class_nested_or_posix        '[[:alpha:]]+'
+reached   pattern_class_range_order            '[z-a]'
+reached   pattern_class_set_operator           '[a-z&&[^b]]'
+reached   pattern_class_unterminated           '[ab'
+reached   pattern_empty                        ''
+reached   pattern_empty_branch                 'a|'
+reached   pattern_escape_unsupported           '\\d+'
+reached   pattern_group_extension              '(?i)abc'
+reached   pattern_metachar_unexpected          '*a'
+reached   pattern_nesting_too_deep             '((((((((a))))))))'
+reached   pattern_not_ascii_printable          'é'
+reached   pattern_quantifier_bounds_order      'a{2,1}'
+reached   pattern_quantifier_leading_zero      'a{01}'
+reached   pattern_quantifier_malformed         'a{,3}'
+reached   pattern_quantifier_not_greedy        'a*?'
+reached   pattern_repeat_count_too_large       'a{256}'
+reached   pattern_repeat_product_too_large     '(a{100}){100}'
+reached   pattern_too_long                     '(((((((((((((((((((((((((((((((((((((((((((((((((
+reached   pattern_unbalanced_group             '(a'
+reached   pattern_unbounded_on_group           '(ab)+'
+reached   pattern_unbounded_too_many           'a*a*a*a**'
+UNREACHED-ROW pattern_anchor_misplaced             '\^' is allowed only at the outer start
+UNREACHED-ROW pattern_anchor_misplaced             '\$' is allowed only at the outer end
+rows of the mapping table: 27, reached by the corpus: 25
+## PI per construct, zero repeats, bound
+ok       PI(a) = 1 (hand-derived 1), NFA states 2
+ok       PI(.) = 1 (hand-derived 1), NFA states 2
+ok       PI([a-z]) = 1 (hand-derived 1), NFA states 2
+ok       PI(ab) = 2 (hand-derived 2), NFA states 3
+ok       PI(a|b) = 3 (hand-derived 3), NFA states 4
+ok       PI((a|b)) = 3 (hand-derived 3), NFA states 4
+ok       PI(a|b|c) = 4 (hand-derived 4), NFA states 5
+ok       PI((a|b)(c|d)) = 6 (hand-derived 6), NFA states 7
+ok       PI(a?) = 2 (hand-derived 2), NFA states 3
+ok       PI(a*) = 2 (hand-derived 2), NFA states 3
+ok       PI(a+) = 3 (hand-derived 3), NFA states 4
+ok       PI(a{3}) = 3 (hand-derived 3), NFA states 4
+ok       PI(a{2,5}) = 8 (hand-derived 8), NFA states 9
+ok       PI(a{2,}) = 4 (hand-derived 4), NFA states 5
+ok       PI(a{0}b) = 1 (hand-derived 1), NFA states 2
+ok       PI(a{0,255}) = 510 (hand-derived 510), NFA states 511
+ok       PI((ab){2}) = 4 (hand-derived 4), NFA states 5
+ok       PI((a|b){0,2}) = 8 (hand-derived 8), NFA states 9
+ok       PI((a{2}){3}) = 6 (hand-derived 6), NFA states 7
+ok       PI(((a?){2}){3}) = 12 (hand-derived 12), NFA states 13
+ok       zero repeat of a big subtree: accepted=True (PI=1), NFA states 2
+ok       PI bound: 3833 expressions that pass tiers 1 and 2 (also above PI_MAX), the largest intermediate value of a bottom-up evaluation is 241250 (bound 512000 = 256 x 2000; the DP optimum is among them)
+## differential against the implementation of the specification text
+ok       differential: 70149 expressions (precedence cases, 30000 random texts, 40000 generated multi-defect texts, the constructs), 0 disagreements between the prototype and the implementation of the text; 25 distinct codes seen
+## determinism
+ok       determinism: 4 hash seeds -> 1 distinct digest(s) 65a3ed6ab3d44458
+all expectations held

@@ -62,6 +62,8 @@ Three rules close gaps found by the review (F2), each with refusal vectors and a
 
 A value longer than the limit **does not match** (a contract violation, not a crash). The limits are part of the profile and are the same for every engine, so a Go or Rust evaluator that could do more still refuses more. **Running time is a separate, normative requirement (review F1):** the evaluator of the profile MUST guarantee time linear in the product of the expression length and the value length in the worst case (a finite-automaton or RE2-class evaluator). A backtracking engine, Python `re` among them, is **not eligible**, whatever limits stand in front of it. Which concrete evaluator the Python side uses is a separate decision (section 7, O5). Go `regexp` and Rust `regex` meet the requirement.
 
+**Update (PR2, `GRAMMAR-PATTERN-LIMITS-AND-ERRORS.md`):** the statement above that the limits bound the size of the compiled program is **wrong**: the repeat-product limit bounds the counts, not the repeated content, and `((a x250){0,4}){0,250}` (256 characters) is accepted and expands to 241 250 NFA states (194 ms and 66 MB to compile). The proposal adds a size rule on the whole program (PI <= 2048, computed from the text); it is a proposal, O2 stays open until the owner decides.
+
 **3.5 Fail-closed.** An expression outside the profile is **refused when the schema is read** (the producer and the verifier refuse the schema, not the value). There is no fallback to the native engine, no flag, no per-engine behavior, and no partial acceptance: a schema with one refused expression is refused as a whole. The refusal names the construct. (The reason identifiers are an open point; working names in section 7.)
 
 ## 4. Versioning and compatibility
@@ -89,8 +91,8 @@ One shared vector set, in the style of the node-name vectors (`name-vectors/node
 | # | Point | Recommendation | Owner decision (review of 2026-11-21) |
 |---|---|---|---|
 | O1 | Name and place of the version field | `spec.pattern_profile.version` in `schemas/atomic/contract.yaml` (candidate), with the three binding errors of 4.1 | **GO** |
-| O2 | The limit values of 3.4 | the candidate values above; the data is in section 2 | acceptable starting points; **not final** until the running-time requirement (3.4, fact 8) is settled |
-| O3 | Reason identifiers | working names, **not decided and not in any declaration**: `pattern_syntax_unsupported` (schema refused), `pattern_value_too_long` (value above the limit) | **HOLD** until the implementation specification |
+| O2 | The limit values of 3.4 | the candidate values above; the data is in section 2 | acceptable starting points; **not final** until the running-time requirement (3.4, fact 8) is settled ; PR2 proposal: add a program-size rule (PI <= 2048), see `GRAMMAR-PATTERN-LIMITS-AND-ERRORS.md` |
+| O3 | Reason identifiers | working names, **not decided and not in any declaration**: `pattern_syntax_unsupported` (schema refused), `pattern_value_too_long` (value above the limit) | **HOLD** until the implementation specification ; PR2 proposal: a set of 25 expression codes and 3 value codes with a deterministic precedence, replacing the working names; still **not decided** |
 | O4 | Scope | the profile covers the `pattern` **contract** only; the grammar's own JSON Schema `pattern` keys stay as they are | **GO** |
 | O5 | The evaluator | a **linear-time** evaluator (3.4); Python `re` behind counting rules is withdrawn as a recommendation (fact 8) | linear-time evaluator accepted; the **choice of the concrete implementation is a separate decision** |
 | O6 | A schema that carries a `pattern` contract must declare the pin | yes, explicit, no implicit default (4.3) | **GO** |

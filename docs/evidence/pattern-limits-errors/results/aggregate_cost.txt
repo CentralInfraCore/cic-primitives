@@ -1,0 +1,22 @@
+## real: the real records against their composed schema (own evaluator, each distinct expression compiled once)
+record                                                          values  distinct   compile ms     match ms
+tag primitives/@v0.2.1 release/cic-primitives-v0.2.1.yaml           55         7        0.374        1.131
+tests/fixtures/envelope3/golden-record.yaml                         17         7        0.367        0.293
+docs/evidence/release-schema-draft-probe/base-record.yaml           55         7        0.368        1.086
+## synthetic: K distinct contracts, each the slowest expression found under PI <= 2048 (PI=2046, length 242), one value of 256 code points each
+   K   compile ms     match ms     total ms     total/K ms
+   1          1.7         43.6         45.3          45.35
+   2          3.5         87.0         90.5          45.25
+   4         14.0        175.6        189.7          47.42
+   8         15.9        379.9        395.7          49.46
+  16         34.6        784.4        819.0          51.19
+  32         67.8       1532.2       1599.9          50.00
+per-contract cost varies by a factor of 1.13 over K = 1..32 (additive: the total is the sum of the parts)
+## values: one contract (the same expression), M values of 256 code points; compile once
+compile once: 1.9 ms
+    M     match ms     match/M ms
+    1         48.3          48.34
+   10        488.8          48.88
+  100       4858.8          48.59
+model (an extrapolation, NOT a measurement): total ~ sum over distinct expressions of compile(PI) + sum over values of match(PI, length); at about 50 ms per worst-case contract and value, 1000 such contracts would take about 50 s
+all expectations held
