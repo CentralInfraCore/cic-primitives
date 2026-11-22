@@ -1,0 +1,19 @@
+A positive control (the plan as it is)                                                               OK exit=0
+A planted: an obligation no unit implements (O-VA-13 removed from U-05)                              OK exit=1 needle=assignment.obligation.O-VA-13
+A planted: a unit without tests (U-04)                                                               OK exit=1 needle=unit.tests.U-04
+A planted: a test that names no kind (U-04)                                                          OK exit=1 needle=unit.test.known.U-04.approved:expressionz
+A planted: the tests of a unit no longer cover a requirement (U-09 without plan P-04: R-VERIFIER-BUDGET) OK exit=1 needle=unit.covers.U-09.O-VF-03.R-VERIFIER-BUDGET
+A planted: the tests of a unit no longer cover a requirement (U-05 without plan P-01: R-LINEAR)      OK exit=1 needle=unit.covers.U-05.O-VA-13.R-LINEAR
+A planted: a unit that comes after a unit of a later milestone (U-05 after U-08)                     OK exit=1 needle=unit.after.U-05.U-08
+A planted: the milestones no longer follow the steps in order (M3 is step 9)                         OK exit=1 needle=order.steps
+A planted: the owner's decisions no longer come before the implementation (G-0 removed from M0 and M1) OK exit=1 needle=order.decisions-before-implementation
+A planted: the primary implementation is no longer on hold (M3)                                      OK exit=1 needle=hold.milestone.M3
+A planted: a plan item in no gate (P-01 removed from G-6)                                            OK exit=1 needle=gate.plan-item-placed.P-01
+A planted: a gate without evidence (G-2)                                                             OK exit=1 needle=gate.fields.G-2
+A planted: a gate no milestone uses (G-9 removed from M5)                                            OK exit=1 needle=gate.used.G-9
+A planted: the counts of the plan no longer equal the files (512 approved)                           OK exit=1 needle=counts.approved
+A planted: the Forms integration no longer listed as out of scope                                    OK exit=1 needle=scope.out-of-scope
+A planted: the plan document no longer mentions a unit (U-06)                                        OK exit=1 needle=text.mentions.U-06
+A planted: the approved vector file modified by one appended comment line                            OK exit=1 needle=approved.unchanged
+C infra: the plan is unreadable (exit 2, not a detection)                                            OK exit=2
+self-test: all as expected

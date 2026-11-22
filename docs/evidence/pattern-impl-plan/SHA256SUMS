@@ -1,0 +1,7 @@
+9217c6025d0f835531a22800bc57ddf050db69817c0dd4887eb9b76004254aba  README.md
+8d0b5e480c8d532c779828a899b9d2f5e4f518658adfeeadc29ad56f7afe8b10  check_impl_plan.py
+20b7388c17db190e3e4c6499dd67ff9c3c32e83f47a3376360627e6a315cf131  selftest_impl_plan.py
+95df4828fd770c9d2a7930c360f4fee87e2517d928f081fad3193d49f1c256c9  results/check_impl_plan.txt
+f4efbe49a2ab119084afd1a0d913ece3828cba7c6884cf1013d656a12d6a628a  results/selftest-impl-plan-output.txt
+c6be415bc91103d61664e451c5987dc5ebbb533bcfa24bba71fe2eed0ab561f3  ../../design/pattern-profile-plan/plan.yaml
+33483613a3f8b188d25418a708585f1c076c27f690169432510aea13786101ef  ../../en/GRAMMAR-PATTERN-IMPLEMENTATION-PLAN.md
