@@ -86,6 +86,8 @@ def faults():
         ("a `declared` pin with different versions", text.replace(line_of(text, "S-017"), line_of(text, "S-017").replace("versions: [1, 1]", "versions: [1, 2]")), "pin.declared.S-017"),
         ("the file moved consistently to the NOT approved version 2 (consistent in itself)", v2, "meta.profile.version"),
         ("the profile version is not an integer (the text 1)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: '1'\n", 1), "meta.profile.version.type"),
+        ("the profile version is the boolean true (True == 1 in Python)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: true\n", 1), "meta.profile.version.type"),
+        ("the profile version is the float 1.0 (1.0 == 1 in Python)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: 1.0\n", 1), "meta.profile.version.type"),
         ("the profile version is 0 (not positive)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: 0\n", 1), "meta.profile.version.type"),
         ("an unknown pin vector that uses the known version", text.replace("pin: {state: unknown, version: 99}", "pin: {state: unknown, version: 1}", 1), "meta.pin.unknown-differs"),
         ("identical unknown declarations expected to be accepted", text.replace(line_of(text, "S-019"), line_of(text, "S-019").replace("versions: [99, 99]", "versions: [1, 1]")), "meta.pin.declared.S-019"),
@@ -120,7 +122,9 @@ def main():
     text = open(VEC, encoding="utf-8").read()
     for name, content, needle in (("S-010 with the position of the third contract", text.replace(line_of(text, "S-010"), line_of(text, "S-010").replace("at: 2,", "at: 3,")), "DISAGREE P.schema S-010"),
                                   ("pi_max declared as 4096", text.replace("  pi_max: 2048", "  pi_max: 4096"), "DISAGREE P.meta limits.pi_max"),
-                                  ("profile version 2 (consistent in itself, not approved)", moved_to_version(text, 2), "DISAGREE P.meta profile.version")):
+                                  ("profile version 2 (consistent in itself, not approved)", moved_to_version(text, 2), "DISAGREE P.meta profile.version"),
+                                  ("profile version true (True == 1)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: true\n", 1), "DISAGREE P.meta profile.version got bool:True"),
+                                  ("profile version 1.0 (1.0 == 1)", text.replace("profile:\n  name: pattern\n  version: 1\n", "profile:\n  name: pattern\n  version: 1.0\n", 1), "DISAGREE P.meta profile.version got float:1.0")):
         d = tempfile.mkdtemp()
         try:
             f = os.path.join(d, "v.yaml"); open(f, "w", encoding="utf-8").write(content)

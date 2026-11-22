@@ -21,6 +21,8 @@ A planted: the known pin version of the schema vectors changed OK exit=1 needle=
 A planted: a `declared` pin with different versions        OK exit=1 needle=pin.declared.S-017
 A planted: the file moved consistently to the NOT approved version 2 (consistent in itself) OK exit=1 needle=meta.profile.version
 A planted: the profile version is not an integer (the text 1) OK exit=1 needle=meta.profile.version.type
+A planted: the profile version is the boolean true (True == 1 in Python) OK exit=1 needle=meta.profile.version.type
+A planted: the profile version is the float 1.0 (1.0 == 1 in Python) OK exit=1 needle=meta.profile.version.type
 A planted: the profile version is 0 (not positive)         OK exit=1 needle=meta.profile.version.type
 A planted: an unknown pin vector that uses the known version OK exit=1 needle=meta.pin.unknown-differs
 A planted: identical unknown declarations expected to be accepted OK exit=1 needle=meta.pin.declared.S-019
@@ -41,6 +43,8 @@ B planted: CIC_CONFORM_PLANT=identical-is-conflict         OK exit=1 needle='DIS
 B vector file: S-010 with the position of the third contract OK exit=1 needle='DISAGREE P.schema S-010'
 B vector file: pi_max declared as 4096                     OK exit=1 needle='DISAGREE P.meta limits.pi_max'
 B vector file: profile version 2 (consistent in itself, not approved) OK exit=1 needle='DISAGREE P.meta profile.version'
+B vector file: profile version true (True == 1)            OK exit=1 needle='DISAGREE P.meta profile.version got bool:True'
+B vector file: profile version 1.0 (1.0 == 1)              OK exit=1 needle='DISAGREE P.meta profile.version got float:1.0'
 B planted: the Go runner matches any line feed (canary)    OK exit=3
 B planted: the Go runner matches a line feed after abc (vectors) OK exit=1 needle='DISAGREE G V-M021'
 C infra: the vector file is unreadable (check)             OK exit=2

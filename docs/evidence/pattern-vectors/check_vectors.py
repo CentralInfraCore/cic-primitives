@@ -109,8 +109,8 @@ def main(path=None):
     # ---- the normative metadata against the accepted decisions, and against the vectors' own boundaries (review F2 of #49)
     expect("meta.profile.name", d.get("profile", {}).get("name") == "pattern", "profile.name is %r" % (d.get("profile", {}).get("name"),))
     ver = d.get("profile", {}).get("version")
-    expect("meta.profile.version.type", isinstance(ver, int) and not isinstance(ver, bool) and ver >= 1, "profile.version must be a positive integer, got %r" % (ver,))
-    expect("meta.profile.version", ver == DECIDED_PROFILE_VERSION, "the vector file declares profile version %r; the approved identifier is %d (a file that is consistent in itself but declares another version is refused)" % (ver, DECIDED_PROFILE_VERSION))
+    expect("meta.profile.version.type", type(ver) is int and ver >= 1, "profile.version must be a positive integer of the exact type int (not a bool, not a float: Python's True == 1 and 1.0 == 1), got %s %r" % (type(ver).__name__, ver))
+    expect("meta.profile.version", type(ver) is int and ver == DECIDED_PROFILE_VERSION, "the vector file declares profile version %r; the approved identifier is %d (a file that is consistent in itself but declares another version is refused)" % (ver, DECIDED_PROFILE_VERSION))
     lim = d.get("limits", {})
     expect("meta.limits.keys", set(lim) == set(DECIDED_LIMITS), "limits keys %s" % sorted(lim))
     for k, want in DECIDED_LIMITS.items():
