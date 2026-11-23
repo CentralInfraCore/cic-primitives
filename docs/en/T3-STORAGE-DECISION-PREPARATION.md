@@ -12,7 +12,7 @@ A proposal is acceptable only if, for **each** location, the following can be **
 
 | # | Criterion | Evidence that will show it (after the owner's GO to provision) |
 |---|---|---|
-| A1 | **Immutability:** compliance-type retention that nobody, the account owner included, can shorten or remove, of **at least 10 years** (a planning minimum) | the provider's own read-back of the object's retention mode and retain-until date, recorded with the version id; a refused delete/shorten on a throw-away trial object |
+| A1 | **Immutability:** a compliance-type retention that nobody, the account owner included, can shorten or remove, at the **guarantee level the owner chooses in D-S3b (section 3a)**: **L1** (retention of at least 10 years in force from the first day) or **L2** (a ten-year lifecycle: a compliance retention in force at all times, with a verified, dated extension duty until at least 10 years are covered) | the provider's own read-back of the object's retention mode and retain-until date, recorded with the version id; a refused delete/shorten on a throw-away trial object; for L2 also the extension schedule and, at each yearly drill, the days left |
 | A2 | **Versioning**, so an overwrite cannot replace the protected bytes | the trial object: an overwrite creates a new version, the locked one stays readable by version id |
 | A3 | **Independence of the two locations:** different operator, different account, different billing, different credentials; not two regions of one provider | the account record (section 4), the named holder per location |
 | A4 | **Read-back:** the dry-run package (the manifest, the verification procedure; NO real token) is read back from each location and its SHA-256 equals the local one (dry-run manifest digest `d7cb0f75...8dc4e38` is the current dry-run value only) | a digest-bound evidence file per location (no credential in it) |
@@ -21,19 +21,32 @@ A proposal is acceptable only if, for **each** location, the following can be **
 
 C-Q6-3, C-Q6-4, C-Q6-6, C-Q6-7 (the third, offline copy; a dry-run package from each location; restore drills; the renewal mechanism) are **preserve-phase** under the chosen order and are not on the critical path to the GO; they are listed in section 6 so the proposal does not forget them.
 
+## 3a. The guarantee level: an explicit decision (review S3-F1)
+
+The two readings are **different guarantees** and the CIC proof model must state which it wants; a document that says "10 years" without choosing hides a difference:
+
+| Level | What it guarantees | What it relies on | Provider fit (read 2026-11-23) |
+|---|---|---|---|
+| **L1: locked for 10+ years from the first day** | the object cannot be shortened or removed by anyone for 10+ years from creation, **without any later action** | the provider's lock alone (plus the account staying alive) | **AWS S3: yes**, the maximum retention is 100 years (the "managing Object Lock" page: "The maximum retention period is 100 years"); **B2: no**, one setting is 1 to 3 000 days |
+| **L2: a ten-year lifecycle** | a compliance retention is **always in force**, renewed by a **verified, dated extension duty** before it runs out, until 10+ years are covered | the lock **plus a future operational duty** of a named administrator (and a successor) | AWS S3 and B2 |
+
+**Consequence, stated plainly:** if the owner requires **L1 for every online copy, B2 is not acceptable as location A**; the candidates would then be AWS S3 and a second provider that can lock 10+ years in one setting (**not yet identified or verified**). If the owner accepts **L2**, B2 + AWS S3 stays a usable pair, **with this condition**: the B2 extension (before **2035-02-16**) is a recorded, owned duty with a **large safety margin** (proposed: the first extension no later than **2033-02-16**, two years before the expiry, and the days left are checked at every yearly restore drill). Under L2 the pair is still unequal in strength: **AWS S3 would give L1, B2 only L2**; a record that claims "10 years locked" for B2 would be wrong until the extension has been performed.
+
+**A1 is therefore not satisfiable by B2 at L1.** No level is chosen here; the proposal (section 8) is **L2, with S3 at L1 as a bonus**, for the owner to confirm or reject.
+
 ## 3. The options
 
 The online pair must satisfy A3, so the question is which two operators. Facts are from the providers' own pages unless marked.
 
 | Option (A + B) | For | Against | State of the facts |
 |---|---|---|---|
-| **B2 + AWS S3** | both read from the providers' own documentation; two US operators, separate accounts and billing; B2's keys are the most granular, S3 is the best documented | both US-based (a jurisdiction-diversity argument is not made); B2's retention maximum is 3 000 days, so the 10 years need one extension; S3's maximum retention depends on a bucket policy (not stated on the page) | **read** 2026-11-23 (B2 lock page, S3 lock page); prices of 2026-11-05 |
+| **B2 + AWS S3** | both read from the providers' own documentation; two US operators, separate accounts and billing; B2's keys are the most granular, S3 is the best documented | both US-based (a jurisdiction-diversity argument is not made); **B2 can give only L2** (3 000 days per setting, so the 10 years need one extension); S3 can give L1 (maximum 100 years; a bucket policy can narrow the allowed range) | **read** 2026-11-23 (B2 lock page, S3 lock page); prices of 2026-11-05 |
 | **B2 + Scaleway** (EU) | a second jurisdiction and operator | Scaleway's pages **refused access** (403 on 2026-11-23, as on 2026-11-05): every Scaleway fact is a search excerpt and **unverified** | **not verifiable now** |
 | **AWS S3 + Scaleway** | one US, one EU | same Scaleway gap; S3 alone carries the retention-extension question differently | **not verifiable now** |
 
 **Proposal (for decision, not a selection): B2 as location A and AWS S3 as location B**, because they are the two whose lock semantics were read from the providers' own pages, with Scaleway or another EU operator considered a later **third online** option only after its pages are read. The offline copy (C) stays the second class of the plan #33.
 
-**Date arithmetic for the retention (computed):** a retention started on 2026-11-30 under B2's maximum 3 000 days ends **2035-02-16**; 10 years from then is **2036-11-30**. So B2 needs **one extension before 2035-02-16** (a dated duty of the administrator, entered in the custody log; the lock can be extended, never shortened). For S3, a retain-until date can be set to 2036-12-31 directly if the bucket policy permits it (verify V4). A retention set too long cannot be undone (B2: the only way out is closing the account), so the period is set once, deliberately, after the trial object.
+**Date arithmetic for the retention (computed):** a retention started on 2026-11-30 under B2's maximum 3 000 days ends **2035-02-16**; 10 years from then is **2036-11-30**. So B2 needs **one extension before 2035-02-16** (a dated duty of the administrator, entered in the custody log; the lock can be extended, never shortened): a **future operational obligation, not a protection in force in 2026** (review S3-F1). For S3, a retain-until date up to the documented 100-year maximum can be set directly (V4a: **documented**, section 7; V4b: the account's bucket policy actually allows 2036-12-31 and the object version actually received that date: **open**, closable only by configuration evidence). A retention set too long cannot be undone (B2: the only way out is closing the account), so the period is set once, deliberately, after the trial object.
 
 ## 4. Account and custody model (S10): what the owner must name
 
@@ -47,7 +60,7 @@ Nothing below is a person; the owner fills the roles (section 8, D-S10). **The r
 | **Reader** | read-back and the yearly restore drill | read-only |
 | **Successor** | takes over the roles if the holder is unavailable | named in the custody record; recovery codes in two physical places |
 
-Controls that matter more than the storage price: a **funded payment method with alerts** for ten years, the **two-factor device and recovery codes**, the **dated extension duty**, the yearly restore drill (an hour a year), and the successor. **The account is the weakest point:** a compliance-locked object can be removed early only by closing or deleting the account, so a lapsed payment or a closed account ends the copy; the offline copy and the second online location are the mitigation, which is why A3 (independence) is a criterion and not a preference.
+Controls that matter more than the storage price: a **funded payment method with alerts** for ten years, the **two-factor device and recovery codes**, the **dated extension duty**, the yearly restore drill (an hour a year), and the successor. **The account is the weakest point, and the lock is not a guarantee of the account (review S3-F3):** the providers document closing or deleting the account as a way to remove a compliance-locked object early (B2: "you need to close your Backblaze B2 account"; S3: deleting the AWS account), and **non-payment is a concrete route to deletion**: Backblaze's B2 non-payment procedure describes a grace period, a stop of service and then possible deletion (**secondary evidence**: a search excerpt of an article about 3.8 years old; the page itself refused access here, 403; the current Terms of Service say Backblaze may suspend or terminate and may delete the data). **This document does not claim that account deletion is the only way to lose an object early**; it keeps apart the **provider's retention guarantee** (the lock) and the **risks of the account's lifecycle** (payment, closure, termination, recovery). Independence therefore means separate operators **and** separate billing, recovery and custodians, which is why A3 is a criterion and not a preference.
 
 ## 5. Cost and risk (honest limits)
 
@@ -67,17 +80,27 @@ For each of A and B, in this order (the lock before the data, never after it): c
 | S3 Object Lock: compliance mode "can't be overwritten or deleted by any user, including the root user"; the retention cannot be shortened; **works only with S3 Versioning enabled**; minimum and maximum retention restrictable by a bucket-policy condition | **re-read**, consistent |
 | Scaleway Object Lock and pricing | **not obtainable** (HTTP 403); search excerpts only |
 | B2 cloud-storage two-factor verification | **not obtained** (the documentation URL tried returned 404) |
-| V1 B2 versioning with Object Lock; V3 retention extension and key capabilities without delete; V4 S3 maximum retain-until and prices; V6 terms on closure, lapse, deletion | **open** (they need the providers' pages or a throw-away bucket; the throw-away bucket is **not authorised**) |
+| **V4a** AWS S3 maximum retention: **100 years** ("The maximum retention period is 100 years"; a bucket-policy condition `s3:object-lock-remaining-retention-days` can narrow the range; an event-hold duration is up to 36,500 days) | **documented, read 2026-11-23** (https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-managing.html) |
+| **V4b** the account's bucket policy allows the intended date and the object version actually received it | **open**: closable only by configuration evidence after the GO |
+| Backblaze B2 non-payment procedure (grace period, service stop, possible deletion) | **secondary only**: the help page refused access (403); a search excerpt about 3.8 years old; the current Terms of Service say the data may be deleted |
+| V1 B2 versioning with Object Lock; V3 retention extension and key capabilities without delete; S3 prices; V6 terms on closure, lapse, deletion | **open** (they need the providers' pages or a throw-away bucket; the throw-away bucket is **not authorised**) |
 
 ## 8. The decisions asked of the owner (none is taken here)
 
 | # | Decision | Proposal |
 |---|---|---|
-| D-S3a | the provider pair for A and B | B2 (A) and AWS S3 (B), conditional on V1, V3, V4 and V6 being shown; the offline copy as the third |
-| D-S3b | the retention commitment | at least 10 years (a planning minimum, not a legal obligation of the CIC), the B2 extension date **2035-02-16** recorded as a commitment, the yearly restore drill |
+| D-S3a | the provider pair for A and B | **a conditional candidate, not a recommendation to select:** B2 (A, L2) and AWS S3 (B, L1), conditional on V1, V3, V4b and V6 being shown; the offline copy as the third; the pair depends on D-S3b |
+| D-S3b | **the guarantee level (L1 or L2, section 3a) and the retention commitment** | at least 10 years (a planning minimum, not a legal obligation of the CIC); **L2** (a ten-year lifecycle) with the B2 extension before **2035-02-16**, the first extension no later than **2033-02-16**, a named owner and successor for it, the days left checked at each yearly restore drill; **if the owner requires L1 for every online copy, B2 is out** and a second provider that locks 10+ years in one setting must be found and verified first |
 | D-S10 | the account holder(s), administrator, successor, the payment instrument and the role mailbox, per location | the owner names them; **held: nobody is named** |
 | D-GO | permission to **create the accounts and the throw-away trial and dry-run objects** | **not requested by this document and not given**; today's HOLD stands |
 
 ## 9. Not claimed
 
 That any provider is approved, that any account or store exists, that the unverified Scaleway or two-factor facts are true, that the prices are current, that a provider's terms permit this use, or that a restore works. This document changes no condition of the readiness record: C-Q6-1, C-Q6-2 and C-Q6-5 stay `open`.
+
+## 10. Changes after the review of `49a6bc6`
+
+* **S3-F1 (HIGH):** A1 no longer reads "at least 10 years" for every location; it names the guarantee level the owner chooses (L1 or L2, section 3a) and states that B2 cannot meet L1. The choice is an explicit owner decision (D-S3b).
+* **S3-F2 (MEDIUM):** the AWS maximum is documented (100 years, read 2026-11-23); V4 is split into V4a (documented) and V4b (the actual configuration, open).
+* **S3-F3 (MEDIUM):** the account lifecycle is separated from the provider's retention guarantee; non-payment deletion is cited as concrete but **secondary** evidence; the claim "account deletion is the only way" is withdrawn.
+* The pair B2 + AWS S3 stays a **conditional candidate**; nothing was selected, created or paid for.
