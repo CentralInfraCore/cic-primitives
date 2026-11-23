@@ -1,32 +1,29 @@
-id    status     conditions verified
-Q1a   proposed   2 of 4
-Q1b   proposed   1 of 3
+id    status     pre-execution conditions verified
+Q1a   proposed   2 of 3
+Q1b   proposed   1 of 1
 Q2    proposed   0 of 7
 Q3    proposed   0 of 1
-Q6    proposed   0 of 7
-UNMET decision Q1a is only proposed
-UNMET decision Q1b is only proposed
-UNMET decision Q2 is only proposed
-UNMET decision Q3 is only proposed
-UNMET decision Q6 is only proposed
-UNMET condition C-Q1a-1 is open: the canonical manifest contract is reviewed and accepted
-UNMET condition C-Q1a-4 is open: the manifest that is time-stamped is built at EXECUTION time from the then-current commits
-UNMET condition C-Q1b-1 is open: the bytes of the three ended template releases are in the preserved package
-UNMET condition C-Q1b-2 is open: an investigation settles the UNKNOWN state of schema-registry@0.1.0 (no certificate, a val
-UNMET condition C-Q2-1 is open: DigiCert: RFC 3161 compatibility of its service for the request form used (a documented en
-UNMET condition C-Q2-2 is open: DigiCert: the TSA certificate chain and a trust anchor from an independent source are obta
-UNMET condition C-Q2-3 is open: DigiCert: the terms of use of the endpoint and the permission to use it are verified (none
-UNMET condition C-Q2-4 is open: GlobalSign: RFC 3161 compatibility, the digest-based API and the request form are verified
-UNMET condition C-Q2-5 is open: GlobalSign: the TSA certificate chain and a trust anchor from an independent source are ob
-UNMET condition C-Q2-6 is open: GlobalSign: the terms of service, the eligibility and the access (an account, credentials)
-UNMET condition C-Q2-7 is open: the two authorities are shown to be organisationally independent (different operators and 
-UNMET condition C-Q3-1 is open: the executor of the time-stamping is named by the owner
-UNMET condition C-Q6-1 is open: copy 1: immutable object storage with versioning and compliance retention of at least 10 y
-UNMET condition C-Q6-2 is open: copy 2: a second, independent provider holds the package
-UNMET condition C-Q6-3 is open: copy 3: an offline or isolated archive holds the package
-UNMET condition C-Q6-4 is open: the preserved package has the contents the contract names (record bytes or a digest-verifi
-UNMET condition C-Q6-5 is open: custody and access are documented: a named holder, separate credentials, recovery, a succe
-UNMET condition C-Q6-6 is open: a restore drill from EACH copy with a cryptographic check has passed, and the yearly sched
-UNMET condition C-Q6-7 is open: an evidence-renewal mechanism is planned (re-time-stamping before a hash algorithm or a TS
-execution GO: none recorded (and it cannot be recorded in this file)
-T3 time-stamping: NOT_READY
+Q6    proposed   0 of 3
+Q6a   proposed   0 of 0
+phases (order not chosen): pre 3 of 15 verified, capture 0 of 3, preserve 0 of 6
+UNMET decision Q1a is proposed
+UNMET decision Q1b is proposed
+UNMET decision Q2 is proposed
+UNMET decision Q3 is proposed
+UNMET decision Q6 is proposed
+UNMET decision Q6a is proposed
+UNMET pre-execution condition C-Q1a-1 is open: the canonical manifest contract is reviewed and accepted
+UNMET pre-execution condition C-Q2-1 is open: DigiCert: RFC 3161 compatibility of its service for the request form used (a documented en
+UNMET pre-execution condition C-Q2-2 is open: DigiCert: the TSA certificate chain and a trust anchor from an independent source are obta
+UNMET pre-execution condition C-Q2-3 is open: DigiCert: the terms of use of the endpoint and the permission to use it are verified (none
+UNMET pre-execution condition C-Q2-4 is open: GlobalSign: RFC 3161 compatibility, the digest-based API and the request form are verified
+UNMET pre-execution condition C-Q2-5 is open: GlobalSign: the TSA certificate chain and a trust anchor from an independent source are ob
+UNMET pre-execution condition C-Q2-6 is open: GlobalSign: the terms of service, the eligibility and the access (an account, credentials)
+UNMET pre-execution condition C-Q2-7 is open: the two authorities are shown to be organisationally independent (different operators and 
+UNMET pre-execution condition C-Q3-1 is open: the executor of the time-stamping is named by the owner
+UNMET pre-execution condition C-Q6-1 is open: storage location A: immutable object storage with versioning and compliance retention of a
+UNMET pre-execution condition C-Q6-2 is open: storage location B: a second, independent provider is provisioned and the same dry-run pac
+UNMET pre-execution condition C-Q6-5 is open: custody and access are documented for the locations: a named holder, separate credentials,
+owner confirmations: recorded statements, NOT authenticated by this check (the form is verified, the author is not)
+execution GO: none recorded (and it cannot be recorded in the prerequisites file)
+T3 time-stamping: NOT_PREPARED

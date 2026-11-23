@@ -1,32 +1,51 @@
-A real record: NOT_READY, valid (no FAIL-EXPECT), the unmet items listed, no GO recorded                         OK exit=1
-A real record with the review document: the tables and the counts of the document equal the record               OK exit=1
-C planted (document): the decisions table of the document edited by hand (Q2 marked confirmed)                   OK exit=1 needle=doc.table.decisions
-C planted (document): the conditions table of the document edited by hand (C-Q6-1 marked verified)               OK exit=1 needle=doc.table.conditions
-C planted (document): the document states other counts of the conditions                                         OK exit=1 needle=doc.counts
-C planted (document): the document without the decisions table markers                                           OK exit=1 needle=doc.markers.decisions
-B positive control: all decisions confirmed and all conditions verified is READY_FOR_OWNER_GO, and the file still records no GO OK exit=0
-B stays NOT_READY (valid): all decisions confirmed but ONE condition still open                                  OK exit=1 verdict=NOT_READY
-B stays NOT_READY (valid): all conditions verified but the decisions only PROPOSED                               OK exit=1 verdict=NOT_READY
-C planted: a decision is missing (Q6 removed)                                                                    OK exit=1 verdict=INVALID needle=decision.missing.Q6
-C planted: a decision this check does not know (Q9)                                                              OK exit=1 verdict=INVALID needle=decision.unknown.Q9
-C planted: a confirmed decision without a confirmation (Q2)                                                      OK exit=1 verdict=INVALID needle=decision.confirmation.Q2
-C planted: a confirmation by someone who is not the owner                                                        OK exit=1 verdict=INVALID needle=decision.confirmation.Q2
-C planted: a decision that is only proposed carries a confirmation                                               OK exit=1 verdict=INVALID needle=decision.confirmation.Q1a
-C planted: a decision with an unknown status                                                                     OK exit=1 verdict=INVALID needle=decision.status.Q3
-C planted: a decision without requirements                                                                       OK exit=1 verdict=INVALID needle=decision.requirements.Q3
-C planted: a verified condition without evidence                                                                 OK exit=1 verdict=INVALID needle=condition.evidence.C-Q6-1
-C planted: a verified condition whose evidence file does not exist                                               OK exit=1 verdict=INVALID needle=condition.evidence-file.C-Q6-1
-C planted: a verified condition whose evidence file does not contain the stated text                             OK exit=1 verdict=INVALID needle=condition.evidence-text.C-Q6-1
-C planted: an open condition that names evidence                                                                 OK exit=1 verdict=INVALID needle=condition.open-with-evidence.C-Q6-1
-C planted: a condition that names an unknown decision                                                            OK exit=1 verdict=INVALID needle=condition.decision.C-Q6-1
-C planted: a decision with no condition (the conditions of Q3 removed)                                           OK exit=1 verdict=INVALID needle=decision.conditions.Q3
-C planted: a condition recorded twice                                                                            OK exit=1 verdict=INVALID needle=condition.duplicate.C-Q6-1
-C planted: the internal latest date is not before the chain boundary                                             OK exit=1 verdict=INVALID needle=dates.order
-C planted: the target is after the internal latest date                                                          OK exit=1 verdict=INVALID needle=dates.order
-C planted: the Q3 requirement no longer states the dates of the dates block                                      OK exit=1 verdict=INVALID needle=dates.q3-text
-C planted: a GO is recorded in this file                                                                         OK exit=1 verdict=INVALID needle=go.recorded-here
-C planted: the dry-run manifest does not hold the open records of the inventory (the inventory says 89 registry records) OK exit=1 verdict=INVALID needle=manifest.count
-C planted: the source has no statement of its authenticity                                                       OK exit=1 verdict=INVALID needle=source.provenance
-C planted: the record format is not 1                                                                            OK exit=1 verdict=INVALID needle=record.format
-D infra: the record is unreadable (exit 2, not a detection)                                                      OK exit=2
+A real record: NOT_PREPARED, valid (no FAIL-EXPECT), the unmet items listed, the confirmations stated as NOT authenticated, no GO OK exit=1
+A real record with the review document: the tables and the counts of the document equal the record                     OK exit=1
+B PREPARED: every decision confirmed, every pre-execution condition verified (staged order), NO GO record: PREPARED_FOR_OWNER_GO and still not the GO OK exit=0 verdict=PREPARED_FOR_OWNER_GO
+B a valid separate GO record binds the prepared state: GO_RECORDED                                                     OK exit=0 verdict=GO_RECORDED
+B after the GO every capture condition verified: EVIDENCE_CAPTURED                                                     OK exit=0 verdict=EVIDENCE_CAPTURED
+B after the GO every capture and preserve condition verified: PRESERVATION_COMPLETE                                    OK exit=0 verdict=PRESERVATION_COMPLETE
+B the STRICT order: the strict_phase conditions are pre-execution, so with them still open the record is NOT_PREPARED (the same fixture is PREPARED under the staged order) OK exit=1 verdict=NOT_PREPARED
+B the STRICT order with the strict_phase conditions verified is PREPARED_FOR_OWNER_GO (the later-phase conditions of the other decisions stay open) OK exit=0 verdict=PREPARED_FOR_OWNER_GO
+B a pre-execution condition still open (staged): NOT_PREPARED, valid                                                   OK exit=1 verdict=NOT_PREPARED
+B the pre-execution conditions verified but the decisions only PROPOSED: NOT_PREPARED, valid                           OK exit=1 verdict=NOT_PREPARED
+C planted: a decision is missing (Q6 removed)                                                                          OK exit=1 verdict=INVALID needle=decision.missing.Q6
+C planted: a decision this check does not know (Q9)                                                                    OK exit=1 verdict=INVALID needle=decision.unknown.Q9
+C planted: a confirmed decision without a recorded statement (Q2)                                                      OK exit=1 verdict=INVALID needle=decision.confirmation.Q2
+C planted: a confirmation that does not even claim to be the owner's (stated_by reviewer)                              OK exit=1 verdict=INVALID needle=decision.confirmation.Q2
+C planted: a decision that is only proposed carries a confirmation                                                     OK exit=1 verdict=INVALID needle=decision.confirmation.Q1a
+C planted: a decision with an unknown status                                                                           OK exit=1 verdict=INVALID needle=decision.status.Q3
+C planted: Q6a confirmed but the order is not chosen                                                                   OK exit=1 verdict=INVALID needle=decision.chosen.Q6a
+C planted: Q6a with an order that is neither staged nor strict                                                         OK exit=1 verdict=INVALID needle=decision.chosen.Q6a
+C planted: a verified condition without evidence                                                                       OK exit=1 verdict=INVALID needle=condition.evidence.C-Q6-1
+C planted: a verified condition whose evidence file does not exist                                                     OK exit=1 verdict=INVALID needle=condition.evidence-file.C-Q6-1
+C planted: a verified condition whose evidence file does not contain the stated text                                   OK exit=1 verdict=INVALID needle=condition.evidence-text.C-Q6-1
+C planted: an open condition that names evidence                                                                       OK exit=1 verdict=INVALID needle=condition.open-with-evidence.C-Q6-1
+C planted: a condition with an unknown phase                                                                           OK exit=1 verdict=INVALID needle=condition.phase.C-Q6-1
+C planted: a condition that names an unknown decision                                                                  OK exit=1 verdict=INVALID needle=condition.decision.C-Q6-1
+C planted: a decision with no condition (the conditions of Q3 removed)                                                 OK exit=1 verdict=INVALID needle=decision.conditions.Q3
+C planted: a condition recorded twice                                                                                  OK exit=1 verdict=INVALID needle=condition.duplicate.C-Q6-1
+C planted: capture evidence verified WITHOUT a GO record (evidence that can only exist after the execution)            OK exit=1 verdict=INVALID needle=phase.without-go
+C planted: preserve evidence verified WITHOUT a GO record                                                              OK exit=1 verdict=INVALID needle=phase.without-go
+C planted: preserve evidence verified before the capture is complete (a GO exists)                                     OK exit=1 verdict=INVALID needle=phase.order
+C planted: a GO record that is not stated by the owner                                                                 OK exit=1 verdict=INVALID needle=go.format
+C planted: a GO record without a date                                                                                  OK exit=1 verdict=INVALID needle=go.format
+C planted: a GO record that binds another prepared state (the digest of a state that changed)                          OK exit=1 verdict=INVALID needle=go.digest
+C planted: a GO record while the record is not prepared (a pre-execution condition is open)                            OK exit=1 verdict=INVALID needle=go.not-prepared
+C planted: a GO written into the prerequisites file                                                                    OK exit=1 verdict=INVALID needle=go.recorded-here
+C planted: the internal latest date is not before the chain boundary                                                   OK exit=1 verdict=INVALID needle=dates.order
+C planted: the target is after the internal latest date                                                                OK exit=1 verdict=INVALID needle=dates.order
+C planted: the Q3 requirement no longer states the dates of the dates block                                            OK exit=1 verdict=INVALID needle=dates.q3-text
+C planted: a record of the manifest SWAPPED for another one (the count is still 92)                                    OK exit=1 verdict=INVALID needle=manifest.set.missing.
+C planted: ...and the swapped-in record is reported as extra                                                           OK exit=1 verdict=INVALID needle=manifest.set.extra.cic-schema-registry:standards/zzz/zzz.v0.0.1.yaml
+C planted: a record of the manifest missing (91)                                                                       OK exit=1 verdict=INVALID needle=manifest.set.missing.
+C planted: an extra record in the manifest (93)                                                                        OK exit=1 verdict=INVALID needle=manifest.set.extra.cic-schema-registry:standards/zzz/zzz.v0.0.1.yaml
+C planted: a record of the manifest at another commit than the expected set pins                                       OK exit=1 verdict=INVALID needle=manifest.entry.
+C planted: the inventory has no expected set of open records                                                           OK exit=1 verdict=INVALID needle=manifest.set.empty
+C planted: the source has no statement of its authenticity                                                             OK exit=1 verdict=INVALID needle=source.provenance
+C planted: the record format is not 2                                                                                  OK exit=1 verdict=INVALID needle=record.format
+C planted (document): the decisions table of the document edited by hand (Q2 marked confirmed)                         OK exit=1 needle=doc.table.decisions
+C planted (document): the conditions table of the document edited by hand (C-Q6-1 marked verified)                     OK exit=1 needle=doc.table.conditions
+C planted (document): the document states other counts of the conditions                                               OK exit=1 needle=doc.counts
+C planted (document): the document without the decisions table markers                                                 OK exit=1 needle=doc.markers.decisions
+D infra: the record is unreadable (exit 2, not a detection)                                                            OK exit=2
 self-test: all as expected

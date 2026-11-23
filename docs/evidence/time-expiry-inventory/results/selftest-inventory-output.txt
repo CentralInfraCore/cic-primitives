@@ -28,6 +28,8 @@ C planted: a registry file that mentions the blocks is unaccounted for          
 C planted: a tag record has no scope element                                                                           OK exit=1 needle=complete.tag-scope.cic-yang:yang/@v0.1.3
 C planted: the instant of the inventory is after a class's boundary but the class is still declared open (the boundary + 1 s case) OK exit=1 needle=consistent.state.registry
 C planted: the instant of the inventory is exactly the boundary but the class is declared ended                        OK exit=1 needle=consistent.state.registry
+C planted: the expected set of open records lost one record (91 of 92)                                                 OK exit=1 needle=consistent.open-records
+C planted: the expected set of open records has a duplicate                                                            OK exit=1 needle=consistent.open-records
 C planted: the state of a class does not follow from its boundary (an ended class declared open)                       OK exit=1 needle=consistent.state.template:base@0.6.0
 C planted: the registry class's earliest certificate end differs from the kept Source CA                               OK exit=1 needle=consistent.registry-source-ca
 C planted: the inventory's Source CA end differs from the kept certificate                                             OK exit=1 needle=chain.dates.source-ca.pem

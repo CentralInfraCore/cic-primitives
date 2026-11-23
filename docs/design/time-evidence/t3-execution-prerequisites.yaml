@@ -1,9 +1,13 @@
-# THE T3 DECISIONS AS PROPOSED, AND THE PREREQUISITES OF THE TIME-STAMPING (the 92 open records). A RECORD, documentation only: it performs nothing. It keeps three things apart, as the G-0 record does:
-#  (1) the DECISIONS (Q1a, Q1b, Q2, Q3, Q6): the requirements that BECOME BINDING when the owner confirms them; today every one is `proposed` (a reviewer's recommendation of 2026-11-23, not an owner decision);
-#  (2) the CONDITIONS still to be VERIFIED before the time-stamping may be performed (provider terms, access, trust anchors, storage, restore drills): each is `open` until it has evidence that the check can read;
-#  (3) the EXECUTION GO: a separate owner act to PERFORM the time-stamping; `execution_go` is null and this file can never state it. Checked by docs/evidence/time-execution-prereq/check_t3_readiness.py.
-prerequisites_format: 1
-source: {kind: reviewer_recommendation, date: 2026-11-23, reference: "the review text pasted into the working session by the owner on 2026-11-23, headed 'T3 - javasolt tulajdonosi hatarozatok' (the five proposed resolutions Q1a, Q1b, Q2, Q3, Q6)", authenticity: "a transcribed recommendation: not signed, not verifiable by this repository; it is NOT an owner decision until the owner confirms it"}
+# THE T3 DECISIONS AS PROPOSED, AND THE PREREQUISITES OF THE TIME-STAMPING (the 92 open records). A RECORD, documentation only: it performs nothing. It keeps four things apart:
+#  (1) the DECISIONS (Q1a, Q1b, Q2, Q3, Q6, Q6a): the requirements that BECOME BINDING when the owner confirms them; today every one is `proposed` (a reviewer's recommendation of 2026-11-23, not an owner decision).
+#      A confirmation is a RECORDED STATEMENT (`stated_by: owner`, a date, a reference): this repository cannot authenticate who wrote it, and the check says so.
+#  (2) the CONDITIONS, each in a PHASE: `pre` (must be verified BEFORE the owner's GO), `capture` (can only be verified AFTER the GO, when the tokens exist), `preserve` (the end state, verified after the capture);
+#      each is `open` until it has evidence that the check can read. Under the STRICT preservation order the `strict_phase: pre` conditions move from `preserve` to `pre`.
+#  (3) the GO to perform the time-stamping: a SEPARATE owner act (docs/design/time-evidence/t3-execution-go.yaml, absent today); `execution_go` here is null and this file can never state it.
+#  (4) the state machine: NOT_PREPARED -> PREPARED_FOR_OWNER_GO -> (the GO record) GO_RECORDED -> EVIDENCE_CAPTURED -> PRESERVATION_COMPLETE. NONE of these is an authorisation; the check never gives the GO.
+# Checked by docs/evidence/time-execution-prereq/check_t3_readiness.py.
+prerequisites_format: 2
+source: {kind: reviewer_recommendation, date: 2026-11-23, reference: "the review text pasted into the working session by the owner on 2026-11-23, headed 'T3 - javasolt tulajdonosi hatarozatok' (the five proposed resolutions Q1a, Q1b, Q2, Q3, Q6) and the review of the same day that proposed the staged order (Q6a)", authenticity: "a transcribed recommendation: not signed, not verifiable by this repository; it is NOT an owner decision until the owner confirms it"}
 execution_go: null
 dates: {target: "2026-11-30", internal_latest: "2026-12-15"}
 decisions:
@@ -13,7 +17,7 @@ decisions:
   topic: scope and the manifest
   requirements:
   - "All 92 open records are in scope (the 90 countersigned records of the cic-schema-registry and the 2 cic-yang release records)."
-  - "One canonical manifest: for each record its identifier, the SHA-256 of the EXACT record bytes, the repository and the commit and tag references (docs/en/T3-MANIFEST-CONTRACT.md)."
+  - "One canonical manifest: for each record its identifier, the SHA-256 of the EXACT record bytes, the repository and the commit and tag references (docs/en/T3-MANIFEST-CONTRACT.md); the manifest holds EXACTLY the expected set of records of the inventory (the same identifiers, commits and refs), not merely the same number."
   - "The digest of the manifest's WHOLE byte stream is what is time-stamped."
 - id: Q1b
   status: proposed
@@ -40,31 +44,42 @@ decisions:
 - id: Q6
   status: proposed
   confirmation: null
-  topic: custody and preservation
+  topic: custody and preservation (the end state)
   requirements:
   - "The manifest, the records, the RFC 3161 tokens, the TSA certificates and the verification aids in at least THREE copies in at least TWO independent storage failure domains: one in immutable object storage, one at a second independent provider, one offline or isolated archive."
   - "The preserved package holds the record bytes (or a digest-verified restorable source), the canonical manifest, the RAW token of each authority, the certificate chains and the frozen version of the verification procedure."
-  - "Retention at least 10 years (a PLANNING minimum, not a statement of a legal obligation of the CIC), a restore and cryptographic check every year, and a planned evidence-renewal mechanism for the weakening of hash algorithms and TSA chains. Q6 is settled BEFORE the time-stamping is performed."
+  - "Retention at least 10 years (a PLANNING minimum, not a statement of a legal obligation of the CIC), a restore and cryptographic check every year, and a planned evidence-renewal mechanism for the weakening of hash algorithms and TSA chains."
+- id: Q6a
+  status: proposed
+  confirmation: null
+  chosen: null
+  topic: the ORDER of the preservation (an alternative for the owner to choose)
+  requirements:
+  - "STAGED (recommended by the review, with STRICT preconditions): at least TWO separate, verified storage locations are prepared BEFORE the GO (provisioned, a dry-run package read back with its digest verified); the two raw tokens and the certificate chains are placed in both locations IMMEDIATELY after the capture and read back; the three-copy preservation with the restore drills is complete by the internal latest date (2026-12-15)."
+  - "STRICT: all three copies, the restore drills and the final package are verified BEFORE the GO (the conditions marked strict_phase move into the pre-execution set); this puts the target date at risk."
+  - "The owner chooses `staged` or `strict`; until then Q6a is not confirmed and the record cannot be PREPARED."
 conditions:
-- {id: C-Q1a-1, decision: Q1a, kind: condition, text: "the canonical manifest contract is reviewed and accepted", status: open, evidence: null}
-- {id: C-Q1a-2, decision: Q1a, kind: condition, text: "the manifest builder and verifier are tested and shown to fail for the right reasons (22 checks, the mutations are caught)", status: verified, verified_on: "2026-11-23", evidence: {path: docs/evidence/time-manifest/results/selftest-manifest-output.txt, must_contain: "self-test: all as expected"}}
-- {id: C-Q1a-3, decision: Q1a, kind: condition, text: "a dry run over the clones builds a manifest of exactly the 92 open records and the verifier confirms every record against git", status: verified, verified_on: "2026-11-23", evidence: {path: docs/evidence/time-manifest/results/DRYRUN-manifest.txt, must_contain: "count: 92"}}
-- {id: C-Q1a-4, decision: Q1a, kind: condition, text: "the manifest that is time-stamped is built at EXECUTION time from the then-current commits, verified, and its digest recorded", status: open, evidence: null}
-- {id: C-Q1b-1, decision: Q1b, kind: condition, text: "the bytes of the three ended template releases are in the preserved package", status: open, evidence: null}
-- {id: C-Q1b-2, decision: Q1b, kind: condition, text: "an investigation settles the UNKNOWN state of schema-registry@0.1.0 (no certificate, a validity of TBD)", status: open, evidence: null}
-- {id: C-Q1b-3, decision: Q1b, kind: constraint, text: "no re-signing and no retirement of the ended template releases without a separate owner decision", status: verified, verified_on: "2026-11-23", evidence: {path: docs/design/time-evidence/t3-execution-prerequisites.yaml, must_contain: "only by a separate owner decision"}}
-- {id: C-Q2-1, decision: Q2, kind: condition, text: "DigiCert: RFC 3161 compatibility of its service for the request form used (a documented endpoint; the three tokens of 2026-11-03 are evidence of past behaviour, not of the terms)", status: open, evidence: null}
-- {id: C-Q2-2, decision: Q2, kind: condition, text: "DigiCert: the TSA certificate chain and a trust anchor from an independent source are obtained and checked for the new tokens", status: open, evidence: null}
-- {id: C-Q2-3, decision: Q2, kind: condition, text: "DigiCert: the terms of use of the endpoint and the permission to use it are verified (none were found on 2026-11-03)", status: open, evidence: null}
-- {id: C-Q2-4, decision: Q2, kind: condition, text: "GlobalSign: RFC 3161 compatibility, the digest-based API and the request form are verified", status: open, evidence: null}
-- {id: C-Q2-5, decision: Q2, kind: condition, text: "GlobalSign: the TSA certificate chain and a trust anchor from an independent source are obtained and checked", status: open, evidence: null}
-- {id: C-Q2-6, decision: Q2, kind: condition, text: "GlobalSign: the terms of service, the eligibility and the access (an account, credentials) are verified", status: open, evidence: null}
-- {id: C-Q2-7, decision: Q2, kind: condition, text: "the two authorities are shown to be organisationally independent (different operators and different trust roots)", status: open, evidence: null}
-- {id: C-Q3-1, decision: Q3, kind: condition, text: "the executor of the time-stamping is named by the owner", status: open, evidence: null}
-- {id: C-Q6-1, decision: Q6, kind: condition, text: "copy 1: immutable object storage with versioning and compliance retention of at least 10 years is provisioned, and a test object read back (the storage decision S3 and the account S10 are still open; nothing exists)", status: open, evidence: null}
-- {id: C-Q6-2, decision: Q6, kind: condition, text: "copy 2: a second, independent provider holds the package", status: open, evidence: null}
-- {id: C-Q6-3, decision: Q6, kind: condition, text: "copy 3: an offline or isolated archive holds the package", status: open, evidence: null}
-- {id: C-Q6-4, decision: Q6, kind: condition, text: "the preserved package has the contents the contract names (record bytes or a digest-verified source, the manifest, both raw tokens, the certificate chains, the frozen verification procedure)", status: open, evidence: null}
-- {id: C-Q6-5, decision: Q6, kind: condition, text: "custody and access are documented: a named holder, separate credentials, recovery, a successor (S10)", status: open, evidence: null}
-- {id: C-Q6-6, decision: Q6, kind: condition, text: "a restore drill from EACH copy with a cryptographic check has passed, and the yearly schedule is recorded", status: open, evidence: null}
-- {id: C-Q6-7, decision: Q6, kind: condition, text: "an evidence-renewal mechanism is planned (re-time-stamping before a hash algorithm or a TSA chain weakens)", status: open, evidence: null}
+- {id: C-Q1a-1, decision: Q1a, phase: pre, kind: condition, text: "the canonical manifest contract is reviewed and accepted", status: open, evidence: null}
+- {id: C-Q1a-2, decision: Q1a, phase: pre, kind: condition, text: "the manifest builder and verifier are tested and shown to fail for the right reasons (22 checks, the mutations are caught)", status: verified, verified_on: "2026-11-23", evidence: {path: docs/evidence/time-manifest/results/selftest-manifest-output.txt, must_contain: "self-test: all as expected"}}
+- {id: C-Q1a-3, decision: Q1a, phase: pre, kind: condition, text: "a dry run over the clones builds a manifest that equals EXACTLY the inventory's expected set of the 92 open records (the same identifiers, commits and refs; the check compares the sets, not the count) and the verifier confirms every record against git", status: verified, verified_on: "2026-11-23", evidence: {path: docs/evidence/time-manifest/results/DRYRUN-manifest.txt, must_contain: "count: 92"}}
+- {id: C-Q1a-4, decision: Q1a, phase: capture, kind: condition, text: "the manifest that is time-stamped is built at EXECUTION time from the then-current commits, equals the then-current expected set exactly, is verified, and its digest recorded", status: open, evidence: null}
+- {id: C-Q1b-1, decision: Q1b, phase: preserve, kind: condition, text: "the bytes of the three ended template releases are in the preserved package", status: open, evidence: null}
+- {id: C-Q1b-2, decision: Q1b, phase: preserve, kind: condition, text: "an investigation settles the UNKNOWN state of schema-registry@0.1.0 (no certificate, a validity of TBD)", status: open, evidence: null}
+- {id: C-Q1b-3, decision: Q1b, phase: pre, kind: constraint, text: "no re-signing and no retirement of the ended template releases without a separate owner decision", status: verified, verified_on: "2026-11-23", evidence: {path: docs/design/time-evidence/t3-execution-prerequisites.yaml, must_contain: "only by a separate owner decision"}}
+- {id: C-Q2-1, decision: Q2, phase: pre, kind: condition, text: "DigiCert: RFC 3161 compatibility of its service for the request form used (a documented endpoint; the three tokens of 2026-11-03 are evidence of past behaviour, not of the terms)", status: open, evidence: null}
+- {id: C-Q2-2, decision: Q2, phase: pre, kind: condition, text: "DigiCert: the TSA certificate chain and a trust anchor from an independent source are obtained and checked for the new tokens", status: open, evidence: null}
+- {id: C-Q2-3, decision: Q2, phase: pre, kind: condition, text: "DigiCert: the terms of use of the endpoint and the permission to use it are verified (none were found on 2026-11-03)", status: open, evidence: null}
+- {id: C-Q2-4, decision: Q2, phase: pre, kind: condition, text: "GlobalSign: RFC 3161 compatibility, the digest-based API and the request form are verified", status: open, evidence: null}
+- {id: C-Q2-5, decision: Q2, phase: pre, kind: condition, text: "GlobalSign: the TSA certificate chain and a trust anchor from an independent source are obtained and checked", status: open, evidence: null}
+- {id: C-Q2-6, decision: Q2, phase: pre, kind: condition, text: "GlobalSign: the terms of service, the eligibility and the access (an account, credentials) are verified", status: open, evidence: null}
+- {id: C-Q2-7, decision: Q2, phase: pre, kind: condition, text: "the two authorities are shown to be organisationally independent (different operators and different trust roots)", status: open, evidence: null}
+- {id: C-Q3-1, decision: Q3, phase: pre, kind: condition, text: "the executor of the time-stamping is named by the owner", status: open, evidence: null}
+- {id: C-Q6-1, decision: Q6, phase: pre, kind: condition, text: "storage location A: immutable object storage with versioning and compliance retention of at least 10 years is provisioned, and a dry-run package (the manifest, the verification procedure) is read back with its digest verified (the storage decision S3 and the account S10 are still open; nothing exists)", status: open, evidence: null}
+- {id: C-Q6-2, decision: Q6, phase: pre, kind: condition, text: "storage location B: a second, independent provider is provisioned and the same dry-run package is read back with its digest verified", status: open, evidence: null}
+- {id: C-Q6-3, decision: Q6, phase: preserve, strict_phase: pre, kind: condition, text: "copy 3: an offline or isolated archive holds the package", status: open, evidence: null}
+- {id: C-Q6-4, decision: Q6, phase: preserve, strict_phase: pre, kind: condition, text: "the final preserved package has the contents the contract names (record bytes or a digest-verified source, the manifest, both raw tokens, the certificate chains, the frozen verification procedure)", status: open, evidence: null}
+- {id: C-Q6-5, decision: Q6, phase: pre, kind: condition, text: "custody and access are documented for the locations: a named holder, separate credentials, recovery, a successor (S10)", status: open, evidence: null}
+- {id: C-Q6-6, decision: Q6, phase: preserve, strict_phase: pre, kind: condition, text: "a restore drill from EACH copy with a cryptographic check has passed, and the yearly schedule is recorded", status: open, evidence: null}
+- {id: C-Q6-7, decision: Q6, phase: preserve, strict_phase: pre, kind: condition, text: "an evidence-renewal mechanism is planned (re-time-stamping before a hash algorithm or a TSA chain weakens)", status: open, evidence: null}
+- {id: C-CAP-1, decision: Q2, phase: capture, kind: condition, text: "each authority's RAW token is verified offline at its own signed time against an independently obtained trust anchor, for the SAME manifest digest", status: open, evidence: null}
+- {id: C-CAP-2, decision: Q6, phase: capture, kind: condition, text: "the raw tokens and the certificate chains are placed in at least TWO separate storage locations immediately after the capture and read back with their digests verified (a placement that is not read back is not counted as a success)", status: open, evidence: null}

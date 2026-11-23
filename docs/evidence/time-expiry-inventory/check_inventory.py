@@ -138,6 +138,8 @@ def main(argv):
     src = next(c for c in inv["chain"] if c["file"] == "source-ca.pem")
     reg_cls = next(c for c in inv["classes"] if c["id"] == "registry")
     expect("consistent.registry-source-ca", (reg_cls["earliest_cert_end"] or {}).get("not_after") == src["not_after"], "the registry class's earliest certificate end is %s, the kept Source CA ends %s" % ((reg_cls["earliest_cert_end"] or {}).get("not_after"), src["not_after"]))
+    ors = inv.get("open_records", [])
+    expect("consistent.open-records", len(ors) == reg["records"] + len(own_records(inv, "cic-yang")) and len({r["id"] for r in ors}) == len(ors) and all(r["id"] == "%s:%s" % (r["repo"], r["path"]) and len(r["commit"]) == 40 for r in ors), "the expected set of open records (%d) is not the %d registry records plus the %d yang release records, or has a duplicate or malformed entry" % (len(ors), reg["records"], len(own_records(inv, "cic-yang"))))
     tags = {t["tag"] for t in inv["tag_records"]}
     for r in stamped_releases(manifest):
         expect("consistent.stamped-tag.%s" % r, "primitives/@%s" % r in tags, "the manifest stamps %s but the inventory has no such tag" % r)

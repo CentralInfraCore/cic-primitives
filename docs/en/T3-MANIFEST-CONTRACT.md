@@ -23,6 +23,7 @@ UTF-8, **no byte order mark, LF only, exactly one final LF**, no other line. `re
 
 * **The exact record bytes**, not the `build_hash` field: the SHA-256 is of the bytes of the file as stored in the git **object** at the recorded commit (`git show <commit>:<path>`), never of a working tree. A later commit or an uncommitted change does not change what the line says (tested).
 * **The records of the scope** (resolution Q1a): every YAML file under the record areas of the registry's `HEAD` that parses as a record with a `cic_countersign` block, and the release record of each named `cic-yang` tag. **Fail-closed:** a file that mentions the block and does not parse, a named tag that does not exist, or a tag without its record file is an error and no manifest is written; the builder never produces a smaller manifest silently.
+* **The expected set.** The expiry inventory records the expected set of open records (`open_records`: the identifier, the repository, the path, the ref and the commit of each of the 92). The readiness check compares the manifest with that set **identifier by identifier, with the commit and the ref**: a record swapped for another is refused although the count is right (review T3-F5). The SHA-256 of each record's bytes is the separate check of the verifier.
 * **Deterministic:** the same git objects give the same bytes (two builds are byte-identical, tested); the manifest holds no time and no host name.
 
 ## 4. The tools and the dry run

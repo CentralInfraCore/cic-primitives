@@ -186,6 +186,8 @@ def main():
         ("a tag record has no scope element", dict(inv=mut(lambda x: x["scope"].__delitem__(next(i for i, s in enumerate(x["scope"]) if s["id"] == "tag:cic-yang:yang/@v0.1.3")))), "complete.tag-scope.cic-yang:yang/@v0.1.3"),
         ("the instant of the inventory is after a class's boundary but the class is still declared open (the boundary + 1 s case)", dict(inv=mut(lambda x: x.__setitem__("as_of", "2026-12-31T13:22:40Z"))), "consistent.state.registry"),
         ("the instant of the inventory is exactly the boundary but the class is declared ended", dict(inv=mut(lambda x: (x.__setitem__("as_of", "2026-12-31T13:22:39Z"), cls(x, "registry").__setitem__("state_at_as_of", "ended")))), "consistent.state.registry"),
+        ("the expected set of open records lost one record (91 of 92)", dict(inv=mut(lambda x: x["open_records"].pop())), "consistent.open-records"),
+        ("the expected set of open records has a duplicate", dict(inv=mut(lambda x: x["open_records"].__setitem__(0, dict(x["open_records"][1])))), "consistent.open-records"),
         ("the state of a class does not follow from its boundary (an ended class declared open)", dict(inv=mut(lambda x: cls(x, "template:base@0.6.0").__setitem__("state_at_as_of", "open"))), "consistent.state.template:base@0.6.0"),
         ("the registry class's earliest certificate end differs from the kept Source CA", dict(inv=mut(lambda x: cls(x, "registry")["earliest_cert_end"].__setitem__("not_after", "2026-12-31T13:22:40Z"))), "consistent.registry-source-ca"),
         ("the inventory's Source CA end differs from the kept certificate", dict(inv=mut(lambda x: [c.__setitem__("not_after", "2026-12-31T13:22:40Z") for c in x["chain"] if c["file"] == "source-ca.pem"])), "chain.dates.source-ca.pem"),

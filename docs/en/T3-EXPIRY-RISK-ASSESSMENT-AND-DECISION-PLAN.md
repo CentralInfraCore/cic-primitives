@@ -26,7 +26,7 @@ The earliest end of the **main chain** is the Source CA (13:22:39 UTC, the Devel
 Each class has its **own proved boundary**: the earliest end among the certificates the records themselves carry, and the validity the record declares for itself. Where a boundary could not be extracted the class says **UNKNOWN**; nothing is filled in from the main chain.
 
 <!-- BEGIN BOUNDARIES TABLE -->
-| Class | Records | Earliest proved certificate end | Declared record validity | State at 2026-11-23T16:14:41Z | Can a stamp made now still show existence before the boundary? |
+| Class | Records | Earliest proved certificate end | Declared record validity | State at 2026-11-23T17:18:46Z | Can a stamp made now still show existence before the boundary? |
 |---|---|---|---|---|---|
 | cic-schema-registry countersigned records | 90 | 2026-12-31T13:22:39Z (authority: CIC Source CA) | none declared | **open** | yes, only if the stamp is made before the boundary |
 | cic-primitives release records (the tags' own records) | 3 | 2026-12-31T13:22:39Z (authority: CIC Source CA) | none declared | **open** | yes, only if the stamp is made before the boundary |

@@ -172,6 +172,8 @@ def main(argv):
                            "not_scanned_reason": "outside the record areas (documentation, tests, tools, configuration, caches); the signed records live under the scanned directories"}
         scope("registry-scan", "registry-record-scan", "ok" if not parse_errors else "parse_error", "%d files mention the blocks: %d records, %d parse errors, %d not records" % (mention_files, len(reg_items), len(parse_errors), not_records))
         inv["classes"].append(class_summary("registry", "cic-schema-registry countersigned records", [{"certs": r["certs"], "declared_until": None} for r in reg_items], as_of))
+        reg_head, reg_branch = inv["clones"]["cic-schema-registry"]["head"], inv["clones"]["cic-schema-registry"]["branch"]
+        inv["open_records"] = [{"id": "cic-schema-registry:" + r["path"], "repo": "cic-schema-registry", "path": r["path"], "ref": "branch:" + reg_branch, "commit": reg_head} for r in sorted(reg_items, key=lambda r: r["path"].encode("utf-8"))]
         # ---- the release records at the tags: a typed status per tag
         cls_items = {"primitives": [], "yang": []}; tpl = []
         for repo, tlist in tags.items():
@@ -208,6 +210,8 @@ def main(argv):
                     inv["tag_records"].append({"repo": repo, "tag": t, "file": f, "format": "yaml-record", "ts": cs.get("ts"), "own_release_record": own, "certs": [{"role": c["role"], "not_after": (c["info"] or {}).get("not_after"), "subject_cn": (c["info"] or {}).get("subject_cn")} for c in record_certs(d)]})
                     if own:
                         cls_items["primitives" if repo == "cic-primitives" else "yang"].append({"certs": record_certs(d), "declared_until": None})
+                        if repo == "cic-yang":                                   # the expected set of the open records: the release record of each yang tag, at the tag's commit
+                            inv["open_records"].append({"id": "%s:%s" % (repo, f), "repo": repo, "path": f, "ref": "tag:" + t, "commit": sh(["git", "rev-parse", "%s^{commit}" % t], cl).stdout.strip()})
                 if rerr:
                     scope(sid, "release-tag", "read_error", "git show failed for: %s" % ", ".join(rerr)); continue
                 if perr:
@@ -247,6 +251,7 @@ def main(argv):
             lines = [i + 1 for i, l in enumerate(open(p, encoding="utf-8").read().splitlines()) if re.search(rx, l)]
             inv["anchors"].append({"repo": repo, "path": path, "label": label, "regex": rx, "lines": lines, "commit": inv["clones"][repo]["head"]})
             scope("anchor:" + label, "verifier-anchor", "ok", "%d line(s)" % len(lines))
+        inv["open_records"].sort(key=lambda r: r["id"].encode("utf-8"))
         inv["complete"] = all(s["status"] in OK_STATUSES for s in inv["scope"])
         os.makedirs(os.path.dirname(out), exist_ok=True)
         json.dump(inv, open(out, "w", encoding="utf-8"), indent=1, sort_keys=True); open(out, "a").write("\n")

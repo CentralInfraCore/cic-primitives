@@ -89,7 +89,7 @@
    "repo": "CIC_Relay"
   }
  ],
- "as_of": "2026-11-23T16:14:41Z",
+ "as_of": "2026-11-23T17:18:46Z",
  "chain": [
   {
    "file": "root.pem",
@@ -240,6 +240,652 @@
  },
  "complete": true,
  "inventory_format": 2,
+ "open_records": [
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/cloud-provider-adapter/cloud-provider-adapter.v0.2.3-src2026.yaml",
+   "path": "general/compute/cloud-provider-adapter/cloud-provider-adapter.v0.2.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/compute-resource/compute-resource.v0.2.3-src2026.yaml",
+   "path": "general/compute/compute-resource/compute-resource.v0.2.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/compute-resource/compute-resource.v0.2.4-src2026.yaml",
+   "path": "general/compute/compute-resource/compute-resource.v0.2.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/compute-resource/compute-resource.v0.2.5-src2026.yaml",
+   "path": "general/compute/compute-resource/compute-resource.v0.2.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/compute-resource/compute-resource.v0.2.6-src2026.yaml",
+   "path": "general/compute/compute-resource/compute-resource.v0.2.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/compute-resource/compute-resource.v0.2.7-src2026.yaml",
+   "path": "general/compute/compute-resource/compute-resource.v0.2.7-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/hypervisor-adapter/hypervisor-adapter.v0.2.3-src2026.yaml",
+   "path": "general/compute/hypervisor-adapter/hypervisor-adapter.v0.2.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/hypervisor-adapter/hypervisor-adapter.v0.2.4-src2026.yaml",
+   "path": "general/compute/hypervisor-adapter/hypervisor-adapter.v0.2.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/ipmi-adapter/ipmi-adapter.v0.2.3-src2026.yaml",
+   "path": "general/compute/ipmi-adapter/ipmi-adapter.v0.2.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/compute/ipmi-adapter/ipmi-adapter.v0.2.4-src2026.yaml",
+   "path": "general/compute/ipmi-adapter/ipmi-adapter.v0.2.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/cloud-managed-adapter/cloud-managed-adapter.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/cloud-managed-adapter/cloud-managed-adapter.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/k3s-adapter/k3s-adapter.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/k3s-adapter/k3s-adapter.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-cluster/kubernetes-cluster.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-cluster/kubernetes-cluster.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-cluster/kubernetes-cluster.v0.1.4-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-cluster/kubernetes-cluster.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-cluster/kubernetes-cluster.v0.1.5-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-cluster/kubernetes-cluster.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-node/kubernetes-node.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-node/kubernetes-node.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-node/kubernetes-node.v0.1.4-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-node/kubernetes-node.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-node/kubernetes-node.v0.1.5-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-node/kubernetes-node.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubernetes-node/kubernetes-node.v0.1.6-src2026.yaml",
+   "path": "general/kubernetes/kubernetes-node/kubernetes-node.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/kubespray-adapter/kubespray-adapter.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/kubespray-adapter/kubespray-adapter.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/rke2-adapter/rke2-adapter.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/rke2-adapter/rke2-adapter.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/kubernetes/talos-adapter/talos-adapter.v0.1.2-src2026.yaml",
+   "path": "general/kubernetes/talos-adapter/talos-adapter.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/dhcp-service/dhcp-service.v0.1.0-src2026.yaml",
+   "path": "general/network/dhcp-service/dhcp-service.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/dhcp-service/dhcp-service.v0.1.1-src2026.yaml",
+   "path": "general/network/dhcp-service/dhcp-service.v0.1.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/network-interface/network-interface.v0.4.1-src2026.yaml",
+   "path": "general/network/network-interface/network-interface.v0.4.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/network-interface/network-interface.v0.4.2-src2026.yaml",
+   "path": "general/network/network-interface/network-interface.v0.4.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/network-interface/network-interface.v0.4.3-src2026.yaml",
+   "path": "general/network/network-interface/network-interface.v0.4.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/network-interface/network-interface.v0.4.4-src2026.yaml",
+   "path": "general/network/network-interface/network-interface.v0.4.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/network-space/network-space.v0.1.0-src2026.yaml",
+   "path": "general/network/network-space/network-space.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/ovs-adapter/ovs-adapter.v0.4.1-src2026.yaml",
+   "path": "general/network/ovs-adapter/ovs-adapter.v0.4.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/ovs-adapter/ovs-adapter.v0.4.2-src2026.yaml",
+   "path": "general/network/ovs-adapter/ovs-adapter.v0.4.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/subnet/subnet.v0.1.0-src2026.yaml",
+   "path": "general/network/subnet/subnet.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/switch-netconf-adapter/switch-netconf-adapter.v0.4.1-src2026.yaml",
+   "path": "general/network/switch-netconf-adapter/switch-netconf-adapter.v0.4.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/network/switch-netconf-adapter/switch-netconf-adapter.v0.4.2-src2026.yaml",
+   "path": "general/network/switch-netconf-adapter/switch-netconf-adapter.v0.4.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/primitives/cic-primitives/cic-primitives.v0.2.0-src2026.yaml",
+   "path": "general/primitives/cic-primitives/cic-primitives.v0.2.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/storage/storage-adapter/storage-adapter.v0.1.2-src2026.yaml",
+   "path": "general/storage/storage-adapter/storage-adapter.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/storage/storage-resource/storage-resource.v0.1.2-src2026.yaml",
+   "path": "general/storage/storage-resource/storage-resource.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/storage/storage-resource/storage-resource.v0.1.3-src2026.yaml",
+   "path": "general/storage/storage-resource/storage-resource.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/storage/storage-resource/storage-resource.v0.1.4-src2026.yaml",
+   "path": "general/storage/storage-resource/storage-resource.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:general/storage/storage-resource/storage-resource.v0.1.5-src2026.yaml",
+   "path": "general/storage/storage-resource/storage-resource.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:providers/oracle-cloud/network/network-space/network-space.v0.1.0-src2026.yaml",
+   "path": "providers/oracle-cloud/network/network-space/network-space.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:providers/oracle-cloud/network/subnet/subnet.v0.1.0-src2026.yaml",
+   "path": "providers/oracle-cloud/network/subnet/subnet.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-switchport-vlan/cic-switchport-vlan.v0.1.0-src2026.yaml",
+   "path": "standards/yang/cic-switchport-vlan/cic-switchport-vlan.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-switchport-vlan/cic-switchport-vlan.v0.1.1-src2026.yaml",
+   "path": "standards/yang/cic-switchport-vlan/cic-switchport-vlan.v0.1.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.3-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.4-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.5-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.6-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.7-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.7-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.8-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.8-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.9-src2026.yaml",
+   "path": "standards/yang/cic-yang-block-schema/cic-yang-block-schema.v0.1.9-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-base/ietf-interfaces-base.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-base/ietf-interfaces-base.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-base/ietf-interfaces-base.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-base/ietf-interfaces-base.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-base/ietf-interfaces-base.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-base/ietf-interfaces-base.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.0-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.1-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.2-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-l2vlan/ietf-interfaces-l2vlan.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.6-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-logical/ietf-interfaces-logical.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.6-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.7-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.7-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.8-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-physical/ietf-interfaces-physical.v0.1.8-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.6-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-tunnel/ietf-interfaces-tunnel.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.6-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.7-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.7-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.8-src2026.yaml",
+   "path": "standards/yang/ietf-interfaces-vlan/ietf-interfaces-vlan.v0.1.8-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-ip-v4/ietf-ip-v4.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-ip-v4/ietf-ip-v4.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-ip-v4/ietf-ip-v4.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-ip-v4/ietf-ip-v4.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-ip-v6/ietf-ip-v6.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-ip-v6/ietf-ip-v6.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-ip-v6/ietf-ip-v6.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-ip-v6/ietf-ip-v6.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-ip-v6/ietf-ip-v6.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-ip-v6/ietf-ip-v6.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-lldp/ietf-lldp.v0.1.3-src2026.yaml",
+   "path": "standards/yang/ietf-lldp/ietf-lldp.v0.1.3-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-lldp/ietf-lldp.v0.1.4-src2026.yaml",
+   "path": "standards/yang/ietf-lldp/ietf-lldp.v0.1.4-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-lldp/ietf-lldp.v0.1.5-src2026.yaml",
+   "path": "standards/yang/ietf-lldp/ietf-lldp.v0.1.5-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-lldp/ietf-lldp.v0.1.6-src2026.yaml",
+   "path": "standards/yang/ietf-lldp/ietf-lldp.v0.1.6-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-nat/ietf-nat.v0.1.0-src2026.yaml",
+   "path": "standards/yang/ietf-nat/ietf-nat.v0.1.0-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-nat/ietf-nat.v0.1.1-src2026.yaml",
+   "path": "standards/yang/ietf-nat/ietf-nat.v0.1.1-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "id": "cic-schema-registry:standards/yang/ietf-nat/ietf-nat.v0.1.2-src2026.yaml",
+   "path": "standards/yang/ietf-nat/ietf-nat.v0.1.2-src2026.yaml",
+   "ref": "branch:main",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "26338ee5e5056d091ed5214128a2f763dd7b9828",
+   "id": "cic-yang:release/cic-yang-v0.1.2.yaml",
+   "path": "release/cic-yang-v0.1.2.yaml",
+   "ref": "tag:yang/@v0.1.2",
+   "repo": "cic-yang"
+  },
+  {
+   "commit": "1809da9e465c931bdeb401469e39473a26fee381",
+   "id": "cic-yang:release/cic-yang-v0.1.3.yaml",
+   "path": "release/cic-yang-v0.1.3.yaml",
+   "ref": "tag:yang/@v0.1.3",
+   "repo": "cic-yang"
+  }
+ ],
  "registry": {
   "files_mentioning_blocks": 114,
   "not_a_record": 24,
