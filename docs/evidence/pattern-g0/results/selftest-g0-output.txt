@@ -2,6 +2,7 @@ A real state: G-0 is NOT_READY for exactly one reason, the missing OP-1 specific
 A real state: OP-3 (partial) and OP-4 do not block G-0                                                         OK 
 B positive control: a complete package is READY_FOR_OWNER_CLOSURE with OP-3 partial, and the gate is not closed OK exit=0
 B positive control: a valid owner closure record that names the digest of the record gives CLOSED              OK exit=0
+B positive control: an EXTRA evidence reference that is a bound, verified contract key does not reject a complete package OK exit=0
 C planted: a decision is missing (D3)                                                                          OK exit=1 verdict=NOT_READY needle=decision.missing.D3 exact-set
 C planted: a contradictory record (D1 recorded twice, confirmed and rejected)                                  OK exit=1 verdict=INVALID needle=decision.contradiction.D1 exact-set
 C planted: the record disagrees with the owner's statement (D2 rejected, the statement says CONFIRMED)         OK exit=1 verdict=INVALID needle=decision.vs-source.D2 exact-set
@@ -30,7 +31,9 @@ C planted: a decision that the owner's statement does not mention (OP-4 removed 
 C planted: the record format is not 1                                                                          OK exit=1 verdict=INVALID needle=record.format exact-set
 C planted: the base commit is not a commit id                                                                  OK exit=1 verdict=INVALID needle=bound.base_commit exact-set
 C planted: a bound file that does not exist (the specification path is wrong)                                  OK exit=1 verdict=INVALID needle=bound.missing.spec exact-set
-C planted: the evidence of D1 names a file that is not bound                                                   OK exit=1 verdict=NOT_READY needle=evidence.files.D1 exact-set
+C planted: the evidence of D1 names an unknown key, ALL required evidence kept (isolated: only the dangling reference is wrong) OK exit=1 verdict=INVALID needle=evidence.ref.D1 exact-set
+C planted: the evidence of D1 names a contract key that is not bound in the record (obligations removed from bound_to), required evidence kept OK exit=1 verdict=INVALID needle=evidence.ref.D1 exact-set
+C planted: the evidence of OP-3, which G-0 does not need, names an unknown key (every declared reference is checked) OK exit=1 verdict=INVALID needle=evidence.ref.OP-3 exact-set
 C planted: the recorded specification text of OP-1 does not exist (a wrong path)                               OK exit=1 verdict=INVALID needle=evidence.op1.spec-text exact-set
 C planted: OP-1 is not decided (the owner's statement and the record both say PARTIAL)                         OK exit=1 verdict=NOT_READY needle=decision.status.OP-1 exact-set
 C planted: OP-2 is on hold, which is no owner outcome of accepted, rejected or deferred                        OK exit=1 verdict=NOT_READY needle=decision.status.OP-2 exact-set

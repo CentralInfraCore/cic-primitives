@@ -137,6 +137,10 @@ def main(argv):
             bad("decision.not-in-source.%s" % i, "the owner's statement does not mention %s" % i)
     for i in set(byid) - set(ALL_IDS):
         bad("decision.unknown.%s" % i, "a decision the plan does not know")
+    for i, d in sorted((k, v) for k, v in byid.items() if k in ALL_IDS):         # every DECLARED evidence reference, required or not, names a key of the contract that is bound in the record (extras are allowed, dangling ones are not)
+        dangling = [k for k in (d.get("evidence_files") or []) if k not in REQUIRED_PATHS or k not in files]
+        if dangling:
+            bad("evidence.ref.%s" % i, "%s declares evidence %s that is not a key of the check's contract or is not bound in the record" % (i, dangling))
     # ---- the plan: what G-0 itself requires, and where the later open points close
     g0 = next((g for g in plan.get("gates", []) if g.get("id") == "G-0"), None)
     crit = str((g0 or {}).get("criteria", ""))

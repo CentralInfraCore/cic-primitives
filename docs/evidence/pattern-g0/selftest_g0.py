@@ -96,6 +96,13 @@ def main():
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
+    d = tempfile.mkdtemp()
+    try:
+        rc, o = run(build(d, rec_mut=lambda r: [x.__setitem__("evidence_files", x["evidence_files"] + ["obligations"]) for x in r["decisions"] if x["id"] == "D1"]))
+        report("B positive control: an EXTRA evidence reference that is a bound, verified contract key does not reject a complete package", rc == 0 and verdict(o) == "READY_FOR_OWNER_CLOSURE", "exit=%d" % rc)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
     def drop(i):
         return lambda r: r.__setitem__("decisions", [x for x in r["decisions"] if x["id"] != i])
 
@@ -148,7 +155,9 @@ def main():
         ("the record format is not 1", dict(rec_mut=lambda r: r.__setitem__("decision_record_format", 2)), "record.format", "INVALID"),
         ("the base commit is not a commit id", dict(rec_mut=lambda r: r["bound_to"].__setitem__("base_commit", "main")), "bound.base_commit", "INVALID"),
         ("a bound file that does not exist (the specification path is wrong)", dict(rec_mut=lambda r: r["bound_to"]["files"]["spec"].__setitem__("path", "docs/en/NO-SUCH-FILE.md")), "bound.missing.spec", "INVALID"),
-        ("the evidence of D1 names a file that is not bound", dict(rec_mut=setf("D1", "evidence_files", ["spec", "no_such_key"])), "evidence.files.D1", "NOT_READY"),
+        ("the evidence of D1 names an unknown key, ALL required evidence kept (isolated: only the dangling reference is wrong)", dict(rec_mut=setf("D1", "evidence_files", ["spec", "extension_review", "no_such_key"])), "evidence.ref.D1", "INVALID"),
+        ("the evidence of D1 names a contract key that is not bound in the record (obligations removed from bound_to), required evidence kept", dict(rec_mut=both(setf("D1", "evidence_files", ["spec", "extension_review", "obligations"]), lambda r: r["bound_to"]["files"].pop("obligations"))), "evidence.ref.D1", "INVALID"),
+        ("the evidence of OP-3, which G-0 does not need, names an unknown key (every declared reference is checked)", dict(rec_mut=setf("OP-3", "evidence_files", ["plan", "ghost"])), "evidence.ref.OP-3", "INVALID"),
         ("the recorded specification text of OP-1 does not exist (a wrong path)", dict(rec_mut=lambda r: [x.__setitem__("spec_text", {"path": "docs/design/pattern-profile-spec/NO-SUCH.md", "sha256": "0" * 64}) for x in r["decisions"] if x["id"] == "OP-1"]), "evidence.op1.spec-text", "INVALID"),
         ("OP-1 is not decided (the owner's statement and the record both say PARTIAL)", dict(rec_mut=both(setf("OP-1", "status", "partial"), lambda r: row(r, "| OP-1", ["| OP-1 | x | **PARTIAL** |"]))), "decision.status.OP-1", "NOT_READY"),
         ("OP-2 is on hold, which is no owner outcome of accepted, rejected or deferred", dict(rec_mut=both(setf("OP-2", "status", "hold"), lambda r: row(r, "| OP-2", ["| OP-2 | x | **HOLD** |"]))), "decision.status.OP-2", "NOT_READY"),
@@ -192,7 +201,9 @@ def main():
         'the record format is not 1': ['record.format'],
         'the base commit is not a commit id': ['bound.base_commit'],
         'a bound file that does not exist (the specification path is wrong)': ['bound.missing.spec', 'bound.path.spec', 'evidence.files.D1', 'evidence.files.D2', 'evidence.files.D3', 'evidence.files.D4', 'evidence.files.D5', 'evidence.files.D6'],
-        'the evidence of D1 names a file that is not bound': ['evidence.files.D1'],
+        'the evidence of D1 names an unknown key, ALL required evidence kept (isolated: only the dangling reference is wrong)': ['evidence.ref.D1'],
+        'the evidence of D1 names a contract key that is not bound in the record (obligations removed from bound_to), required evidence kept': ['evidence.ref.D1'],
+        'the evidence of OP-3, which G-0 does not need, names an unknown key (every declared reference is checked)': ['evidence.ref.OP-3'],
         'the recorded specification text of OP-1 does not exist (a wrong path)': ['evidence.op1.spec-text'],
         "OP-1 is not decided (the owner's statement and the record both say PARTIAL)": ['decision.status.OP-1'],
         'OP-2 is on hold, which is no owner outcome of accepted, rejected or deferred': ['decision.status.OP-2'],
