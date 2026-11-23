@@ -17,6 +17,12 @@ C planted: every vector of the rule RC-16 removed                               
 C planted: a rule names an error kind that is not in the closed set                                              OK exit=1 needle=contract.rule.kinds.RC-01
 C planted: an open question that names an unknown rule                                                           OK exit=1 needle=contract.question.rules.OQ-1
 C planted: a rule with an unknown basis                                                                          OK exit=1 needle=contract.rule.basis.RC-04
+C planted: an open question claims a vector that its alternative does not change (OQ-1 claims V-SC-001)          OK exit=1 needle=contract.question.effect.OQ-1
+C planted: an open question leaves out a vector that its alternative changes (OQ-2 omits one of four)            OK exit=1 needle=contract.question.effect.OQ-2
+C planted: an open question without a switchable alternative claims vectors (OQ-3)                               OK exit=1 needle=contract.question.effect.OQ-3
+C planted: an open question names an alternative but no way to compute its effect (OQ-5 without alt_env)         OK exit=1 needle=contract.question.alt.OQ-5
+C planted: an open question that claims a vector that does not exist                                             OK exit=1 needle=contract.question.vectors-exist.OQ-8
+C planted: the decision table of the document edited by hand (OQ-4 changes 33 vectors)                           OK exit=1 needle=doc.table.questions
 C planted: an accepted extension case that no longer agrees (E-PIN-29 expects no reader error)                   OK exit=1 needle=extension.E-PIN-29
 C planted: an accepted extension case with a reader error the reading does not give (E-PIN-28 expects duplicate_key) OK exit=1 needle=extension.E-PIN-28
 C planted: the rule table of the document edited by hand                                                         OK exit=1 needle=doc.table.rules

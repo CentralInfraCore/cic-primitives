@@ -70,9 +70,10 @@ def render(contract, vectors, meas):
     for r in rules:
         c = cov[r["id"]]; n = sum(c.values())
         ct.append("| %s | %d | %d | %d | %s |" % (r["id"], c["positive"], c["negative"], c["boundary"], ("%d (%s .. %s)" % (n, ids[r["id"]][0], ids[r["id"]][-1])) if n else "none (a meta rule)"))
-    qt = ["| Question | Rules | Question text | Draft answer |", "|---|---|---|---|"]
+    qt = ["| Question | Rules | Question text | Draft answer | Alternative | Vectors that change if the alternative is chosen (computed) | The owner provides |", "|---|---|---|---|---|---|---|"]
     for q in contract["open_questions"]:
-        qt.append("| %s | %s | %s | %s |" % (q["id"], ", ".join(q["rules"]), flat(q["question"]).replace("|", "/"), q["draft"]))
+        aff = q["affected_vectors"]
+        qt.append("| %s | %s | %s | %s | %s | %s | %s |" % (q["id"], ", ".join(q["rules"]), flat(q["question"]).replace("|", "/"), q["draft"], q["alternative"] or "none: a number or a reference, not a switch of a rule", ("%d: %s" % (len(aff), ", ".join(aff))) if aff else ("none: " + q.get("no_alt_reason", "")), flat(q["owner_provides"]).replace("|", "/")))
     c = meas["counts"]
     mt = ["| PyYAML %s over %d draft vectors | Vectors |" % (meas["pyyaml_version"], meas["vectors"]), "|---|---|"]
     for k, label in (("agrees", "agrees with the contract"), ("differs_in_value", "reads a value that differs from the contract"), ("accepts_what_the_contract_rejects", "accepts a document the contract rejects"), ("rejects_what_the_contract_reads", "rejects a document the contract reads")):
@@ -107,6 +108,7 @@ def main(argv):
         expect("contract.rule.basis.%s" % r["id"], r["basis"] in ("owner_decision", "review_recommendation", "proposal"), "basis %r" % r["basis"])
     for q in contract["open_questions"]:
         expect("contract.question.rules.%s" % q["id"], set(q["rules"]) <= set(rids), "unknown rules")
+        expect("contract.question.alt.%s" % q["id"], bool(q.get("alternative")) == bool(q.get("alt_env")) and bool(str(q.get("owner_provides", "")).strip()) and (bool(q.get("alt_env")) or bool(q.get("no_alt_reason"))), "a question has either a switchable alternative or a stated reason why not, and says what the owner provides")
     vids = [v["id"] for v in vectors]
     expect("vectors.ids.unique", len(vids) == len(set(vids)))
     cov, _ = coverage(vectors, rules)
@@ -151,6 +153,32 @@ def main(argv):
         if not ok:
             diffs += 1
         expect("reference.%s" % v["id"], ok, "expected %s, the reference reading gives %s" % (e, gk if gk else got))
+    # the EFFECT of each alternative answer, COMPUTED: the reference reading is switched to the alternative and the vectors whose result changes are the ones the question may claim
+    base = {}
+    for v in vectors:
+        try:
+            base[v["id"]] = R.read(data_of(v), v.get("mode", "plain"))
+        except R.ReaderError as ex:
+            base[v["id"]] = ("E", ex.kind)
+    for q in contract["open_questions"]:
+        claimed = list(q.get("affected_vectors", []))
+        expect("contract.question.vectors-exist.%s" % q["id"], set(claimed) <= set(vids), "unknown vector ids %s" % sorted(set(claimed) - set(vids)))
+        if not q.get("alt_env"):
+            expect("contract.question.effect.%s" % q["id"], claimed == [], "a question without a switchable alternative claims affected vectors")
+            continue
+        os.environ["CIC_READER_ALT"] = q["alt_env"]
+        try:
+            changed = []
+            for v in vectors:
+                try:
+                    r = R.read(data_of(v), v.get("mode", "plain"))
+                except R.ReaderError as ex:
+                    r = ("E", ex.kind)
+                if r != base[v["id"]]:
+                    changed.append(v["id"])
+        finally:
+            os.environ.pop("CIC_READER_ALT", None)
+        expect("contract.question.effect.%s" % q["id"], sorted(changed) == sorted(claimed), "the alternative changes %s, the question claims %s" % (sorted(changed), sorted(claimed)))
     # the 47 accepted extension cases at the reader level
     for c in cases:
         ex = c["expect"]

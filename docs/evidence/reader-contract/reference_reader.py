@@ -2,7 +2,8 @@
 It is NOT the implementation of the profile and NOT a conformant YAML 1.2 parser. It takes from PyYAML only the SYNTAX (the event stream: where a scalar, a sequence, a mapping, an alias, an anchor, a tag, a directive
 and a style are), and decides EVERYTHING ELSE itself, from the rules: how a plain scalar is typed, which tags are honoured, what a key is, when two keys are the same, which error comes first. PyYAML's own implicit
 typing (the YAML 1.1 resolver) and its constructors are never used. Where PyYAML's syntax differs from YAML 1.2 the vectors avoid the construct (open question OQ-7).
-CIC_READER_PLANT plants a defect for the self-test only (yaml11-scalars, host-dict-keys, alias-ok, merge-ok, any-tag, float-overflow-inf, bom-ok, dup-ignore, order-semantic-first).
+CIC_READER_ALT switches ONE open question of the contract to its ALTERNATIVE answer (oq1, oq2, oq4, oq5, oq6, oq8, oq9, oq10, oq11, oq12), so that the vectors that the alternative would change can be COMPUTED
+(check_reader_contract.py), not claimed. CIC_READER_PLANT plants a defect for the self-test only (yaml11-scalars, host-dict-keys, alias-ok, merge-ok, any-tag, float-overflow-inf, bom-ok, dup-ignore, order-semantic-first).
 The tree: [n] [b,bool] [i,"decimal"] [f,"16 hex digits"] [s,text] [seq,[...]] [map,[[k,v],...]]."""
 import os, re, struct
 
@@ -17,6 +18,10 @@ INF = re.compile(r"^[-+]?\.(inf|Inf|INF)$")
 NAN = re.compile(r"^\.(nan|NaN|NAN)$")
 CORE = {"str", "int", "float", "bool", "null", "seq", "map"}
 NAN_BITS = "7ff8000000000000"
+
+
+def _alt():
+    return os.environ.get("CIC_READER_ALT", "")
 
 
 class ReaderError(Exception):
@@ -51,7 +56,7 @@ def _plain_float(t, tagged=False):
     if FLOAT.match(t):
         v = float(t)
         if v in (float("inf"), float("-inf")):
-            if PLANT == "float-overflow-inf":
+            if PLANT == "float-overflow-inf" or _alt() == "oq5":
                 return _bits(v)
             raise ReaderError("float_overflow")
         return _bits(v)
@@ -89,13 +94,15 @@ def _by_tag(name, text):
             return ["i", str(iv)]
     elif name == "float":
         fb = _plain_float(text)
-        if fb is not None:
+        if fb is not None and not (_alt() == "oq8" and INT10.match(text)):
             return ["f", fb]
     raise ReaderError("tag_mismatch")
 
 
 def _identity(node):
     t = node[0]
+    if _alt() == "oq11" and t == "f" and node[1] == NAN_BITS:
+        return object()                                          # alternative: NaNs are not identical to each other
     if PLANT == "host-dict-keys":                                # planted: the host language's equality (1 == True == 1.0, 0.0 == -0.0)
         if t == "n": return None
         if t == "b": return bool(node[1])
@@ -111,7 +118,7 @@ def read(data, mode="plain"):
     raw = data.encode("utf-8") if isinstance(data, str) else data
     # RC-01 encoding
     if raw.startswith(b"\xef\xbb\xbf"):
-        if PLANT == "bom-ok":
+        if PLANT == "bom-ok" or _alt() == "oq1":
             raw = raw[3:]
         else:
             raise ReaderError("encoding")
@@ -128,17 +135,22 @@ def read(data, mode="plain"):
     if PLANT == "order-semantic-first":
         pass
     # RC-03 directives
-    if any(isinstance(t, yaml.DirectiveToken) for t in tokens):
+    dirs = [t for t in tokens if isinstance(t, yaml.DirectiveToken)]
+    if dirs and not (_alt() == "oq10" and all(t.name == "YAML" and tuple(t.value) == (1, 2) for t in dirs)):
         raise ReaderError("directive_not_allowed")
     # RC-02 documents
     starts = [e for e in events if isinstance(e, yaml.DocumentStartEvent)]
     if not starts:
+        if _alt() == "oq2":
+            return ["n"]
         raise ReaderError("empty_document")
     if len(starts) > 1:
         raise ReaderError("multiple_documents")
     body = events[[i for i, e in enumerate(events) if isinstance(e, yaml.DocumentStartEvent)][0] + 1:]
     root = body[0]
     if isinstance(root, yaml.ScalarEvent) and root.value == "" and root.style is None and root.tag is None and root.anchor is None:
+        if _alt() == "oq2":
+            return ["n"]
         raise ReaderError("empty_document")
     pos = [0]
 
@@ -146,6 +158,8 @@ def read(data, mode="plain"):
         if ev.anchor is not None and PLANT != "alias-ok":
             raise ReaderError("anchor_not_allowed")
         tag = getattr(ev, "tag", None)
+        if tag is not None and _alt() == "oq4":
+            raise ReaderError("tag_not_allowed")                    # alternative: no explicit tag at all
         if tag is not None:
             if tag == "!" or not tag.startswith("tag:yaml.org,2002:") or tag[len("tag:yaml.org,2002:"):] not in CORE:
                 if PLANT != "any-tag":
@@ -167,6 +181,8 @@ def read(data, mode="plain"):
         if isinstance(ev, yaml.ScalarEvent):
             pos[0] += 1
             if name:
+                if _alt() == "oq9" and ev.style in ("'", '"') and name != "str":
+                    raise ReaderError("tag_mismatch")               # alternative: a tag on a quoted scalar is an error
                 n = _by_tag(name, ev.value)
             elif ev.style is None:
                 n = _resolve_plain(ev.value)
@@ -196,8 +212,10 @@ def read(data, mode="plain"):
                     node_checks(kev)                                       # anchor, tag first (RC-17), then the key rule
                     raise ReaderError("non_scalar_key")
                 knode = parse_node()
-                if knode[0] == "s" and knode[1] == "<<" and PLANT != "merge-ok":
+                if knode[0] == "s" and knode[1] == "<<" and PLANT != "merge-ok" and not (_alt() == "oq6" and kev.style in ("'", '"')):
                     raise ReaderError("merge_key_not_allowed")
+                if _alt() == "oq12" and knode[0] == "n":
+                    raise ReaderError("null_key")                   # alternative: a null key is refused
                 if mode == "schema" and knode[0] != "s":
                     raise ReaderError("non_string_key")
                 ident = _identity(knode)
