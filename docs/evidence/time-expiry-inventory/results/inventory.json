@@ -89,38 +89,131 @@
    "repo": "CIC_Relay"
   }
  ],
+ "as_of": "2026-11-23",
  "chain": [
   {
    "file": "root.pem",
    "issuer_cn": "CIC Root CA",
-   "not_after": "Dec 31 23:59:59 2026 GMT",
-   "not_before": "Mar 19 12:59:30 2026 GMT",
+   "not_after": "2026-12-31T23:59:59Z",
    "sha256": "7A:87:3A:BB:99:D7:20:D9:77:96:B4:A9:82:30:C4:3A:31:99:3B:7E:67:E3:30:2B:B5:7F:AE:9C:4F:5F:D1:A3",
    "subject_cn": "CIC Root CA"
   },
   {
    "file": "source-ca.pem",
    "issuer_cn": "CIC Root CA",
-   "not_after": "Dec 31 13:22:39 2026 GMT",
-   "not_before": "Mar 20 13:22:39 2026 GMT",
+   "not_after": "2026-12-31T13:22:39Z",
    "sha256": "27:2B:B9:73:EA:68:4C:C0:00:D6:DF:3E:77:21:25:2C:3C:48:85:BF:93:4E:9A:57:C5:CF:D0:E1:BE:C8:BC:20",
    "subject_cn": "CIC Source CA"
   },
   {
    "file": "developer-ca.pem",
    "issuer_cn": "CIC Root CA",
-   "not_after": "Dec 31 13:22:46 2026 GMT",
-   "not_before": "Mar 20 13:22:46 2026 GMT",
+   "not_after": "2026-12-31T13:22:46Z",
    "sha256": "D3:59:D1:47:8F:E9:15:89:FA:02:B7:8A:EC:E3:98:37:DC:0D:60:27:24:B2:6E:0F:4E:4F:86:4B:40:76:F6:6A",
    "subject_cn": "CIC Developer CA"
   },
   {
    "file": "developer.pem",
    "issuer_cn": "CIC Developer CA",
-   "not_after": "Dec 31 13:22:59 2026 GMT",
-   "not_before": "Mar 20 13:22:59 2026 GMT",
+   "not_after": "2026-12-31T13:22:59Z",
    "sha256": "5E:F7:39:DC:91:CF:87:6D:3E:E9:29:DB:94:60:6A:60:A5:80:46:D7:C6:0C:25:EC:93:10:70:83:E9:28:93:03",
    "subject_cn": "Gabor Zoltan Sinko"
+  }
+ ],
+ "classes": [
+  {
+   "boundary": "2026-12-31T13:22:39Z",
+   "declared_validity_until_min": null,
+   "earliest_cert_end": {
+    "not_after": "2026-12-31T13:22:39Z",
+    "role": "authority",
+    "subject_cn": "CIC Source CA"
+   },
+   "id": "registry",
+   "label": "cic-schema-registry countersigned records",
+   "records": 90,
+   "state_at_as_of": "open",
+   "unknown_certs": {}
+  },
+  {
+   "boundary": "2026-12-31T13:22:39Z",
+   "declared_validity_until_min": null,
+   "earliest_cert_end": {
+    "not_after": "2026-12-31T13:22:39Z",
+    "role": "authority",
+    "subject_cn": "CIC Source CA"
+   },
+   "id": "primitives",
+   "label": "cic-primitives release records (the tags' own records)",
+   "records": 3,
+   "state_at_as_of": "open",
+   "unknown_certs": {}
+  },
+  {
+   "boundary": "2026-12-31T13:22:39Z",
+   "declared_validity_until_min": null,
+   "earliest_cert_end": {
+    "not_after": "2026-12-31T13:22:39Z",
+    "role": "authority",
+    "subject_cn": "CIC Source CA"
+   },
+   "id": "yang",
+   "label": "cic-yang release records (the tags' own records)",
+   "records": 2,
+   "state_at_as_of": "open",
+   "unknown_certs": {}
+  },
+  {
+   "boundary": "2026-10-05T20:23:22Z",
+   "declared_validity_until_min": null,
+   "earliest_cert_end": {
+    "not_after": "2026-10-05T20:23:22Z",
+    "role": ".cert",
+    "subject_cn": "Gabor Zoltan Sinko"
+   },
+   "id": "template:base@0.5.0",
+   "label": "template release base@0.5.0",
+   "records": 1,
+   "state_at_as_of": "ended",
+   "unknown_certs": {}
+  },
+  {
+   "boundary": "2026-08-06T06:05:02Z",
+   "declared_validity_until_min": "2026-12-08T17:09:32Z",
+   "earliest_cert_end": {
+    "not_after": "2026-08-06T06:05:02Z",
+    "role": ".cicSignedCA.certificate",
+    "subject_cn": "CIC Root CA"
+   },
+   "id": "template:base@0.6.0",
+   "label": "template release base@0.6.0",
+   "records": 1,
+   "state_at_as_of": "ended",
+   "unknown_certs": {}
+  },
+  {
+   "boundary": "2026-08-06T06:05:02Z",
+   "declared_validity_until_min": "2026-12-08T17:09:32Z",
+   "earliest_cert_end": {
+    "not_after": "2026-08-06T06:05:02Z",
+    "role": ".cicSignedCA.certificate",
+    "subject_cn": "CIC Root CA"
+   },
+   "id": "template:golang@0.6.0",
+   "label": "template release golang@0.6.0",
+   "records": 1,
+   "state_at_as_of": "ended",
+   "unknown_certs": {}
+  },
+  {
+   "boundary": null,
+   "declared_validity_until_min": null,
+   "earliest_cert_end": null,
+   "id": "template:schema-registry@0.1.0",
+   "label": "template release schema-registry@0.1.0",
+   "records": 1,
+   "state_at_as_of": "UNKNOWN",
+   "unknown_certs": {}
   }
  ],
  "clones": {
@@ -145,12 +238,51 @@
    "head": "b5e58d54428577b236390263e70dace83ec5881e"
   }
  },
- "inventory_format": 1,
+ "complete": true,
+ "inventory_format": 2,
  "registry": {
+  "files_mentioning_blocks": 114,
+  "not_a_record": 24,
+  "not_scanned_reason": "outside the record areas (documentation, tests, tools, configuration, caches); the signed records live under the scanned directories",
+  "not_scanned_top_level": [
+   "CLAUDE.md",
+   "Dockerfile",
+   "LICENSE.md",
+   "LICENSE.meta.yaml",
+   "LICENSE.yaml",
+   "MANIFEST.sha256",
+   "Makefile",
+   "README.md",
+   "README.yaml",
+   "ai",
+   "configs",
+   "dependency.yaml",
+   "docker-compose.yml",
+   "docs",
+   "feature-list.md",
+   "feature-list.yaml",
+   "md.meta.schema.yaml",
+   "mk",
+   "project.schema.yaml",
+   "project.yaml",
+   "pyproject.toml",
+   "pytest.ini",
+   "renovate.json",
+   "requirements.in",
+   "requirements.txt",
+   "schemas",
+   "source",
+   "tests",
+   "theads",
+   "tools"
+  ],
+  "parse_errors": [],
   "records": 90,
-  "src_ca_not_after": {
-   "Dec 31 13:22:39 2026 GMT": 90
-  },
+  "scanned_dirs": [
+   "standards",
+   "general",
+   "providers"
+  ],
   "ts_max": "2026-09-28T22:00:31Z",
   "ts_min": "2026-09-06T19:31:23Z",
   "unique_build_hash": 90,
@@ -160,100 +292,406 @@
    "cic-schema-registry-sign@v1": 89
   }
  },
+ "scope": [
+  {
+   "detail": "root.pem",
+   "id": "chain:root.pem",
+   "kind": "chain-certificate",
+   "status": "ok"
+  },
+  {
+   "detail": "source-ca.pem",
+   "id": "chain:source-ca.pem",
+   "kind": "chain-certificate",
+   "status": "ok"
+  },
+  {
+   "detail": "developer-ca.pem",
+   "id": "chain:developer-ca.pem",
+   "kind": "chain-certificate",
+   "status": "ok"
+  },
+  {
+   "detail": "developer.pem",
+   "id": "chain:developer.pem",
+   "kind": "chain-certificate",
+   "status": "ok"
+  },
+  {
+   "detail": "114 files mention the blocks: 90 records, 0 parse errors, 24 not records",
+   "id": "registry-scan",
+   "kind": "registry-record-scan",
+   "status": "ok"
+  },
+  {
+   "detail": "1 signed record file(s); 1 excluded (schema or test files)",
+   "id": "tag:cic-primitives:primitives/@v0.1.5",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "2 signed record file(s); 1 excluded (schema or test files)",
+   "id": "tag:cic-primitives:primitives/@v0.2.0",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "3 signed record file(s); 1 excluded (schema or test files)",
+   "id": "tag:cic-primitives:primitives/@v0.2.1",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "2 signed record file(s); 1 excluded (schema or test files)",
+   "id": "tag:cic-yang:yang/@v0.1.2",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "2 signed record file(s); 1 excluded (schema or test files)",
+   "id": "tag:cic-yang:yang/@v0.1.3",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "signature block under project.yaml; 1 certificate(s), 0 unreadable",
+   "id": "tag:base-repo:base@0.5.0",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "signature block under project.yaml; 3 certificate(s), 0 unreadable",
+   "id": "tag:base-repo:base@0.6.0",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "signature block under project.yaml; 3 certificate(s), 0 unreadable",
+   "id": "tag:base-repo:golang@0.6.0",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "signature block under project.yaml; 0 certificate(s), 0 unreadable",
+   "id": "tag:base-repo:schema-registry@0.1.0",
+   "kind": "release-tag",
+   "status": "ok"
+  },
+  {
+   "detail": "no signed record file and no project.yaml at the tag",
+   "id": "tag:base-repo:schemas@v0.9.0",
+   "kind": "release-tag",
+   "status": "absent"
+  },
+  {
+   "detail": "3 line(s)",
+   "id": "anchor:primitives.verifier.now",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "2 line(s)",
+   "id": "anchor:primitives.verifier.expired",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "0 line(s)",
+   "id": "anchor:registry.verifier.time-words",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "4 line(s)",
+   "id": "anchor:registry.verifier.signed-payload",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "9 line(s)",
+   "id": "anchor:registry.verifier.embedded-root",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "0 line(s)",
+   "id": "anchor:registry.verifier.ts-words",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "1 line(s)",
+   "id": "anchor:relay.verifier.verify-options",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  },
+  {
+   "detail": "0 line(s)",
+   "id": "anchor:relay.verifier.current-time",
+   "kind": "verifier-anchor",
+   "status": "ok"
+  }
+ ],
  "tag_records": [
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.1.5.yaml",
    "format": "yaml-record",
+   "own_release_record": true,
    "repo": "cic-primitives",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "primitives/@v0.1.5",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.1.5.yaml",
    "format": "yaml-record",
+   "own_release_record": false,
    "repo": "cic-primitives",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "primitives/@v0.2.0",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.2.0.yaml",
    "format": "yaml-record",
+   "own_release_record": true,
    "repo": "cic-primitives",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "primitives/@v0.2.0",
    "ts": "2026-09-06T19:31:23Z"
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.1.5.yaml",
    "format": "yaml-record",
+   "own_release_record": false,
    "repo": "cic-primitives",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "primitives/@v0.2.1",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.2.1.yaml",
    "format": "yaml-record",
+   "own_release_record": true,
    "repo": "cic-primitives",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "primitives/@v0.2.1",
    "ts": "2026-11-02T18:58:57Z"
   },
   {
-   "developer_not_after": "Dec 31 00:00:00 2125 GMT",
+   "certs": [
+    {
+     "not_after": "2125-12-31T00:00:00Z",
+     "role": "developer",
+     "subject_cn": "TEST ONLY issuer"
+    },
+    {
+     "not_after": "2125-12-31T00:00:00Z",
+     "role": "authority",
+     "subject_cn": "TEST ONLY authority"
+    },
+    {
+     "not_after": "2125-12-31T00:00:00Z",
+     "role": "root",
+     "subject_cn": "TEST ONLY root"
+    }
+   ],
    "file": "tests/fixtures/envelope3/golden-record.yaml",
    "format": "yaml-record",
+   "own_release_record": false,
    "repo": "cic-primitives",
-   "src_ca_not_after": "Dec 31 00:00:00 2125 GMT",
    "tag": "primitives/@v0.2.1",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.1.5.yaml",
    "format": "yaml-record",
+   "own_release_record": false,
    "repo": "cic-yang",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "yang/@v0.1.2",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-yang-v0.1.2.yaml",
    "format": "yaml-record",
+   "own_release_record": true,
    "repo": "cic-yang",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "yang/@v0.1.2",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-primitives-v0.1.5.yaml",
    "format": "yaml-record",
+   "own_release_record": false,
    "repo": "cic-yang",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "yang/@v0.1.3",
    "ts": null
   },
   {
-   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "certs": [
+    {
+     "not_after": "2026-12-31T13:22:59Z",
+     "role": "developer",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-12-31T13:22:39Z",
+     "role": "authority",
+     "subject_cn": "CIC Source CA"
+    },
+    {
+     "not_after": "2026-12-31T23:59:59Z",
+     "role": "root",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "file": "release/cic-yang-v0.1.3.yaml",
    "format": "yaml-record",
+   "own_release_record": true,
    "repo": "cic-yang",
-   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
    "tag": "yang/@v0.1.3",
    "ts": null
   },
   {
+   "certs": [
+    {
+     "not_after": "2026-10-05T20:23:22Z",
+     "role": ".cert",
+     "subject_cn": "Gabor Zoltan Sinko"
+    }
+   ],
    "declared_validity_until": null,
-   "developer_not_after": "Oct  5 20:23:22 2026 GMT",
    "file": "project.yaml",
    "format": "template-project-yaml",
    "repo": "base-repo",
@@ -261,8 +699,24 @@
    "ts": "2025-10-18T20:04:37.092582+00:00"
   },
   {
+   "certs": [
+    {
+     "not_after": "2026-10-05T20:23:22Z",
+     "role": ".createdBy.certificate",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-08-06T06:05:02Z",
+     "role": ".createdBy.issuer_certificate",
+     "subject_cn": "CIC Root CA"
+    },
+    {
+     "not_after": "2026-08-06T06:05:02Z",
+     "role": ".cicSignedCA.certificate",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "declared_validity_until": "2026-12-08T17:09:32.315693+00:00",
-   "developer_not_after": null,
    "file": "project.yaml",
    "format": "template-project-yaml",
    "repo": "base-repo",
@@ -270,8 +724,24 @@
    "ts": "2025-12-08T17:09:32.315677+00:00"
   },
   {
+   "certs": [
+    {
+     "not_after": "2026-10-05T20:23:22Z",
+     "role": ".createdBy.certificate",
+     "subject_cn": "Gabor Zoltan Sinko"
+    },
+    {
+     "not_after": "2026-08-06T06:05:02Z",
+     "role": ".createdBy.issuer_certificate",
+     "subject_cn": "CIC Root CA"
+    },
+    {
+     "not_after": "2026-08-06T06:05:02Z",
+     "role": ".cicSignedCA.certificate",
+     "subject_cn": "CIC Root CA"
+    }
+   ],
    "declared_validity_until": "2026-12-08T17:09:32.315693+00:00",
-   "developer_not_after": null,
    "file": "project.yaml",
    "format": "template-project-yaml",
    "repo": "base-repo",
@@ -279,22 +749,13 @@
    "ts": "2025-12-08T17:09:32.315677+00:00"
   },
   {
+   "certs": [],
    "declared_validity_until": "TBD",
-   "developer_not_after": null,
    "file": "project.yaml",
    "format": "template-project-yaml",
    "repo": "base-repo",
    "tag": "schema-registry@0.1.0",
    "ts": "TBD"
-  },
-  {
-   "declared_validity_until": null,
-   "developer_not_after": null,
-   "file": null,
-   "format": "none-found",
-   "repo": "base-repo",
-   "tag": "schemas@v0.9.0",
-   "ts": null
   }
  ]
 }

@@ -1,2 +1,2 @@
-registry records 90, tag records classified 10, stamped 3; records without external time evidence 97
+scope elements 23, complete True; registry records 90; classes 7; stamped 3; records without external time evidence 96; classes whose boundary has passed: template:base@0.5.0, template:base@0.6.0, template:golang@0.6.0
 all expectations held
