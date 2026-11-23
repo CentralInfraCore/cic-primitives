@@ -1,6 +1,7 @@
 """Self-test of check_g0.py: can it FAIL, and for the right reason? Typed exits; infrastructure is never a detection.
 The real state of the repository is checked as it is (A). The positive controls (B) run in a TEMPORARY ROOT that copies the bound files and adds a FIXTURE of the OP-1 specification text (the real one does not exist yet),
-so that a complete package can be shown to pass. Every planted fault (C) is applied to that complete package and is counted only when the check does NOT reach READY_FOR_OWNER_CLOSURE or CLOSED,
+so that a complete package can be shown to pass. THE FIXTURE IS A TEST DOUBLE: the positive controls show that the STRUCTURE and the integrity rules accept a complete package; they are not, and must not be read as,
+a check of the content of the real OP-1 specification, which only a review can judge. Every planted fault (C) is applied to that complete package and is counted only when the check does NOT reach READY_FOR_OWNER_CLOSURE or CLOSED,
 exits 1, and prints a FAIL-EXPECT line of the intended check. D: an unreadable input exits 2.
 Exit: 0 all as expected, 1 a mutant was not detected or a control failed, 2 the self-test itself could not run."""
 import copy, hashlib, os, shutil, subprocess, sys, tempfile
@@ -73,7 +74,12 @@ def main():
     # A the real state
     rc, o = run([])
     named = [l.split()[1] for l in o.splitlines() if l.startswith("FAIL-EXPECT")]
-    report("A real state: G-0 is NOT_READY for exactly one reason, the missing OP-1 specification text", rc == 1 and verdict(o) == "NOT_READY" and named == ["evidence.op1.spec-text"], "exit=%d fails=%s" % (rc, named))
+    import yaml
+    real = yaml.safe_load(open(os.path.join(ROOT, PLAN_DIR, "decisions.yaml"), encoding="utf-8"))
+    if next(x for x in real["decisions"] if x["id"] == "OP-1").get("spec_text") is None:
+        report("A real state: G-0 is NOT_READY for exactly one reason, the missing OP-1 specification text", rc == 1 and verdict(o) == "NOT_READY" and named == ["evidence.op1.spec-text"], "exit=%d fails=%s" % (rc, named))
+    else:                                       # the record has moved on: the real package must then be complete (this branch is for the day the specification text is recorded)
+        report("A real state: the OP-1 specification text is recorded, so every prerequisite is met and evidenced", rc == 0 and verdict(o) in ("READY_FOR_OWNER_CLOSURE", "CLOSED") and not named, "exit=%d fails=%s" % (rc, named))
     report("A real state: OP-3 (partial) and OP-4 do not block G-0", "OP-3     PARTIAL" in o and "not a G-0 prerequisite" in o and "decision.status.OP-3" not in o)
     # B positive controls
     d = tempfile.mkdtemp()
@@ -137,16 +143,70 @@ def main():
         ("a closure record while OP-1 has no specification text (closure without evidence)", dict(spec_fixture=False, closure={}), "closure.without-evidence", "INVALID"),
         ("a closure record that names another decision record (wrong digest)", dict(closure={"decisions_sha256": "1" * 64}), "closure.digest", "INVALID"),
         ("a closure record that is not an owner closure of G-0", dict(closure={"closed_by": "reviewer"}), "closure.format", "INVALID"),
+        ("a decision that the owner's statement does not mention (OP-4 removed from the verbatim table)", dict(rec_mut=lambda r: row(r, "| OP-4", [])), "decision.not-in-source.OP-4", "INVALID"),
+        ("the record format is not 1", dict(rec_mut=lambda r: r.__setitem__("decision_record_format", 2)), "record.format", "INVALID"),
+        ("the base commit is not a commit id", dict(rec_mut=lambda r: r["bound_to"].__setitem__("base_commit", "main")), "bound.base_commit", "INVALID"),
+        ("a bound file that does not exist (the specification path is wrong)", dict(rec_mut=lambda r: r["bound_to"]["files"]["spec"].__setitem__("path", "docs/en/NO-SUCH-FILE.md")), "bound.missing.spec", "INVALID"),
+        ("the evidence of D1 names a file that is not bound", dict(rec_mut=setf("D1", "evidence_files", ["spec", "no_such_key"])), "evidence.files.D1", "NOT_READY"),
+        ("the recorded specification text of OP-1 does not exist (a wrong path)", dict(rec_mut=lambda r: [x.__setitem__("spec_text", {"path": "docs/design/pattern-profile-spec/NO-SUCH.md", "sha256": "0" * 64}) for x in r["decisions"] if x["id"] == "OP-1"]), "evidence.op1.spec-text", "INVALID"),
+        ("OP-1 is not decided (the owner's statement and the record both say PARTIAL)", dict(rec_mut=both(setf("OP-1", "status", "partial"), lambda r: row(r, "| OP-1", ["| OP-1 | x | **PARTIAL** |"]))), "decision.status.OP-1", "NOT_READY"),
+        ("OP-2 is on hold, which is no owner outcome of accepted, rejected or deferred", dict(rec_mut=both(setf("OP-2", "status", "hold"), lambda r: row(r, "| OP-2", ["| OP-2 | x | **HOLD** |"]))), "decision.status.OP-2", "NOT_READY"),
+        ("the OP-1 decision is missing", dict(rec_mut=drop("OP-1")), "decision.missing.OP-1", "NOT_READY"),
+        ("the OP-2 decision is missing", dict(rec_mut=drop("OP-2")), "decision.missing.OP-2", "NOT_READY"),
+        ("an accepted case depends on a decision that the owner did not confirm and that is not on hold (D2 rejected, E-PIN-04 depends on it)", dict(rec_mut=both(setf("D2", "status", "rejected"), lambda r: row(r, "| D1\u2013D6", ["| D1 | x | **CONFIRMED** |", "| D2 | x | **REJECTED** |", "| D3\u2013D6 | x | **CONFIRMED** |"]))), "op2.depends.E-PIN-04", "NOT_READY"),
     ]
-    for name, kw, needle, want in faults:
+    # the exact set of failures of each planted fault with a bounded set of causes (a cascade of more than 8 labels keeps the needle only); reviewed one by one, see the comments in the document
+    exact = {
+        'a decision is missing (D3)': ['decision.missing.D3', 'op2.depends.E-PIN-14', 'op2.depends.E-PIN-15'],
+        'a contradictory record (D1 recorded twice, confirmed and rejected)': ['decision.contradiction.D1'],
+        "the record disagrees with the owner's statement (D2 rejected, the statement says CONFIRMED)": ['decision.status.D2', 'decision.vs-source.D2', 'op2.depends.E-PIN-04'],
+        "OP-3 recorded as decided although the owner's statement says PARTIAL": ['decision.vs-source.OP-3'],
+        'missing provenance (the source reference is empty)': ['source.provenance'],
+        'a wrong SHA-256 (the specification as recorded is not the file)': ['bound.sha.spec', 'evidence.files.D1', 'evidence.files.D2', 'evidence.files.D3', 'evidence.files.D4', 'evidence.files.D5', 'evidence.files.D6'],
+        'a bound file changed after the decision (the plan edited, the recorded SHA kept)': ['bound.sha.plan', 'evidence.files.OP-1'],
+        'a specification text of OP-1 that does not treat the aliases (a trivial text is not evidence)': ['evidence.op1.spec-text'],
+        'an unmet prerequisite: the specification text of OP-1 is not recorded': ['evidence.op1.spec-text'],
+        'the recorded specification text of OP-1 changed after its SHA-256 was recorded': ['evidence.op1.spec-text'],
+        'a prerequisite not confirmed (D1 on hold) while the 47 cases are deferred': ['decision.status.D1'],
+        'OP-2 treated as a normative conformance set (normative true)': ['op2.normative'],
+        'OP-2 accepts 46 cases, not 47': ['op2.count'],
+        'a case that depends on a decision on hold (E-PIN-01 depends on D7)': ['op2.depends.hold.E-PIN-01'],
+        'OP-3 recorded as closing at G-0 (the plan says G-6)': ['plan.closes_at.OP-3'],
+        'OP-3 partial without the precondition for the G-6 measurement': ['op3.precondition'],
+        'the plan demands a later open point at G-0 (G-0 names OP-3)': ['plan.g0.late-conditions'],
+        'the plan no longer names OP-2 at G-0': ['plan.g0.criteria'],
+        'a decision the plan does not know (D9)': ['decision.unknown.D9'],
+        'a closure record while OP-1 has no specification text (closure without evidence)': ['closure.without-evidence', 'evidence.op1.spec-text'],
+        'a closure record that names another decision record (wrong digest)': ['closure.digest'],
+        'a closure record that is not an owner closure of G-0': ['closure.format'],
+        "a decision that the owner's statement does not mention (OP-4 removed from the verbatim table)": ['decision.not-in-source.OP-4'],
+        'the record format is not 1': ['record.format'],
+        'the base commit is not a commit id': ['bound.base_commit'],
+        'a bound file that does not exist (the specification path is wrong)': ['bound.missing.spec', 'evidence.files.D1', 'evidence.files.D2', 'evidence.files.D3', 'evidence.files.D4', 'evidence.files.D5', 'evidence.files.D6'],
+        'the evidence of D1 names a file that is not bound': ['evidence.files.D1'],
+        'the recorded specification text of OP-1 does not exist (a wrong path)': ['evidence.op1.spec-text'],
+        "OP-1 is not decided (the owner's statement and the record both say PARTIAL)": ['decision.status.OP-1'],
+        'OP-2 is on hold, which is no owner outcome of accepted, rejected or deferred': ['decision.status.OP-2'],
+        'the OP-1 decision is missing': ['decision.missing.OP-1'],
+        'the OP-2 decision is missing': ['decision.missing.OP-2'],
+        'an accepted case depends on a decision that the owner did not confirm and that is not on hold (D2 rejected, E-PIN-04 depends on it)': ['decision.status.D2', 'op2.depends.E-PIN-04'],
+    }
+    for entry in faults:
+        name, kw, needle, want = entry[:4]
         d = tempfile.mkdtemp()
         try:
             rc, o = run(build(d, **kw))
         finally:
             shutil.rmtree(d, ignore_errors=True)
-        named = [l for l in o.splitlines() if l.startswith("FAIL-EXPECT") and needle in l]
+        labels = sorted(l.split()[1] for l in o.splitlines() if l.startswith("FAIL-EXPECT"))
+        named = [l for l in labels if needle in l]
         v = verdict(o)
-        report("C planted: " + name, rc == 1 and bool(named) and v == want and v not in ("READY_FOR_OWNER_CLOSURE", "CLOSED"), "exit=%d verdict=%s needle=%s" % (rc, v, needle))
+        ok = rc == 1 and bool(named) and v == want and v not in ("READY_FOR_OWNER_CLOSURE", "CLOSED")
+        if os.environ.get("CIC_G0_SHOW_LABELS"):
+            print("LABELS %s => %s" % (name, labels))
+        if name in exact:                                   # where the result has a bounded set of causes, the WHOLE set of failures is compared, not only the needle
+            ok = ok and labels == sorted(exact[name])
+        report("C planted: " + name, ok, "exit=%d verdict=%s needle=%s%s" % (rc, v, needle, " exact-set" if name in exact else ""))
     rc, o = run(["--record", "/nonexistent/decisions.yaml"])
     report("D infra: the decision record is unreadable (exit 2, not a detection)", rc == 2 and "INCOMPLETE" in o, "exit=%d" % rc)
     print("self-test: %s" % ("all as expected" if not bad else "%d problem(s)" % bad))

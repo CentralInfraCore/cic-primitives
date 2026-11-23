@@ -10,6 +10,6 @@ OP-1     DECIDED          UNVERIFIED (the specification text that fixes OP-1 is 
 OP-2     ACCEPTED_CONTENT VERIFIED
 OP-3     PARTIAL          closes at G-6, not a G-0 prerequisite; precondition: c and the counted operations are fixed BEFORE the acceptance measurement of G-6, not adjusted to its results
 OP-4     DECIDED          closes at G-4, not a G-0 prerequisite
-D7, D8   HOLD: on hold, no case depends on them
+D7, D8   HOLD; no case depends on them
 closure record: none (the gate is not closed by this check)
 G-0: NOT_READY

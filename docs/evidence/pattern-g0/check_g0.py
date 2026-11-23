@@ -194,6 +194,13 @@ def main(argv):
                 if not_conf:
                     lack("op2.depends.%s" % r["id"], "the case is accepted but depends on %s, which the owner has not confirmed" % sorted(not_conf))
         rows.append(("OP-2", d.get("status", "?").upper(), "VERIFIED" if ok else "UNVERIFIED"))
+    # ---- D7 and D8: is it TRUE that no case depends on them? (computed from the review, whatever the status of OP-2)
+    dep78 = None
+    if {"extension_review"} <= verified_files:
+        try:
+            dep78 = sorted(r["id"] for r in yaml.safe_load(open(os.path.join(root, files["extension_review"]["path"]), encoding="utf-8"))["cases"] if set(r.get("depends", [])) & {"D7", "D8"})
+        except BaseException:
+            dep78 = None
     # ---- records that G-0 does NOT require (consistency only)
     d3 = byid.get("OP-3")
     if d3 is not None:
@@ -219,7 +226,8 @@ def main(argv):
         print("OP-3     %-16s closes at %s, not a G-0 prerequisite; precondition: %s" % (str(byid["OP-3"].get("status", "?")).upper(), byid["OP-3"].get("closes_at"), byid["OP-3"].get("precondition")))
     if byid.get("OP-4") is not None:
         print("OP-4     %-16s closes at %s, not a G-0 prerequisite" % (str(byid["OP-4"].get("status", "?")).upper(), byid["OP-4"].get("closes_at")))
-    print("D7, D8   %s: on hold, no case depends on them" % ("HOLD" if all((byid.get(x) or {}).get("status") == "hold" for x in ("D7", "D8")) else "NOT ALL ON HOLD"))
+    on_hold = all((byid.get(x) or {}).get("status") == "hold" for x in ("D7", "D8"))
+    print("D7, D8   %s; %s" % ("HOLD" if on_hold else "NOT ALL ON HOLD", "no case depends on them" if dep78 == [] else ("cases that depend on them: %s" % dep78 if dep78 else "dependency of the cases not evaluated (the review file is not verified)")))
     print("closure record: %s" % ("none (the gate is not closed by this check)" if closure is None else "present"))
     print("G-0: %s" % state)
     return 0 if state in ("READY_FOR_OWNER_CLOSURE", "CLOSED") else 1

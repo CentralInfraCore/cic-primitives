@@ -2,29 +2,40 @@ A real state: G-0 is NOT_READY for exactly one reason, the missing OP-1 specific
 A real state: OP-3 (partial) and OP-4 do not block G-0                                                         OK 
 B positive control: a complete package is READY_FOR_OWNER_CLOSURE with OP-3 partial, and the gate is not closed OK exit=0
 B positive control: a valid owner closure record that names the digest of the record gives CLOSED              OK exit=0
-C planted: a decision is missing (D3)                                                                          OK exit=1 verdict=NOT_READY needle=decision.missing.D3
-C planted: a contradictory record (D1 recorded twice, confirmed and rejected)                                  OK exit=1 verdict=INVALID needle=decision.contradiction.D1
-C planted: the record disagrees with the owner's statement (D2 rejected, the statement says CONFIRMED)         OK exit=1 verdict=INVALID needle=decision.vs-source.D2
-C planted: OP-3 recorded as decided although the owner's statement says PARTIAL                                OK exit=1 verdict=INVALID needle=decision.vs-source.OP-3
-C planted: missing provenance (the source reference is empty)                                                  OK exit=1 verdict=INVALID needle=source.provenance
+C planted: a decision is missing (D3)                                                                          OK exit=1 verdict=NOT_READY needle=decision.missing.D3 exact-set
+C planted: a contradictory record (D1 recorded twice, confirmed and rejected)                                  OK exit=1 verdict=INVALID needle=decision.contradiction.D1 exact-set
+C planted: the record disagrees with the owner's statement (D2 rejected, the statement says CONFIRMED)         OK exit=1 verdict=INVALID needle=decision.vs-source.D2 exact-set
+C planted: OP-3 recorded as decided although the owner's statement says PARTIAL                                OK exit=1 verdict=INVALID needle=decision.vs-source.OP-3 exact-set
+C planted: missing provenance (the source reference is empty)                                                  OK exit=1 verdict=INVALID needle=source.provenance exact-set
 C planted: missing provenance (no verbatim statement)                                                          OK exit=1 verdict=INVALID needle=source.provenance
-C planted: a wrong SHA-256 (the specification as recorded is not the file)                                     OK exit=1 verdict=INVALID needle=bound.sha.spec
-C planted: a bound file changed after the decision (the plan edited, the recorded SHA kept)                    OK exit=1 verdict=INVALID needle=bound.sha.plan
-C planted: a specification text of OP-1 that does not treat the aliases (a trivial text is not evidence)       OK exit=1 verdict=INVALID needle=evidence.op1.spec-text
-C planted: an unmet prerequisite: the specification text of OP-1 is not recorded                               OK exit=1 verdict=NOT_READY needle=evidence.op1.spec-text
-C planted: the recorded specification text of OP-1 changed after its SHA-256 was recorded                      OK exit=1 verdict=INVALID needle=evidence.op1.spec-text
-C planted: a prerequisite not confirmed (D1 on hold) while the 47 cases are deferred                           OK exit=1 verdict=NOT_READY needle=decision.status.D1
+C planted: a wrong SHA-256 (the specification as recorded is not the file)                                     OK exit=1 verdict=INVALID needle=bound.sha.spec exact-set
+C planted: a bound file changed after the decision (the plan edited, the recorded SHA kept)                    OK exit=1 verdict=INVALID needle=bound.sha.plan exact-set
+C planted: a specification text of OP-1 that does not treat the aliases (a trivial text is not evidence)       OK exit=1 verdict=INVALID needle=evidence.op1.spec-text exact-set
+C planted: an unmet prerequisite: the specification text of OP-1 is not recorded                               OK exit=1 verdict=NOT_READY needle=evidence.op1.spec-text exact-set
+C planted: the recorded specification text of OP-1 changed after its SHA-256 was recorded                      OK exit=1 verdict=INVALID needle=evidence.op1.spec-text exact-set
+C planted: a prerequisite not confirmed (D1 on hold) while the 47 cases are deferred                           OK exit=1 verdict=NOT_READY needle=decision.status.D1 exact-set
 C planted: the 47 cases accepted while D1, which they depend on, is on hold                                    OK exit=1 verdict=INVALID needle=op2.depends.hold.E-PIN-01
-C planted: OP-2 treated as a normative conformance set (normative true)                                        OK exit=1 verdict=INVALID needle=op2.normative
-C planted: OP-2 accepts 46 cases, not 47                                                                       OK exit=1 verdict=INVALID needle=op2.count
-C planted: a case that depends on a decision on hold (E-PIN-01 depends on D7)                                  OK exit=1 verdict=INVALID needle=op2.depends.hold.E-PIN-01
-C planted: OP-3 recorded as closing at G-0 (the plan says G-6)                                                 OK exit=1 verdict=INVALID needle=plan.closes_at.OP-3
-C planted: OP-3 partial without the precondition for the G-6 measurement                                       OK exit=1 verdict=INVALID needle=op3.precondition
-C planted: the plan demands a later open point at G-0 (G-0 names OP-3)                                         OK exit=1 verdict=INVALID needle=plan.g0.late-conditions
-C planted: the plan no longer names OP-2 at G-0                                                                OK exit=1 verdict=INVALID needle=plan.g0.criteria
-C planted: a decision the plan does not know (D9)                                                              OK exit=1 verdict=INVALID needle=decision.unknown.D9
-C planted: a closure record while OP-1 has no specification text (closure without evidence)                    OK exit=1 verdict=INVALID needle=closure.without-evidence
-C planted: a closure record that names another decision record (wrong digest)                                  OK exit=1 verdict=INVALID needle=closure.digest
-C planted: a closure record that is not an owner closure of G-0                                                OK exit=1 verdict=INVALID needle=closure.format
+C planted: OP-2 treated as a normative conformance set (normative true)                                        OK exit=1 verdict=INVALID needle=op2.normative exact-set
+C planted: OP-2 accepts 46 cases, not 47                                                                       OK exit=1 verdict=INVALID needle=op2.count exact-set
+C planted: a case that depends on a decision on hold (E-PIN-01 depends on D7)                                  OK exit=1 verdict=INVALID needle=op2.depends.hold.E-PIN-01 exact-set
+C planted: OP-3 recorded as closing at G-0 (the plan says G-6)                                                 OK exit=1 verdict=INVALID needle=plan.closes_at.OP-3 exact-set
+C planted: OP-3 partial without the precondition for the G-6 measurement                                       OK exit=1 verdict=INVALID needle=op3.precondition exact-set
+C planted: the plan demands a later open point at G-0 (G-0 names OP-3)                                         OK exit=1 verdict=INVALID needle=plan.g0.late-conditions exact-set
+C planted: the plan no longer names OP-2 at G-0                                                                OK exit=1 verdict=INVALID needle=plan.g0.criteria exact-set
+C planted: a decision the plan does not know (D9)                                                              OK exit=1 verdict=INVALID needle=decision.unknown.D9 exact-set
+C planted: a closure record while OP-1 has no specification text (closure without evidence)                    OK exit=1 verdict=INVALID needle=closure.without-evidence exact-set
+C planted: a closure record that names another decision record (wrong digest)                                  OK exit=1 verdict=INVALID needle=closure.digest exact-set
+C planted: a closure record that is not an owner closure of G-0                                                OK exit=1 verdict=INVALID needle=closure.format exact-set
+C planted: a decision that the owner's statement does not mention (OP-4 removed from the verbatim table)       OK exit=1 verdict=INVALID needle=decision.not-in-source.OP-4 exact-set
+C planted: the record format is not 1                                                                          OK exit=1 verdict=INVALID needle=record.format exact-set
+C planted: the base commit is not a commit id                                                                  OK exit=1 verdict=INVALID needle=bound.base_commit exact-set
+C planted: a bound file that does not exist (the specification path is wrong)                                  OK exit=1 verdict=INVALID needle=bound.missing.spec exact-set
+C planted: the evidence of D1 names a file that is not bound                                                   OK exit=1 verdict=NOT_READY needle=evidence.files.D1 exact-set
+C planted: the recorded specification text of OP-1 does not exist (a wrong path)                               OK exit=1 verdict=INVALID needle=evidence.op1.spec-text exact-set
+C planted: OP-1 is not decided (the owner's statement and the record both say PARTIAL)                         OK exit=1 verdict=NOT_READY needle=decision.status.OP-1 exact-set
+C planted: OP-2 is on hold, which is no owner outcome of accepted, rejected or deferred                        OK exit=1 verdict=NOT_READY needle=decision.status.OP-2 exact-set
+C planted: the OP-1 decision is missing                                                                        OK exit=1 verdict=NOT_READY needle=decision.missing.OP-1 exact-set
+C planted: the OP-2 decision is missing                                                                        OK exit=1 verdict=NOT_READY needle=decision.missing.OP-2 exact-set
+C planted: an accepted case depends on a decision that the owner did not confirm and that is not on hold (D2 rejected, E-PIN-04 depends on it) OK exit=1 verdict=NOT_READY needle=op2.depends.E-PIN-04 exact-set
 D infra: the decision record is unreadable (exit 2, not a detection)                                           OK exit=2
 self-test: all as expected
