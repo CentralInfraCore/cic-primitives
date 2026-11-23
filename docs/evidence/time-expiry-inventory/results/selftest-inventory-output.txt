@@ -1,0 +1,15 @@
+A positive control (the package as it is)                                                                OK exit=0
+C planted: the chain table of the document edited by hand (the Source CA end)                            OK exit=1 needle=doc.table.chain
+C planted: the records table of the document edited by hand (90 records)                                 OK exit=1 needle=doc.table.records
+C planted: the verifier table of the document edited by hand (the registry verifier reads the clock)     OK exit=1 needle=doc.table.verifiers
+C planted: the inventory says 89 registry records while the document says 90                             OK exit=1 needle=doc.table.records
+C planted: the inventory's Source CA end differs from the kept certificate                               OK exit=1 needle=chain.dates.source-ca.pem
+C planted: a registry record names a Source CA that ends at another time                                 OK exit=1 needle=consistent.registry-source-ca
+C planted: the registry verifier gains a time word (the claim that it does not read the clock fails)     OK exit=1 needle=verifiers.registry.time-agnostic
+C planted: the registry verifier starts to name ts (the claim that the countersign ts is not checked fails) OK exit=1 needle=verifiers.registry.ts-unchecked
+C planted: the Relay chain verification gains a CurrentTime (the default-time claim fails)               OK exit=1 needle=verifiers.relay.default-time
+C planted: the primitives verifier no longer reads the clock                                             OK exit=1 needle=verifiers.primitives.reads-clock
+C planted: the manifest stamps a release that is not a tag of the inventory                              OK exit=1 needle=consistent.stamped-tag.v9.9.9
+C planted: the document without the chain table markers                                                  OK exit=1 needle=doc.markers.chain
+D infra: the inventory is unreadable (exit 2, not a detection)                                           OK exit=2
+self-test: all as expected

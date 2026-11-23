@@ -1,0 +1,300 @@
+{
+ "anchors": [
+  {
+   "commit": "411ce8070445b8ed16c7e62dfd216d5e2ebf13ad",
+   "label": "primitives.verifier.now",
+   "lines": [
+    364,
+    415,
+    578
+   ],
+   "path": "tools/compiler.py",
+   "regex": "now\\s*=\\s*datetime\\.datetime\\.now\\(datetime\\.timezone\\.utc\\)",
+   "repo": "cic-primitives"
+  },
+  {
+   "commit": "411ce8070445b8ed16c7e62dfd216d5e2ebf13ad",
+   "label": "primitives.verifier.expired",
+   "lines": [
+    374,
+    424
+   ],
+   "path": "tools/compiler.py",
+   "regex": "expired on|Certificate not valid",
+   "repo": "cic-primitives"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "label": "registry.verifier.time-words",
+   "lines": [],
+   "path": "tools/registrylib/verify.py",
+   "regex": "not_valid|not_before|not_after|datetime|expire|time\\.time|utcnow",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "label": "registry.verifier.signed-payload",
+   "lines": [
+    20,
+    254,
+    256,
+    257
+   ],
+   "path": "tools/registrylib/verify.py",
+   "regex": "signed_payload",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "label": "registry.verifier.embedded-root",
+   "lines": [
+    17,
+    24,
+    54,
+    160,
+    161,
+    169,
+    183,
+    206,
+    271
+   ],
+   "path": "tools/registrylib/verify.py",
+   "regex": "embedded",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "3d493d591b8663cf53c74fa80664474581c91951",
+   "label": "registry.verifier.ts-words",
+   "lines": [],
+   "path": "tools/registrylib/verify.py",
+   "regex": "\\bts\\b",
+   "repo": "cic-schema-registry"
+  },
+  {
+   "commit": "b1b4345e2c3a6cdddc02caa254a04b3de1e8d227",
+   "label": "relay.verifier.verify-options",
+   "lines": [
+    155
+   ],
+   "path": "core/cabinet/pki_verify.go",
+   "regex": "x509\\.VerifyOptions\\{",
+   "repo": "CIC_Relay"
+  },
+  {
+   "commit": "b1b4345e2c3a6cdddc02caa254a04b3de1e8d227",
+   "label": "relay.verifier.current-time",
+   "lines": [],
+   "path": "core/cabinet/pki_verify.go",
+   "regex": "CurrentTime",
+   "repo": "CIC_Relay"
+  }
+ ],
+ "chain": [
+  {
+   "file": "root.pem",
+   "issuer_cn": "CIC Root CA",
+   "not_after": "Dec 31 23:59:59 2026 GMT",
+   "not_before": "Mar 19 12:59:30 2026 GMT",
+   "sha256": "7A:87:3A:BB:99:D7:20:D9:77:96:B4:A9:82:30:C4:3A:31:99:3B:7E:67:E3:30:2B:B5:7F:AE:9C:4F:5F:D1:A3",
+   "subject_cn": "CIC Root CA"
+  },
+  {
+   "file": "source-ca.pem",
+   "issuer_cn": "CIC Root CA",
+   "not_after": "Dec 31 13:22:39 2026 GMT",
+   "not_before": "Mar 20 13:22:39 2026 GMT",
+   "sha256": "27:2B:B9:73:EA:68:4C:C0:00:D6:DF:3E:77:21:25:2C:3C:48:85:BF:93:4E:9A:57:C5:CF:D0:E1:BE:C8:BC:20",
+   "subject_cn": "CIC Source CA"
+  },
+  {
+   "file": "developer-ca.pem",
+   "issuer_cn": "CIC Root CA",
+   "not_after": "Dec 31 13:22:46 2026 GMT",
+   "not_before": "Mar 20 13:22:46 2026 GMT",
+   "sha256": "D3:59:D1:47:8F:E9:15:89:FA:02:B7:8A:EC:E3:98:37:DC:0D:60:27:24:B2:6E:0F:4E:4F:86:4B:40:76:F6:6A",
+   "subject_cn": "CIC Developer CA"
+  },
+  {
+   "file": "developer.pem",
+   "issuer_cn": "CIC Developer CA",
+   "not_after": "Dec 31 13:22:59 2026 GMT",
+   "not_before": "Mar 20 13:22:59 2026 GMT",
+   "sha256": "5E:F7:39:DC:91:CF:87:6D:3E:E9:29:DB:94:60:6A:60:A5:80:46:D7:C6:0C:25:EC:93:10:70:83:E9:28:93:03",
+   "subject_cn": "Gabor Zoltan Sinko"
+  }
+ ],
+ "clones": {
+  "CIC_Relay": {
+   "branch": "main",
+   "head": "b1b4345e2c3a6cdddc02caa254a04b3de1e8d227"
+  },
+  "base-repo": {
+   "branch": "main",
+   "head": "71db9d354857ca7598fe3d808fe4721824935649"
+  },
+  "cic-primitives": {
+   "branch": "main",
+   "head": "411ce8070445b8ed16c7e62dfd216d5e2ebf13ad"
+  },
+  "cic-schema-registry": {
+   "branch": "main",
+   "head": "3d493d591b8663cf53c74fa80664474581c91951"
+  },
+  "cic-yang": {
+   "branch": "main",
+   "head": "b5e58d54428577b236390263e70dace83ec5881e"
+  }
+ },
+ "inventory_format": 1,
+ "registry": {
+  "records": 90,
+  "src_ca_not_after": {
+   "Dec 31 13:22:39 2026 GMT": 90
+  },
+  "ts_max": "2026-09-28T22:00:31Z",
+  "ts_min": "2026-09-06T19:31:23Z",
+  "unique_build_hash": 90,
+  "with_ts": 90,
+  "workflows": {
+   "cic-primitives-release@v0.2.0": 1,
+   "cic-schema-registry-sign@v1": 89
+  }
+ },
+ "tag_records": [
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.1.5.yaml",
+   "format": "yaml-record",
+   "repo": "cic-primitives",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "primitives/@v0.1.5",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.1.5.yaml",
+   "format": "yaml-record",
+   "repo": "cic-primitives",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "primitives/@v0.2.0",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.2.0.yaml",
+   "format": "yaml-record",
+   "repo": "cic-primitives",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "primitives/@v0.2.0",
+   "ts": "2026-09-06T19:31:23Z"
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.1.5.yaml",
+   "format": "yaml-record",
+   "repo": "cic-primitives",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "primitives/@v0.2.1",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.2.1.yaml",
+   "format": "yaml-record",
+   "repo": "cic-primitives",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "primitives/@v0.2.1",
+   "ts": "2026-11-02T18:58:57Z"
+  },
+  {
+   "developer_not_after": "Dec 31 00:00:00 2125 GMT",
+   "file": "tests/fixtures/envelope3/golden-record.yaml",
+   "format": "yaml-record",
+   "repo": "cic-primitives",
+   "src_ca_not_after": "Dec 31 00:00:00 2125 GMT",
+   "tag": "primitives/@v0.2.1",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.1.5.yaml",
+   "format": "yaml-record",
+   "repo": "cic-yang",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "yang/@v0.1.2",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-yang-v0.1.2.yaml",
+   "format": "yaml-record",
+   "repo": "cic-yang",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "yang/@v0.1.2",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-primitives-v0.1.5.yaml",
+   "format": "yaml-record",
+   "repo": "cic-yang",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "yang/@v0.1.3",
+   "ts": null
+  },
+  {
+   "developer_not_after": "Dec 31 13:22:59 2026 GMT",
+   "file": "release/cic-yang-v0.1.3.yaml",
+   "format": "yaml-record",
+   "repo": "cic-yang",
+   "src_ca_not_after": "Dec 31 13:22:39 2026 GMT",
+   "tag": "yang/@v0.1.3",
+   "ts": null
+  },
+  {
+   "declared_validity_until": null,
+   "developer_not_after": "Oct  5 20:23:22 2026 GMT",
+   "file": "project.yaml",
+   "format": "template-project-yaml",
+   "repo": "base-repo",
+   "tag": "base@0.5.0",
+   "ts": "2025-10-18T20:04:37.092582+00:00"
+  },
+  {
+   "declared_validity_until": "2026-12-08T17:09:32.315693+00:00",
+   "developer_not_after": null,
+   "file": "project.yaml",
+   "format": "template-project-yaml",
+   "repo": "base-repo",
+   "tag": "base@0.6.0",
+   "ts": "2025-12-08T17:09:32.315677+00:00"
+  },
+  {
+   "declared_validity_until": "2026-12-08T17:09:32.315693+00:00",
+   "developer_not_after": null,
+   "file": "project.yaml",
+   "format": "template-project-yaml",
+   "repo": "base-repo",
+   "tag": "golang@0.6.0",
+   "ts": "2025-12-08T17:09:32.315677+00:00"
+  },
+  {
+   "declared_validity_until": "TBD",
+   "developer_not_after": null,
+   "file": "project.yaml",
+   "format": "template-project-yaml",
+   "repo": "base-repo",
+   "tag": "schema-registry@0.1.0",
+   "ts": "TBD"
+  },
+  {
+   "declared_validity_until": null,
+   "developer_not_after": null,
+   "file": null,
+   "format": "none-found",
+   "repo": "base-repo",
+   "tag": "schemas@v0.9.0",
+   "ts": null
+  }
+ ]
+}
