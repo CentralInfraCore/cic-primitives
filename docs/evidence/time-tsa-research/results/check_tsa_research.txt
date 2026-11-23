@@ -1,0 +1,8 @@
+C-Q2-1 supported
+C-Q2-2 open
+C-Q2-3 open
+C-Q2-4 open
+C-Q2-5 open
+C-Q2-6 open
+C-Q2-7 open
+T3 TSA research: valid (conditions derived above; a supported condition is not a satisfied one without the readiness record)

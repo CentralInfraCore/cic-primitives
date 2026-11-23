@@ -1,0 +1,18 @@
+A real record: valid, no detection                                                                             OK []
+A derived: exactly C-Q2-1 supported, the other six open (nothing is promoted by inference)                     OK ['C-Q2-1 supported', 'C-Q2-2 open', 'C-Q2-3 open', 'C-Q2-4 open', 'C-Q2-5 open', 'C-Q2-6 open', 'C-Q2-7 open']
+B planted: a finding from a search result supports                                                             OK FAIL-EXPECT finding.search-support.R-GS-04
+B planted: a condition marked supported on silent findings                                                     OK FAIL-EXPECT condition.status.C-Q2-3
+B planted: C-Q2-1 marked open although its decisive primary finding supports                                   OK FAIL-EXPECT condition.status.C-Q2-1
+B planted: a marketing (non-decisive) finding promoted to decisive                                             OK FAIL-EXPECT condition.status.C-Q2-4
+B planted: a finding of the primary DigiCert page turned silent, the condition left supported                  OK FAIL-EXPECT condition.status.C-Q2-1
+B planted: a finding with an unknown source                                                                    OK FAIL-EXPECT finding.source.R-DC-03
+B planted: a finding with an unknown verdict                                                                   OK FAIL-EXPECT finding.verdict.R-DC-03
+B planted: a finding without an excerpt                                                                        OK FAIL-EXPECT finding.excerpt.R-DC-03
+B planted: a condition naming an unknown finding                                                               OK FAIL-EXPECT condition.dangling.C-Q2-3
+B planted: a source that is not https                                                                          OK FAIL-EXPECT source.url.S-DC-KB
+B planted: a duplicate finding id                                                                              OK FAIL-EXPECT finding.dup.R-DC-03
+B planted: the readiness record marks C-Q2-3 verified while the research is silent                             OK FAIL-EXPECT ready.unsupported.C-Q2-3
+C planted: a responder certificate with one flipped byte fails the chain check                                 OK FAIL-EXPECT chain.*.SHA256
+C planted: an anchor that is not the self-signed root fails the chain check                                    OK FAIL-EXPECT chain.anchor-pin
+D infra: no openssl on the PATH is exit 2, not a detection                                                     OK exit=2
+self-test: all as expected
