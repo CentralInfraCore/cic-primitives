@@ -15,6 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 PLAN_DIR = os.path.join("docs", "design", "pattern-profile-plan")
 STATUS_WORDS = {"CONFIRMED": "confirmed", "DECIDED": "decided", "ACCEPTED": "accepted_content", "PARTIAL": "partial", "HOLD": "hold", "REJECTED": "rejected", "DEFERRED": "deferred"}
+OP1_TOPICS = ["yaml 1.2", "core schema", "tag", "duplicate", "alias", "merge"]       # what a text that fixes OP-1 must at least treat (the plan's OP-1)
 G0_DECISIONS = ["D1", "D2", "D3", "D4", "D5", "D6"]
 ALL_IDS = G0_DECISIONS + ["OP-1", "OP-2", "OP-3", "OP-4", "D7", "D8"]
 OP2_OWNER_OUTCOMES = {"accepted_content", "rejected", "deferred"}       # the plan: accepted, rejected or deferred by the owner
@@ -42,7 +43,11 @@ def source_statuses(verbatim):
     out = {}
     for line in verbatim.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) != 3 or cells[2] not in STATUS_WORDS:
+        if len(cells) != 3:
+            continue
+        cells[2] = cells[2].replace("*", "").strip()                  # the statuses are bold in the statement
+        cells[0] = cells[0].replace("\u2013", "-").replace("\u2014", "-")      # the ranges carry an en dash
+        if cells[2] not in STATUS_WORDS:
             continue
         ids = cells[0]
         m = re.fullmatch(r"D(\d)-D(\d)", ids)
@@ -151,8 +156,10 @@ def main(argv):
             ev = "UNVERIFIED (the specification text that fixes OP-1 is missing)"
         else:
             p = os.path.join(root, str((st or {}).get("path", "")))
-            if not os.path.isfile(p) or sha(p) != str((st or {}).get("sha256", "")) or "YAML 1.2" not in open(p, encoding="utf-8").read():
-                bad("evidence.op1.spec-text", "the recorded specification text is missing, stale (SHA-256) or does not fix the YAML 1.2 scalar schema")
+            body = open(p, encoding="utf-8").read().lower() if os.path.isfile(p) else ""
+            topics = [t for t in OP1_TOPICS if t not in body]
+            if not os.path.isfile(p) or sha(p) != str((st or {}).get("sha256", "")) or topics:
+                bad("evidence.op1.spec-text", "the recorded specification text is missing, stale (SHA-256) or does not treat %s (the topics of OP-1; a lower bound on presence, not a judgement of the content)" % (topics or "any"))
                 ev = "UNVERIFIED (the recorded specification text does not check)"
             else:
                 ev = "VERIFIED"

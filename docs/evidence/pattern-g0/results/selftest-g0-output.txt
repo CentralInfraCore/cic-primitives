@@ -10,6 +10,7 @@ C planted: missing provenance (the source reference is empty)                   
 C planted: missing provenance (no verbatim statement)                                                          OK exit=1 verdict=INVALID needle=source.provenance
 C planted: a wrong SHA-256 (the specification as recorded is not the file)                                     OK exit=1 verdict=INVALID needle=bound.sha.spec
 C planted: a bound file changed after the decision (the plan edited, the recorded SHA kept)                    OK exit=1 verdict=INVALID needle=bound.sha.plan
+C planted: a specification text of OP-1 that does not treat the aliases (a trivial text is not evidence)       OK exit=1 verdict=INVALID needle=evidence.op1.spec-text
 C planted: an unmet prerequisite: the specification text of OP-1 is not recorded                               OK exit=1 verdict=NOT_READY needle=evidence.op1.spec-text
 C planted: the recorded specification text of OP-1 changed after its SHA-256 was recorded                      OK exit=1 verdict=INVALID needle=evidence.op1.spec-text
 C planted: a prerequisite not confirmed (D1 on hold) while the 47 cases are deferred                           OK exit=1 verdict=NOT_READY needle=decision.status.D1

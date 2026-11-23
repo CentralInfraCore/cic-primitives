@@ -1,7 +1,7 @@
-72dd48ceff8fdcf1b5becd7ea8811f53d220cef85e3b1f67abf7f0254c0c09a8  README.md
-bf1e01eacb2c1aa2ea2c10129d0b33048fd83da7c495c0a510ab7314cb691214  check_g0.py
-f8235aed4175664a0cfbcb87ccd4ea496b791ce9ff75d4dccbb4027310429559  selftest_g0.py
+0520441365e9184f0044dc6851aafbe158bed7e67f63f6f6d7f816fe8b51602b  README.md
+2c9fe4685e9c921552d3c26df1e210e5e5c9cb1b8c6ea0c1a42d0f50645ffff2  check_g0.py
+f02a5b209ba3956d9af84ee3cdcf7d9a14694c408d911a2a6a96f8570cf7b1cb  selftest_g0.py
 d9775f66423d701c1bca1a5aa3606dd854a7b7ada95451b4abfce5ae472f70fc  results/check_g0.txt
-aeede190a2193f3ad21010761ca24bc357e66d74b95b004dbd75116dded6631f  results/selftest-g0-output.txt
-879006aad7287386bc75209f33a56f184cef435a0c223ca024c20e478ac10f03  ../../design/pattern-profile-plan/decisions.yaml
-7b8cbac9616d7999bb869ea1ab521580cdc1e50d73921247938b79c081ba875b  ../../en/GRAMMAR-PATTERN-OWNER-DECISIONS.md
+3ed2743b7ad98689ffd47121cb364f46148a409db9239fdbb6ff8b20365a6402  results/selftest-g0-output.txt
+f99078d90b0b1b36daf52eeeabd6a382fea5b7fcf253c392770d02969b3aca3d  ../../design/pattern-profile-plan/decisions.yaml
+cbaa3228cbd641aa3b015f8dfc5a456e5dcf0aa047a04f9b25b1895f54241dee  ../../en/GRAMMAR-PATTERN-OWNER-DECISIONS.md

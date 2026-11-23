@@ -8,18 +8,20 @@ source:
   kind: owner_statement
   date: 2026-11-23
   channel: "the owner's own message in the working session, which states the decisions and overrides the earlier state 'awaiting owner confirmation'"
-  reference: "cic-factory theads/2026-11-19_session-relay-162-artifact-auth-primitives-p1.md (the session thread log), the owner message of 2026-11-23 headed 'Tulajdonosi dontes megerositve'"
+  reference: "cic-factory theads/2026-11-19_session-relay-162-artifact-auth-primitives-p1.md (the session thread log), the owner message of 2026-11-23 headed 'Tulajdonosi döntés megerősítve'"
   authenticity: "a transcribed statement: NOT cryptographically signed and not verifiable by this repository; the weight of the record is the owner's own confirmation of it in the review of this package"
   verbatim: |
-    | Azonosito | Dontes | Allapot |
-    | D1-D6 | A #52 szerinti szemantika | CONFIRMED |
-    | OP-1 | YAML 1.2 Core Schema, tipusmegorzes, szigoru reader-szabalyok | DECIDED |
-    | OP-2 | Mind a 47 bovito eset tartalmi elfogadasa | ACCEPTED |
-    | OP-3 | Merasi modszer elfogadva, `c` es muveletszamlalas meg rogzitendo | PARTIAL |
-    | OP-4 | Onallo harness es Go/Rust cross-check | DECIDED |
-    | D7-D8 | Halasztott kerdesek | HOLD |
-    Fontos kulonbseg: a 47 eset tartalmilag elfogadott, de meg nem normativ konformanciakeszlet. Az elfogadott 513 vektor es annak SHA-256 referenciaja valtozatlan.
-  note: "the verbatim text is quoted without Hungarian accents here only to keep the file ASCII; the meaning is unchanged"
+    | Azonosító | Döntés                                                           | Állapot       |
+    | --------- | ---------------------------------------------------------------- | ------------- |
+    | D1–D6     | A #52 szerinti szemantika                                        | **CONFIRMED** |
+    | OP-1      | YAML 1.2 Core Schema, típusmegőrzés, szigorú reader-szabályok    | **DECIDED**   |
+    | OP-2      | Mind a 47 bővítő eset tartalmi elfogadása                        | **ACCEPTED**  |
+    | OP-3      | Mérési módszer elfogadva, `c` és műveletszámlálás még rögzítendő | **PARTIAL**   |
+    | OP-4      | Önálló harness és Go/Rust cross-check                            | **DECIDED**   |
+    | D7–D8     | Halasztott kérdések                                              | **HOLD**      |
+
+    **Fontos különbség:** a 47 eset tartalmilag elfogadott, de még nem normatív konformanciakészlet. Az elfogadott 513 vektor és annak SHA-256 referenciája változatlan.
+  note: "the verbatim text is the owner's table and sentence as received, in UTF-8 with the accents, the en dashes and the bold markers; the check normalises them only when it reads the statuses"
 bound_to:
   repository: cic-primitives
   base_commit: cc6b614b5dedf0397e2f7b20952789394ec2c7f8

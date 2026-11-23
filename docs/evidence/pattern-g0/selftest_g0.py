@@ -10,7 +10,8 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 CHECK = os.path.join(HERE, "check_g0.py")
 PLAN_DIR = os.path.join("docs", "design", "pattern-profile-plan")
 FIXTURE = os.path.join("docs", "design", "pattern-profile-spec", "op1-fixture.md")
-FIXTURE_TEXT = "FIXTURE of the specification text of OP-1 (a test double, not the real text): the YAML 1.2 core schema.\n"
+FIXTURE_TEXT = ("FIXTURE of the specification text of OP-1 (a test double, not the real text): the YAML 1.2 core schema, the explicit tag rules, the duplicate key rule, "
+                "the alias rule and the merge key rule.\n")
 bad = 0
 
 
@@ -29,7 +30,7 @@ def run(args):
     return r.returncode, r.stdout + r.stderr
 
 
-def build(root_dir, rec_mut=None, file_mut=None, spec_fixture=True, closure=None, rebind=True, fixture_after=None):
+def build(root_dir, rec_mut=None, file_mut=None, spec_fixture=True, closure=None, rebind=True, fixture_after=None, fixture_replace=None):
     """a temporary root: the bound files copied, the record (mutated) written, the fixture added; returns the check's arguments"""
     import yaml
     rec = yaml.safe_load(open(os.path.join(ROOT, PLAN_DIR, "decisions.yaml"), encoding="utf-8"))
@@ -42,10 +43,11 @@ def build(root_dir, rec_mut=None, file_mut=None, spec_fixture=True, closure=None
         if rebind:
             f["sha256"] = sha(data)
     if spec_fixture:
-        p = os.path.join(root_dir, FIXTURE); open(p, "w", encoding="utf-8").write(FIXTURE_TEXT)
+        text = FIXTURE_TEXT.replace(*fixture_replace) if fixture_replace else FIXTURE_TEXT
+        p = os.path.join(root_dir, FIXTURE); open(p, "w", encoding="utf-8").write(text)
         for d in rec["decisions"]:
             if d["id"] == "OP-1":
-                d["spec_text"] = {"path": FIXTURE, "sha256": sha(FIXTURE_TEXT.encode("utf-8"))}
+                d["spec_text"] = {"path": FIXTURE, "sha256": sha(text.encode("utf-8"))}
         if fixture_after:
             open(p, "w", encoding="utf-8").write(FIXTURE_TEXT + fixture_after)
     if rec_mut:
@@ -100,6 +102,13 @@ def main():
     def both(*fs):
         return lambda r: [f(r) for f in fs]
 
+    def row(rec, start, newrows):
+        """replace the row of the owner's verbatim table that starts with `start` by newrows (a list of lines)"""
+        lines = rec["source"]["verbatim"].split("\n"); out = []
+        for l in lines:
+            out += newrows if l.startswith(start) else [l]
+        rec["source"]["verbatim"] = "\n".join(out)
+
     def src(k, v):
         return lambda r: r["source"].__setitem__(k, v)
 
@@ -112,10 +121,11 @@ def main():
         ("missing provenance (no verbatim statement)", dict(rec_mut=src("verbatim", "")), "source.provenance", "INVALID"),
         ("a wrong SHA-256 (the specification as recorded is not the file)", dict(rec_mut=lambda r: r["bound_to"]["files"]["spec"].__setitem__("sha256", "0" * 64)), "bound.sha.spec", "INVALID"),
         ("a bound file changed after the decision (the plan edited, the recorded SHA kept)", dict(file_mut={"plan": lambda t: t + "# edited\n"}, rebind=False), "bound.sha.plan", "INVALID"),
+        ("a specification text of OP-1 that does not treat the aliases (a trivial text is not evidence)", dict(fixture_replace=("the alias rule and ", "")), "evidence.op1.spec-text", "INVALID"),
         ("an unmet prerequisite: the specification text of OP-1 is not recorded", dict(spec_fixture=False), "evidence.op1.spec-text", "NOT_READY"),
         ("the recorded specification text of OP-1 changed after its SHA-256 was recorded", dict(fixture_after="an edit after the record\n"), "evidence.op1.spec-text", "INVALID"),
-        ("a prerequisite not confirmed (D1 on hold) while the 47 cases are deferred", dict(rec_mut=both(setf("D1", "status", "hold"), setf("OP-2", "status", "deferred"), lambda r: r["source"].__setitem__("verbatim", r["source"]["verbatim"].replace("| D1-D6 | A #52 szerinti szemantika | CONFIRMED |", "| D1 | x | HOLD |\n| D2-D6 | A #52 szerinti szemantika | CONFIRMED |").replace("| OP-2 | Mind a 47 bovito eset tartalmi elfogadasa | ACCEPTED |", "| OP-2 | x | DEFERRED |")))), "decision.status.D1", "NOT_READY"),
-        ("the 47 cases accepted while D1, which they depend on, is on hold", dict(rec_mut=both(setf("D1", "status", "hold"), lambda r: r["source"].__setitem__("verbatim", r["source"]["verbatim"].replace("| D1-D6 | A #52 szerinti szemantika | CONFIRMED |", "| D1 | x | HOLD |\n| D2-D6 | A #52 szerinti szemantika | CONFIRMED |")))), "op2.depends.hold.E-PIN-01", "INVALID"),
+        ("a prerequisite not confirmed (D1 on hold) while the 47 cases are deferred", dict(rec_mut=both(setf("D1", "status", "hold"), setf("OP-2", "status", "deferred"), lambda r: row(r, "| D1\u2013D6", ["| D1 | x | **HOLD** |", "| D2\u2013D6 | x | **CONFIRMED** |"]), lambda r: row(r, "| OP-2", ["| OP-2 | x | **DEFERRED** |"]))), "decision.status.D1", "NOT_READY"),
+        ("the 47 cases accepted while D1, which they depend on, is on hold", dict(rec_mut=both(setf("D1", "status", "hold"), lambda r: row(r, "| D1\u2013D6", ["| D1 | x | **HOLD** |", "| D2\u2013D6 | x | **CONFIRMED** |"]))), "op2.depends.hold.E-PIN-01", "INVALID"),
         ("OP-2 treated as a normative conformance set (normative true)", dict(rec_mut=setf("OP-2", "normative", True)), "op2.normative", "INVALID"),
         ("OP-2 accepts 46 cases, not 47", dict(rec_mut=setf("OP-2", "case_count", 46)), "op2.count", "INVALID"),
         ("a case that depends on a decision on hold (E-PIN-01 depends on D7)", dict(file_mut={"extension_review": lambda t: t.replace("{id: E-PIN-01, rule: \"O-VA-01 step 3\", derive: \"one declaration, the value true; not the int 1 (a bool is not an int); so the single value is unknown\", depends: [D1]", "{id: E-PIN-01, rule: \"O-VA-01 step 3\", derive: \"one declaration, the value true; not the int 1 (a bool is not an int); so the single value is unknown\", depends: [D1, D7]", 1)}), "op2.depends.hold.E-PIN-01", "INVALID"),
