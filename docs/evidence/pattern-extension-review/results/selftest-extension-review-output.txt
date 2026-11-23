@@ -1,0 +1,25 @@
+A positive control (the package as it is)                                                        OK exit=0
+A planted: a case without a review entry (E-PIN-13 removed from the review data)                 OK exit=1 needle=review.ids.equal
+A planted: a decision outside D1 to D6 (D7)                                                      OK exit=1 needle=review.depends.known.E-TRV-01
+A planted: a dependency outside the group's set (E-TRV-01 depends on D1)                         OK exit=1 needle=review.depends.group.E-TRV-01
+A planted: a missing derivation (E-PIN-05)                                                       OK exit=1 needle=review.derive.E-PIN-05
+A planted: a rule that names an unknown obligation                                               OK exit=1 needle=review.rule.known.E-PIN-33.O-RD-99
+A planted: a case whose expectation no longer follows the rules (E-PIN-01 expects conflict)      OK exit=1 needle=model.E-PIN-01
+A planted: a requirement that does not exist in the approved set                                 OK exit=1 needle=case.reqs.known.E-PIN-01.R-NOPE
+A planted: the case table of the document edited by hand                                         OK exit=1 needle=doc.table.in-sync
+A planted: the decision table of the document no longer matches the data (D4 needs 6)            OK exit=1 needle=doc.counts.D4
+A planted: the group table of the document no longer matches the data (E-TRV 8)                  OK exit=1 needle=doc.group.E-TRV
+A planted: the approved vector file modified by one appended comment line                        OK exit=1 needle=approved.unchanged
+A planted: review F1 of #53: a reader-error case claims to verify a pattern verdict (E-PIN-29 verifies R-PIN-UNKNOWN) OK exit=1 needle=verifies.sound.E-PIN-29.R-PIN-UNKNOWN
+A planted: review F1 of #53: a case that could verify is left as merely related (E-PIN-01)       OK exit=1 needle=verifies.complete.E-PIN-01.R-PIN-UNKNOWN
+A planted: review F1 of #53: a requirement the case names is in neither list (E-PIN-01)          OK exit=1 needle=verifies.partition.E-PIN-01
+A planted: review F1 of #53: the requirement matrix of the document edited by hand (R-SCHEMA-WHOLE 2 verifying cases) OK exit=1 needle=doc.reqtable.in-sync
+A planted: review F2 of #53: D1 removed from a wrong-typed pin case (E-PIN-01)                   OK exit=1 needle=decisions.complete.E-PIN-01
+A planted: review F2 of #53: D2 removed from the null declaration (E-PIN-04)                     OK exit=1 needle=decisions.complete.E-PIN-04
+A planted: review F2 of #53: D3 removed from the accepted schema without a contract (E-PIN-14)   OK exit=1 needle=decisions.complete.E-PIN-14
+A planted: review F2 of #53: D4 removed from a traversal case (E-TRV-01)                         OK exit=1 needle=decisions.complete.E-TRV-01
+A planted: review F2 of #53: D5 removed from the not-a-string case (E-RDR-02)                    OK exit=1 needle=decisions.complete.E-RDR-02
+A planted: review F2 of #53: D6 removed from a reader-error case (E-RDR-01)                      OK exit=1 needle=decisions.complete.E-RDR-01
+B planted model defect: the version compared by Python equality (true and 1.0 pass)              OK exit=1
+C infra: the review data is unreadable (exit 2, not a detection)                                 OK exit=2
+self-test: all as expected
