@@ -5,6 +5,7 @@ a check of the content of the real OP-1 specification, which only a review can j
 exits 1, and prints a FAIL-EXPECT line of the intended check. D: an unreadable input exits 2.
 Exit: 0 all as expected, 1 a mutant was not detected or a control failed, 2 the self-test itself could not run."""
 import copy, hashlib, os, shutil, subprocess, sys, tempfile
+import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
@@ -154,8 +155,16 @@ def main():
         ("the OP-1 decision is missing", dict(rec_mut=drop("OP-1")), "decision.missing.OP-1", "NOT_READY"),
         ("the OP-2 decision is missing", dict(rec_mut=drop("OP-2")), "decision.missing.OP-2", "NOT_READY"),
         ("an accepted case depends on a decision that the owner did not confirm and that is not on hold (D2 rejected, E-PIN-04 depends on it)", dict(rec_mut=both(setf("D2", "status", "rejected"), lambda r: row(r, "| D1\u2013D6", ["| D1 | x | **CONFIRMED** |", "| D2 | x | **REJECTED** |", "| D3\u2013D6 | x | **CONFIRMED** |"]))), "op2.depends.E-PIN-04", "NOT_READY"),
+        ("the evidence of D1 is an EMPTY list (the obligation to evidence the decision must not be removable)", dict(rec_mut=setf("D1", "evidence_files", [])), "evidence.files.D1", "NOT_READY"),
+        ("the evidence_files field of D1 is removed altogether", dict(rec_mut=lambda r: [x.pop("evidence_files") for x in r["decisions"] if x["id"] == "D1"]), "evidence.files.D1", "NOT_READY"),
+        ("the evidence of D2 declares only the specification, not the extension review", dict(rec_mut=setf("D2", "evidence_files", ["spec"])), "evidence.files.D2", "NOT_READY"),
+        ("the evidence of OP-1 is an empty list", dict(rec_mut=setf("OP-1", "evidence_files", [])), "evidence.files.OP-1", "NOT_READY"),
+        ("the evidence of OP-2 is an empty list", dict(rec_mut=setf("OP-2", "evidence_files", [])), "evidence.files.OP-2", "NOT_READY"),
+        ("the key spec is bound to another existing file (the plan) whose digest is recorded correctly", dict(rec_mut=lambda r: r["bound_to"]["files"]["spec"].update(path="docs/design/pattern-profile-plan/plan.yaml", sha256=r["bound_to"]["files"]["plan"]["sha256"])), "bound.path.spec", "INVALID"),
     ]
-    # the exact set of failures of each planted fault with a bounded set of causes (a cascade of more than 8 labels keeps the needle only); reviewed one by one, see the comments in the document
+    # The exact set of failures of each planted fault with a bounded set of causes (a cascade of more than 8 labels keeps the needle only). HOW THESE SETS WERE MADE: each is the observed output of the check on that fault, read by the author
+    # and accepted only if every label follows causally from the planted fault (the cascades are explained in section 5 of docs/en/GRAMMAR-PATTERN-OWNER-DECISIONS.md). They are regression pins of the behaviour the author judged
+    # right, not an independent proof; an independent review of each set is what would make them one.
     exact = {
         'a decision is missing (D3)': ['decision.missing.D3', 'op2.depends.E-PIN-14', 'op2.depends.E-PIN-15'],
         'a contradictory record (D1 recorded twice, confirmed and rejected)': ['decision.contradiction.D1'],
@@ -182,7 +191,7 @@ def main():
         "a decision that the owner's statement does not mention (OP-4 removed from the verbatim table)": ['decision.not-in-source.OP-4'],
         'the record format is not 1': ['record.format'],
         'the base commit is not a commit id': ['bound.base_commit'],
-        'a bound file that does not exist (the specification path is wrong)': ['bound.missing.spec', 'evidence.files.D1', 'evidence.files.D2', 'evidence.files.D3', 'evidence.files.D4', 'evidence.files.D5', 'evidence.files.D6'],
+        'a bound file that does not exist (the specification path is wrong)': ['bound.missing.spec', 'bound.path.spec', 'evidence.files.D1', 'evidence.files.D2', 'evidence.files.D3', 'evidence.files.D4', 'evidence.files.D5', 'evidence.files.D6'],
         'the evidence of D1 names a file that is not bound': ['evidence.files.D1'],
         'the recorded specification text of OP-1 does not exist (a wrong path)': ['evidence.op1.spec-text'],
         "OP-1 is not decided (the owner's statement and the record both say PARTIAL)": ['decision.status.OP-1'],
@@ -190,6 +199,12 @@ def main():
         'the OP-1 decision is missing': ['decision.missing.OP-1'],
         'the OP-2 decision is missing': ['decision.missing.OP-2'],
         'an accepted case depends on a decision that the owner did not confirm and that is not on hold (D2 rejected, E-PIN-04 depends on it)': ['decision.status.D2', 'op2.depends.E-PIN-04'],
+        'the evidence of D1 is an EMPTY list (the obligation to evidence the decision must not be removable)': ['evidence.files.D1'],
+        'the evidence_files field of D1 is removed altogether': ['evidence.files.D1'],
+        'the evidence of D2 declares only the specification, not the extension review': ['evidence.files.D2'],
+        'the evidence of OP-1 is an empty list': ['evidence.files.OP-1'],
+        'the evidence of OP-2 is an empty list': ['evidence.files.OP-2'],
+        'the key spec is bound to another existing file (the plan) whose digest is recorded correctly': ['bound.path.spec'],
     }
     for entry in faults:
         name, kw, needle, want = entry[:4]
@@ -207,6 +222,26 @@ def main():
         if name in exact:                                   # where the result has a bounded set of causes, the WHOLE set of failures is compared, not only the needle
             ok = ok and labels == sorted(exact[name])
         report("C planted: " + name, ok, "exit=%d verdict=%s needle=%s%s" % (rc, v, needle, " exact-set" if name in exact else ""))
+    # E the base commit verified in git (--verify-git): the real files, a planted record
+    def git_run(rec_mut=None):
+        rec = yaml.safe_load(open(os.path.join(ROOT, PLAN_DIR, "decisions.yaml"), encoding="utf-8"))
+        if rec_mut:
+            rec_mut(rec)
+        d = tempfile.mkdtemp()
+        try:
+            rp = os.path.join(d, "decisions.yaml"); open(rp, "w", encoding="utf-8").write(yaml.safe_dump(rec, sort_keys=False, allow_unicode=True))
+            rc, o = run(["--root", ROOT, "--record", rp, "--plan", os.path.join(ROOT, PLAN_DIR, "plan.yaml"), "--verify-git"])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+        return rc, o, sorted(l.split()[1] for l in o.splitlines() if l.startswith("FAIL-EXPECT"))
+
+    rc, o, labels = git_run()
+    report("E --verify-git on the real record: the commit exists and every bound file is its blob (only the OP-1 text is still missing)", "base commit: verified in git" in o and labels == ["evidence.op1.spec-text"] or (labels == [] and rc == 0), "exit=%d labels=%s" % (rc, labels))
+    rc, o, labels = git_run(lambda r: r["bound_to"].__setitem__("base_commit", "1" * 40))
+    report("E --verify-git: a base commit that does not exist in the repository", rc == 1 and "bound.git.commit" in labels and verdict(o) == "INVALID", "exit=%d labels=%s" % (rc, labels))
+    rc, o, labels = git_run(lambda r: r["bound_to"].__setitem__("base_commit", "7446f1f57e2bc3c9fe17e9ee7d986386903d61bc"))
+    want_blobs = sorted("bound.git.blob.%s" % k for k in ("plan", "plan_doc", "extension_review", "review_doc"))     # the files of #54 and #53; extension-cases.yaml, the specification, the obligations and the vectors already exist, unchanged, at that commit (#52)
+    report("E --verify-git: an older commit (#52) that exists but whose tree lacks the files of #53 and #54 recorded as bound to it, while the unchanged files match", rc == 1 and sorted(l for l in labels if l.startswith("bound.git")) == want_blobs and verdict(o) == "INVALID", "exit=%d labels=%s" % (rc, labels))
     rc, o = run(["--record", "/nonexistent/decisions.yaml"])
     report("D infra: the decision record is unreadable (exit 2, not a detection)", rc == 2 and "INCOMPLETE" in o, "exit=%d" % rc)
     print("self-test: %s" % ("all as expected" if not bad else "%d problem(s)" % bad))

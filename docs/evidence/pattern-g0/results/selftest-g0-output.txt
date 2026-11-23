@@ -37,5 +37,14 @@ C planted: OP-2 is on hold, which is no owner outcome of accepted, rejected or d
 C planted: the OP-1 decision is missing                                                                        OK exit=1 verdict=NOT_READY needle=decision.missing.OP-1 exact-set
 C planted: the OP-2 decision is missing                                                                        OK exit=1 verdict=NOT_READY needle=decision.missing.OP-2 exact-set
 C planted: an accepted case depends on a decision that the owner did not confirm and that is not on hold (D2 rejected, E-PIN-04 depends on it) OK exit=1 verdict=NOT_READY needle=op2.depends.E-PIN-04 exact-set
+C planted: the evidence of D1 is an EMPTY list (the obligation to evidence the decision must not be removable) OK exit=1 verdict=NOT_READY needle=evidence.files.D1 exact-set
+C planted: the evidence_files field of D1 is removed altogether                                                OK exit=1 verdict=NOT_READY needle=evidence.files.D1 exact-set
+C planted: the evidence of D2 declares only the specification, not the extension review                        OK exit=1 verdict=NOT_READY needle=evidence.files.D2 exact-set
+C planted: the evidence of OP-1 is an empty list                                                               OK exit=1 verdict=NOT_READY needle=evidence.files.OP-1 exact-set
+C planted: the evidence of OP-2 is an empty list                                                               OK exit=1 verdict=NOT_READY needle=evidence.files.OP-2 exact-set
+C planted: the key spec is bound to another existing file (the plan) whose digest is recorded correctly        OK exit=1 verdict=INVALID needle=bound.path.spec exact-set
+E --verify-git on the real record: the commit exists and every bound file is its blob (only the OP-1 text is still missing) OK exit=1 labels=['evidence.op1.spec-text']
+E --verify-git: a base commit that does not exist in the repository                                            OK exit=1 labels=['bound.git.commit', 'evidence.op1.spec-text']
+E --verify-git: an older commit (#52) that exists but whose tree lacks the files of #53 and #54 recorded as bound to it, while the unchanged files match OK exit=1 labels=['bound.git.blob.extension_review', 'bound.git.blob.plan', 'bound.git.blob.plan_doc', 'bound.git.blob.review_doc', 'evidence.op1.spec-text']
 D infra: the decision record is unreadable (exit 2, not a detection)                                           OK exit=2
 self-test: all as expected

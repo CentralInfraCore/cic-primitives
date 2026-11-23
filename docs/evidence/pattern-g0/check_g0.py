@@ -8,8 +8,11 @@ It evaluates the prerequisites that G-0 itself names in the plan (D1 to D6, OP-1
 
 Verdicts (the last line): INVALID (the record is inconsistent, forged or stale), NOT_READY (a prerequisite is unmet or lacks evidence), READY_FOR_OWNER_CLOSURE (all prerequisites are recorded and evidenced; the gate is NOT closed),
 CLOSED (READY and a valid owner closure record exists). Exit: 0 for READY_FOR_OWNER_CLOSURE or CLOSED, 1 for NOT_READY or INVALID (FAIL-EXPECT lines name what), 2 for an unreadable input (never a result).
-Usage: check_g0.py [--record PATH] [--plan PATH] [--closure PATH] [--root DIR]"""
-import hashlib, os, re, sys
+The evidence that each prerequisite needs is a CONTRACT OF THIS CHECK, independent of the record (REQUIRED_EVIDENCE and REQUIRED_PATHS): a record that drops or empties the evidence_files of a prerequisite, or binds a key to another file,
+does not weaken the check. The base commit: by default only the DECLARED commit identifier (a 40-hex id) and the current SHA-256 of the bound files are checked; with --verify-git the commit must exist in the repository at --root
+and every bound file must be, byte for byte (SHA-256), the blob of that commit.
+Usage: check_g0.py [--record PATH] [--plan PATH] [--closure PATH] [--root DIR] [--verify-git]"""
+import hashlib, os, re, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
@@ -17,6 +20,11 @@ PLAN_DIR = os.path.join("docs", "design", "pattern-profile-plan")
 STATUS_WORDS = {"CONFIRMED": "confirmed", "DECIDED": "decided", "ACCEPTED": "accepted_content", "PARTIAL": "partial", "HOLD": "hold", "REJECTED": "rejected", "DEFERRED": "deferred"}
 OP1_TOPICS = ["yaml 1.2", "core schema", "tag", "duplicate", "alias", "merge"]       # what a text that fixes OP-1 must at least treat (the plan's OP-1)
 G0_DECISIONS = ["D1", "D2", "D3", "D4", "D5", "D6"]
+REQUIRED_EVIDENCE = {"D1": ["spec", "extension_review"], "D2": ["spec", "extension_review"], "D3": ["spec", "extension_review"], "D4": ["spec", "extension_review"], "D5": ["spec", "extension_review"],
+                     "D6": ["spec", "extension_review"], "OP-1": ["plan"], "OP-2": ["extension_cases", "extension_review", "review_doc", "vectors"]}
+REQUIRED_PATHS = {"spec": "docs/en/GRAMMAR-PATTERN-IMPLEMENTATION-SPEC.md", "obligations": "docs/design/pattern-profile-spec/obligations.yaml", "extension_cases": "docs/design/pattern-profile-spec/extension-cases.yaml",
+                  "extension_review": "docs/design/pattern-profile-spec/extension-review.yaml", "plan": "docs/design/pattern-profile-plan/plan.yaml", "vectors": "docs/design/pattern-profile-vectors/pattern-profile.yaml",
+                  "plan_doc": "docs/en/GRAMMAR-PATTERN-IMPLEMENTATION-PLAN.md", "review_doc": "docs/en/GRAMMAR-PATTERN-EXTENSION-CASES-REVIEW.md"}
 ALL_IDS = G0_DECISIONS + ["OP-1", "OP-2", "OP-3", "OP-4", "D7", "D8"]
 OP2_OWNER_OUTCOMES = {"accepted_content", "rejected", "deferred"}       # the plan: accepted, rejected or deferred by the owner
 invalid, unmet = [], []
@@ -59,9 +67,15 @@ def source_statuses(verbatim):
     return out
 
 
+def git_blob(root, commit, path):
+    r = subprocess.run(["git", "-C", root, "show", "%s:%s" % (commit, path)], capture_output=True)
+    return r.stdout if r.returncode == 0 else None
+
+
 def main(argv):
     import yaml
     root = arg(argv, "--root", ROOT)
+    verify_git = "--verify-git" in argv
     rec_path = arg(argv, "--record", os.path.join(root, PLAN_DIR, "decisions.yaml"))
     plan_path = arg(argv, "--plan", os.path.join(root, PLAN_DIR, "plan.yaml"))
     clo_path = arg(argv, "--closure", os.path.join(root, PLAN_DIR, "g0-closure.yaml"))
@@ -95,6 +109,17 @@ def main(argv):
             bad("bound.sha.%s" % k, "the SHA-256 of %s is not the recorded one (the evidence is stale or the record is wrong)" % f.get("path"))
         else:
             verified_files.add(k)
+    for k, want in REQUIRED_PATHS.items():                  # a key bound to another file than the contract names is a forged binding, whatever its digest
+        if k in files and files[k].get("path") != want:
+            bad("bound.path.%s" % k, "the key %s is bound to %s, the contract of the check names %s" % (k, files[k].get("path"), want))
+    if verify_git and re.fullmatch(r"[0-9a-f]{40}", str(bt.get("base_commit", ""))):
+        if subprocess.run(["git", "-C", root, "cat-file", "-e", "%s^{commit}" % bt["base_commit"]], capture_output=True).returncode != 0:
+            bad("bound.git.commit", "the base commit %s does not exist in the repository at %s" % (bt["base_commit"], root))
+        else:
+            for k, f in sorted(files.items()):
+                blob = git_blob(root, bt["base_commit"], f.get("path", ""))
+                if blob is None or hashlib.sha256(blob).hexdigest() != f.get("sha256"):
+                    bad("bound.git.blob.%s" % k, "%s is not, byte for byte, the blob of the base commit (absent there or different)" % f.get("path"))
     # ---- the decisions: unique, complete, consistent with the verbatim source
     byid = {}
     for d in rec.get("decisions", []):
@@ -128,10 +153,12 @@ def main(argv):
     rows = []                                    # (criterion, decision state, evidence state)
 
     def files_ok(d):
-        need = d.get("evidence_files", [])
+        """the evidence a prerequisite needs is the CONTRACT of this check (REQUIRED_EVIDENCE): the record must declare it, bind it and have it verified; an empty or missing list is not a pass"""
+        need = REQUIRED_EVIDENCE[d.get("id")]
+        undeclared = [k for k in need if k not in (d.get("evidence_files") or [])]
         miss = [k for k in need if k not in files]
         stale = [k for k in need if k in files and k not in verified_files]
-        return not need or (not miss and not stale), miss, stale
+        return not (undeclared or miss or stale), miss + ["undeclared:%s" % k for k in undeclared], stale
 
     for i in G0_DECISIONS:
         d = byid.get(i)
@@ -228,6 +255,8 @@ def main(argv):
         print("OP-4     %-16s closes at %s, not a G-0 prerequisite" % (str(byid["OP-4"].get("status", "?")).upper(), byid["OP-4"].get("closes_at")))
     on_hold = all((byid.get(x) or {}).get("status") == "hold" for x in ("D7", "D8"))
     print("D7, D8   %s; %s" % ("HOLD" if on_hold else "NOT ALL ON HOLD", "no case depends on them" if dep78 == [] else ("cases that depend on them: %s" % dep78 if dep78 else "dependency of the cases not evaluated (the review file is not verified)")))
+    print("base commit: %s" % ("verified in git (the commit exists and every bound file is its blob)" if verify_git and not any(x.startswith("bound.git") for x in invalid) else
+                                ("NOT verified in git (--verify-git): only the declared identifier and the current digests are checked" if not verify_git else "git verification FAILED")))
     print("closure record: %s" % ("none (the gate is not closed by this check)" if closure is None else "present"))
     print("G-0: %s" % state)
     return 0 if state in ("READY_FOR_OWNER_CLOSURE", "CLOSED") else 1
