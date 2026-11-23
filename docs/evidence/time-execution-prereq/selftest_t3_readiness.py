@@ -38,14 +38,15 @@ def prepared_digest_of(rp, ip, root, extra=()):
     import importlib.util
     spec = importlib.util.spec_from_file_location("chk", CHECK); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     rec = yaml.safe_load(open(rp, encoding="utf-8")); strict = next(d for d in rec["decisions"] if d["id"] == "Q6a").get("chosen") == "strict"
-    return m.prepared_digest(rec, lambda c: "pre" if (strict and c.get("strict_phase") == "pre") else c.get("phase"))
+    return m.prepared_digest(rec, lambda c: "pre" if (strict and c.get("strict_phase") == "pre") else c.get("phase"), json.load(open(ip, encoding="utf-8")))
 
 
-def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="staged", verify=("pre",), go=None, go_mut=None):
+def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="staged", verify=("pre",), go=None, go_mut=None, inv_after_go=None):
     """a temporary root with the real record made into a fixture: decisions confirmed, the listed phases verified with fixture evidence, optionally a GO record bound to the prepared state"""
     rec = yaml.safe_load(open(REC, encoding="utf-8")); inv = json.load(open(INV, encoding="utf-8"))
     os.makedirs(os.path.join(root, "evidence"), exist_ok=True)
     open(os.path.join(root, "evidence", "fixture.txt"), "w").write("fixture evidence: all good\n")
+    fxsha = hashlib.sha256(b"fixture evidence: all good\n").hexdigest()
     strict = order == "strict"
     eff = lambda c: "pre" if (strict and c.get("strict_phase") == "pre") else c["phase"]
     for c in rec["conditions"]:
@@ -53,6 +54,8 @@ def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="stage
             src = os.path.join(ROOT, c["evidence"]["path"]); dst = os.path.join(root, c["evidence"]["path"]); os.makedirs(os.path.dirname(dst), exist_ok=True); shutil.copy(src, dst)
         elif eff(c) in verify:
             c["status"] = "verified"; c["verified_on"] = "2026-11-24"; c["evidence"] = {"path": "evidence/fixture.txt", "must_contain": "all good"}
+            if c.get("needs_tokens"):
+                c["evidence"]["sha256"] = fxsha                                   # the evidence of a token condition is digest-bound
     if confirm:
         for d in rec["decisions"]:
             d["status"] = "confirmed"; d["confirmation"] = {"stated_by": "owner", "date": "2026-11-24", "reference": "fixture"}
@@ -80,6 +83,8 @@ def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="stage
         if go_mut:
             go_mut(g)
         gp = os.path.join(root, "go.yaml"); open(gp, "w", encoding="utf-8").write(yaml.safe_dump(g, sort_keys=False)); args[args.index("--go") + 1] = gp
+        if inv_after_go:                                                           # the expected set changes AFTER the GO was given
+            inv2 = json.load(open(ip)); inv_after_go(inv2); json.dump(inv2, open(ip, "w"))
     return args
 
 
@@ -93,6 +98,8 @@ def main():
               ("a valid separate GO record binds the prepared state: GO_RECORDED", dict(go=True), "GO_RECORDED", 0),
               ("after the GO every capture condition verified: EVIDENCE_CAPTURED", dict(go=True, verify=("pre", "capture")), "EVIDENCE_CAPTURED", 0),
               ("after the GO every capture and preserve condition verified: PRESERVATION_COMPLETE", dict(go=True, verify=("pre", "capture", "preserve")), "PRESERVATION_COMPLETE", 0),
+              ("the STRICT order can be completed in the REAL order: prepared, the GO, the capture (tokens) verified: EVIDENCE_CAPTURED", dict(order="strict", go=True, verify=("pre", "capture")), "EVIDENCE_CAPTURED", 0),
+              ("the STRICT order completed: PRESERVATION_COMPLETE (the final package and the final restore drills come after the capture in both orders)", dict(order="strict", go=True, verify=("pre", "capture", "preserve")), "PRESERVATION_COMPLETE", 0),
               ("the STRICT order: the strict_phase conditions are pre-execution, so with them still open the record is NOT_PREPARED (the same fixture is PREPARED under the staged order)", dict(order="strict", mut=lambda r: [next(c for c in r["conditions"] if c["id"] == i).update(status="open", evidence=None) for i in ("C-Q6-3", "C-Q6-4", "C-Q6-6", "C-Q6-7")]), "NOT_PREPARED", 1),
               ("the STRICT order with the strict_phase conditions verified is PREPARED_FOR_OWNER_GO (the later-phase conditions of the other decisions stay open)", dict(order="strict"), "PREPARED_FOR_OWNER_GO", 0),
               ("a pre-execution condition still open (staged): NOT_PREPARED, valid", dict(mut=lambda r: next(c for c in r["conditions"] if c["id"] == "C-Q6-1").update(status="open", evidence=None)), "NOT_PREPARED", 1),
@@ -150,6 +157,12 @@ def main():
         ("a GO record without a date", dict(go=True, go_mut=lambda g: g.__setitem__("date", "")), "go.format"),
         ("a GO record that binds another prepared state (the digest of a state that changed)", dict(go=True, go_mut=lambda g: g.__setitem__("prepared_digest", "0" * 64)), "go.digest"),
         ("a GO record while the record is not prepared (a pre-execution condition is open)", dict(go=True, mut=lambda r: cond(r, "C-Q2-1").update(status="open", evidence=None)), "go.not-prepared"),
+        ("a condition that needs the tokens placed in the PRE phase", dict(mut=lambda r: cond(r, "C-CAP-1").__setitem__("phase", "pre")), "condition.tokens-phase.C-CAP-1"),
+        ("a token condition that carries a strict_phase (the defect of the earlier strict order: it would demand the tokens before the GO)", dict(mut=lambda r: cond(r, "C-PRES-1").__setitem__("strict_phase", "pre")), "strict.needs-tokens.C-PRES-1"),
+        ("...and under the STRICT order that token condition IS pre-execution, which is refused", dict(order="strict", mut=lambda r: cond(r, "C-PRES-1").__setitem__("strict_phase", "pre")), "phase.tokens-before-go.C-PRES-1"),
+        ("a verified token condition whose evidence is not digest-bound (no sha256)", dict(go=True, verify=("pre", "capture"), mut=lambda r: cond(r, "C-CAP-3")["evidence"].pop("sha256")), "condition.digest.C-CAP-3"),
+        ("a verified token condition whose evidence digest is not the file's", dict(go=True, verify=("pre", "capture"), mut=lambda r: cond(r, "C-CAP-3")["evidence"].__setitem__("sha256", "0" * 64)), "condition.digest.C-CAP-3"),
+        ("the expected set of open records changes AFTER the GO was given (the GO binds the set too)", dict(go=True, inv_after_go=lambda i: i["open_records"].pop()), "go.digest"),
         ("a GO written into the prerequisites file", dict(mut=lambda r: r.__setitem__("execution_go", {"stated_by": "owner", "date": "2026-11-24"})), "go.recorded-here"),
         ("the internal latest date is not before the chain boundary", dict(mut=lambda r: r["dates"].__setitem__("internal_latest", "2026-12-31")), "dates.order"),
         ("the target is after the internal latest date", dict(mut=lambda r: r["dates"].__setitem__("target", "2026-12-20")), "dates.order"),

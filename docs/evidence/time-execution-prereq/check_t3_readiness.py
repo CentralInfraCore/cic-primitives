@@ -5,6 +5,10 @@ PHASES of a condition (review T3-F3): `pre` (verified BEFORE the owner's GO), `c
 `chosen: strict`) the conditions that carry `strict_phase: pre` count as `pre`; under `staged` they stay `preserve`.
 VERDICTS, in order: INVALID (the record is inconsistent) | NOT_PREPARED (a decision is not confirmed, or a pre-execution condition is open) | PREPARED_FOR_OWNER_GO (every decision confirmed, every pre-execution condition verified WITH
 evidence this check can read, no later-phase evidence) | GO_RECORDED (a valid separate GO record binds the prepared state) | EVIDENCE_CAPTURED (every capture condition verified) | PRESERVATION_COMPLETE (every preserve condition verified).
+A condition that `needs_tokens` (it can only be true once the RFC 3161 tokens exist) is NEVER pre-execution, in EITHER preservation order (review T3-F6: a strict order must not demand evidence that cannot exist before the GO), may
+not carry a `strict_phase`, and its evidence must be DIGEST-BOUND (`evidence.sha256`, checked against the file): a text match is enough for a reference, not for the final token and storage evidence.
+THE GO BINDS (review, the digest scope): the decisions, the pre-execution conditions AND the EXPECTED SET of open records of the inventory (identifier, repository, path, ref, commit); a change of any of them after the GO
+invalidates it.
 NONE of them authorises anything: PREPARED_FOR_OWNER_GO is NOT the GO, and a later state needs the GO record. A condition of a later phase can be `verified` only after the GO record exists (`phase.without-go`) and in order
 (`phase.order`), so evidence that can only exist after the execution is never demanded before it.
 
@@ -45,14 +49,15 @@ def render(rec):
     ct = ["| Condition | Decision | Phase | Kind | Status | Condition to verify | Evidence |", "|---|---|---|---|---|---|---|"]
     for c in rec["conditions"]:
         ev = c.get("evidence")
-        ph = c["phase"] + ((" (strict: %s)" % c["strict_phase"]) if c.get("strict_phase") else "")
+        ph = c["phase"] + ((" (strict: %s)" % c["strict_phase"]) if c.get("strict_phase") else "") + (" (needs tokens)" if c.get("needs_tokens") else "")
         ct.append("| %s | %s | %s | %s | **%s** | %s | %s |" % (c["id"], c["decision"], ph, c["kind"], c["status"], flat(c["text"]), ("`%s` contains %r (verified %s)" % (ev["path"], ev["must_contain"], c["verified_on"])) if ev else "none"))
     return {"decisions": "\n".join(dt), "conditions": "\n".join(ct)}
 
 
-def prepared_digest(rec, eff):
-    """the digest of the PREPARED state: the decisions and the pre-execution conditions, canonically; a GO binds this digest"""
-    body = {"decisions": [{k: d.get(k) for k in ("id", "status", "confirmation", "chosen", "requirements")} for d in rec["decisions"]],
+def prepared_digest(rec, eff, inv):
+    """the digest of the PREPARED state: the decisions, the pre-execution conditions and the expected set of open records, canonically; a GO binds this digest"""
+    body = {"expected_set": sorted(({k: r.get(k) for k in ("id", "repo", "path", "ref", "commit")} for r in inv.get("open_records", [])), key=lambda r: str(r["id"])),
+            "decisions": [{k: d.get(k) for k in ("id", "status", "confirmation", "chosen", "requirements")} for d in rec["decisions"]],
             "pre": [{k: c.get(k) for k in ("id", "text", "status", "verified_on", "evidence")} for c in rec["conditions"] if eff(c) == "pre"]}
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()
 
@@ -122,6 +127,11 @@ def main(argv):
             bad("condition.kind.%s" % cid, "kind %r" % c.get("kind"))
         if c.get("phase") not in PHASES:
             bad("condition.phase.%s" % cid, "phase %r is not pre, capture or preserve" % c.get("phase"))
+        if c.get("needs_tokens"):
+            if c.get("phase") == "pre":
+                bad("condition.tokens-phase.%s" % cid, "a condition that needs the tokens cannot be in the pre-execution phase: the tokens do not exist before the GO")
+            if c.get("strict_phase"):
+                bad("strict.needs-tokens.%s" % cid, "a condition that needs the tokens carries a strict_phase: the strict order would demand evidence that cannot exist before the GO")
         st, ev = c.get("status"), c.get("evidence")
         if st == "open":
             if ev is not None:
@@ -136,11 +146,16 @@ def main(argv):
                     bad("condition.evidence-file.%s" % cid, "the evidence file %s does not exist" % ev["path"])
                 elif ev["must_contain"] not in open(p, encoding="utf-8", errors="replace").read():
                     bad("condition.evidence-text.%s" % cid, "the evidence file does not contain %r" % ev["must_contain"])
+                elif c.get("needs_tokens") and (not re.fullmatch(r"[0-9a-f]{64}", str(ev.get("sha256", ""))) or hashlib.sha256(open(p, "rb").read()).hexdigest() != ev["sha256"]):
+                    bad("condition.digest.%s" % cid, "the evidence of a condition that needs the tokens must be digest-bound: evidence.sha256 equal to the SHA-256 of the file")
         else:
             bad("condition.status.%s" % cid, "status %r" % st)
     for i in DECISIONS:
         if i in decs and i != "Q6a" and not any(c.get("decision") == i for c in conds):                 # Q6a is a CHOICE (the order), its effect is in the phases of the Q6 conditions
             bad("decision.conditions.%s" % i, "a decision with no condition cannot be shown ready")
+    for c in conds:
+        if c.get("needs_tokens") and eff(c) == "pre":
+            bad("phase.tokens-before-go.%s" % c.get("id"), "under the %s order the condition that needs the tokens is pre-execution" % ("strict" if strict else "chosen"))
     pre = [c for c in conds if eff(c) == "pre"]; cap = [c for c in conds if eff(c) == "capture"]; pres = [c for c in conds if eff(c) == "preserve"]
     for c in pre:
         if c.get("status") != "verified":
@@ -150,7 +165,7 @@ def main(argv):
     state = None
     gd = None
     if go is not None:
-        gd = prepared_digest(rec, eff)
+        gd = prepared_digest(rec, eff, inv)
         if not (isinstance(go, dict) and go.get("go_format") == 1 and go.get("gate") == "t3-execution" and go.get("stated_by") == "owner" and re.fullmatch(r"\d{4}-\d\d-\d\d", str(go.get("date", ""))) and str(go.get("reference", "")).strip()):
             bad("go.format", "the GO record needs go_format 1, gate t3-execution, a recorded statement stated_by owner, a date and a reference")
         elif go.get("prepared_digest") != gd:

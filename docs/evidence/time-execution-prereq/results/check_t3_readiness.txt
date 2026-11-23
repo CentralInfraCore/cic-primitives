@@ -5,7 +5,7 @@ Q2    proposed   0 of 7
 Q3    proposed   0 of 1
 Q6    proposed   0 of 3
 Q6a   proposed   0 of 0
-phases (order not chosen): pre 3 of 15 verified, capture 0 of 3, preserve 0 of 6
+phases (order not chosen): pre 3 of 15 verified, capture 0 of 4, preserve 0 of 7
 UNMET decision Q1a is proposed
 UNMET decision Q1b is proposed
 UNMET decision Q2 is proposed
