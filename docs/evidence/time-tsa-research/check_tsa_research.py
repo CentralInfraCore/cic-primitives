@@ -86,8 +86,9 @@ def check_record(rec, ready=None, chain=True, out=None):
             finally:
                 os.remove(tmp)
             if r.returncode != 0 or ": OK" not in r.stdout: bad("chain.verify.%s" % n, (r.stdout + r.stderr).strip()[:100])
-        cross = fpr(os.path.join(CHAIN, "DigiCertTrustedRootG4.cer"), "DER")
-        if cross and a and cross == a: bad("chain.cross-root", "the page's root file equals the anchor: expected the cross-signed root")
+        cross = fpr(os.path.join(CHAIN, "DigiCertTrustedRootG4.cer"), "PEM")
+        if not cross: bad("chain.cross-root", "the page's root file is unreadable (a skipped rule is a blind spot)")
+        elif a and cross == a: bad("chain.cross-root", "the page's root file equals the anchor: expected the cross-signed root")
     if ready is not None:
         for c in ready.get("conditions", []):
             if c["id"].startswith("C-Q2-") and c.get("status") == "verified" and res.get(c["id"]) != "supported":

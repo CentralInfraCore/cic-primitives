@@ -5,6 +5,7 @@ import copy, os, shutil, subprocess, sys, tempfile, yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_tsa_research as C
 
+ANCHOR0 = C.ANCHOR
 rec0 = yaml.safe_load(open(C.REC, encoding="utf-8")); ready0 = yaml.safe_load(open(C.READY, encoding="utf-8"))
 bad = 0
 def report(name, ok, extra=""):
@@ -47,6 +48,12 @@ shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "digicert",
 C.ANCHOR = os.path.join(tmp, "digicert", "DigiCertTrustedG4TimeStampingRSA4096SHA2562025CA1.pem")   # a swapped anchor: the CA instead of the root
 e = C.check_record(copy.deepcopy(rec0), None, chain=True)
 report("C planted: an anchor that is not the self-signed root fails the chain check", any(x.startswith("chain.anchor-pin") for x in e), "FAIL-EXPECT chain.anchor-pin" if e else "no detection")
+open(os.path.join(tmp, "digicert", "DigiCertSHA256RSA4096TimestampResponder20261.cer"), "wb").write(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "digicert", "DigiCertSHA256RSA4096TimestampResponder20261.cer"), "rb").read())
+rootf = os.path.join(tmp, "digicert", "DigiCertTrustedRootG4.cer"); open(rootf, "w").write("not a certificate\n")
+C.ANCHOR = ANCHOR0
+e = C.check_record(copy.deepcopy(rec0), None, chain=True)
+report("C planted: the page's root file unreadable is a detection, not a skipped rule", any(x.startswith("chain.cross-root") for x in e), "FAIL-EXPECT chain.cross-root" if e else "no detection")
+shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "digicert", "DigiCertTrustedRootG4.cer"), rootf)
 shutil.rmtree(tmp)
 
 # D: infrastructure is exit 2

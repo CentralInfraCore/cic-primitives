@@ -14,5 +14,6 @@ B planted: a duplicate finding id                                               
 B planted: the readiness record marks C-Q2-3 verified while the research is silent                             OK FAIL-EXPECT ready.unsupported.C-Q2-3
 C planted: a responder certificate with one flipped byte fails the chain check                                 OK FAIL-EXPECT chain.*.SHA256
 C planted: an anchor that is not the self-signed root fails the chain check                                    OK FAIL-EXPECT chain.anchor-pin
+C planted: the page's root file unreadable is a detection, not a skipped rule                                  OK FAIL-EXPECT chain.cross-root
 D infra: no openssl on the PATH is exit 2, not a detection                                                     OK exit=2
 self-test: all as expected
