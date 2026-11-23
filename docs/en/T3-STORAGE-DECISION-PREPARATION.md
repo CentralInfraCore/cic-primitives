@@ -15,7 +15,7 @@ A proposal is acceptable only if, for **each** location, the following can be **
 | A1 | **Immutability:** compliance-type retention that nobody, the account owner included, can shorten or remove, of **at least 10 years** (a planning minimum) | the provider's own read-back of the object's retention mode and retain-until date, recorded with the version id; a refused delete/shorten on a throw-away trial object |
 | A2 | **Versioning**, so an overwrite cannot replace the protected bytes | the trial object: an overwrite creates a new version, the locked one stays readable by version id |
 | A3 | **Independence of the two locations:** different operator, different account, different billing, different credentials; not two regions of one provider | the account record (section 4), the named holder per location |
-| A4 | **Read-back:** the dry-run package (the manifest, the verification procedure; NO real token) is read back from each location and its SHA-256 equals the local one (dry-run manifest digest `d7cb0f75...4dc4e38` is the current dry-run value only) | a digest-bound evidence file per location (no credential in it) |
+| A4 | **Read-back:** the dry-run package (the manifest, the verification procedure; NO real token) is read back from each location and its SHA-256 equals the local one (dry-run manifest digest `d7cb0f75...8dc4e38` is the current dry-run value only) | a digest-bound evidence file per location (no credential in it) |
 | A5 | **Custody (C-Q6-5):** a named holder, **separate credentials per location and per role**, a recovery path, a successor | the custody record (section 4) |
 | A6 | **No secret in the repository:** no key, token or account identifier that would grant access | the repository scan before every upload (plan #33, S1) |
 
