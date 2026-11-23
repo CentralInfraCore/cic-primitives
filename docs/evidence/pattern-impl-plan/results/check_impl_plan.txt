@@ -1,0 +1,40 @@
+coverage levels over 92 (unit, requirement) pairs: planned 92, baseline (without the extension) 87, covered only through the extension 5 pairs (each with a fallback), executed none (state not_started)
+topological order of the units: U-01 U-02 U-04 U-10a U-03 U-05 U-06 U-07 U-08 U-09 U-10b
+units 11, gates 14, milestones 7; obligations 27 all assigned; plan items 11 all in a gate; open points 4
+## obligation -> units
+O-RD-01   U-01
+O-RD-02   U-01
+O-RD-03   U-01
+O-RD-04   U-01
+O-RD-06   U-01
+O-RD-05   U-02
+O-VA-01   U-03
+O-VA-02   U-03
+O-VA-03   U-04
+O-VA-04   U-04
+O-VA-05   U-04
+O-VA-06   U-04
+O-VA-07   U-04
+O-VA-08   U-04
+O-VA-09   U-06
+O-VA-10   U-04
+O-VA-11   U-05
+O-VA-12   U-05
+O-VA-13   U-05
+O-PR-01   U-08
+O-PR-02   U-08
+O-VF-01   U-09
+O-VF-02   U-09
+O-VF-03   U-09
+O-VF-04   U-07
+O-GT-02   U-07
+O-GT-01   U-10a U-10b
+## milestone -> units / gates
+M0  step 1        units -                              gates G-0
+M1  step 2        units -                              gates G-0
+M2  step 3        units -                              gates -
+M3  step 4 HOLD   units U-01 U-02 U-03 U-04 U-05 U-06 U-07 U-10a gates G-1 G-2 G-3 G-4 G-5 G-6 G-8 G-10
+M4  step 5 HOLD   units -                              gates G-11
+M5  step 6 HOLD   units U-08 U-09                      gates G-7 G-9
+M6  step 7 HOLD   units U-10b                          gates G-12 G-13
+all expectations held
