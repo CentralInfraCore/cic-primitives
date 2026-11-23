@@ -1,2 +1,3 @@
+requirement links: 45 verified, 12 only related; 37 of 47 cases verify at least one requirement; 0 cases list a decision above the lower bound of the feature rules
 cases 47 (E-PIN 34, E-RDR 6, E-TRV 7); cases that need each decision: D1 29, D2 1, D3 2, D4 7, D5 4, D6 9; D7 and D8: none
 all expectations held

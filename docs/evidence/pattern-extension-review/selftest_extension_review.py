@@ -30,6 +30,18 @@ def sub(text, a, b):
     return text.replace(a, b, 1)
 
 
+def subline(text, cid, a, b):
+    """replace a with b on the review line of the case cid only"""
+    out, hit = [], 0
+    for l in text.split("\n"):
+        if l.startswith("- {id: %s," % cid):
+            assert a in l, (cid, a)
+            l = l.replace(a, b, 1); hit += 1
+        out.append(l)
+    assert hit == 1, cid
+    return "\n".join(out)
+
+
 def main():
     review, cases, doc = (open(p, encoding="utf-8").read() for p in (REVIEW, CASES, DOC))
     vec = open(VEC, "rb").read()
@@ -48,6 +60,18 @@ def main():
         ("the decision table of the document no longer matches the data (D4 needs 6)", dict(doc=sub(doc, "| D4 | 7 ", "| D4 | 6 ")), "doc.counts.D4"),
         ("the group table of the document no longer matches the data (E-TRV 8)", dict(doc=sub(doc, "| `E-TRV` | 7 |", "| `E-TRV` | 8 |")), "doc.group.E-TRV"),
         ("the approved vector file modified by one appended comment line", dict(vec=vec + b"# x\n"), "approved.unchanged"),
+    ]
+    faults += [
+        ("review F1 of #53: a reader-error case claims to verify a pattern verdict (E-PIN-29 verifies R-PIN-UNKNOWN)", dict(review=subline(review, "E-PIN-29", "verifies: [], related: [R-PIN-UNKNOWN]", "verifies: [R-PIN-UNKNOWN], related: []")), "verifies.sound.E-PIN-29.R-PIN-UNKNOWN"),
+        ("review F1 of #53: a case that could verify is left as merely related (E-PIN-01)", dict(review=subline(review, "E-PIN-01", "verifies: [R-PIN-UNKNOWN], related: []", "verifies: [], related: [R-PIN-UNKNOWN]")), "verifies.complete.E-PIN-01.R-PIN-UNKNOWN"),
+        ("review F1 of #53: a requirement the case names is in neither list (E-PIN-01)", dict(review=subline(review, "E-PIN-01", "verifies: [R-PIN-UNKNOWN], related: []", "verifies: [], related: []")), "verifies.partition.E-PIN-01"),
+        ("review F1 of #53: the requirement matrix of the document edited by hand (R-SCHEMA-WHOLE 2 verifying cases)", dict(doc=sub(doc, "| R-SCHEMA-WHOLE | 1: E-TRV-05 |", "| R-SCHEMA-WHOLE | 2: E-TRV-05, E-RDR-01 |")), "doc.reqtable.in-sync"),
+        ("review F2 of #53: D1 removed from a wrong-typed pin case (E-PIN-01)", dict(review=subline(review, "E-PIN-01", "depends: [D1]", "depends: []")), "decisions.complete.E-PIN-01"),
+        ("review F2 of #53: D2 removed from the null declaration (E-PIN-04)", dict(review=subline(review, "E-PIN-04", "depends: [D1, D2]", "depends: [D1]")), "decisions.complete.E-PIN-04"),
+        ("review F2 of #53: D3 removed from the accepted schema without a contract (E-PIN-14)", dict(review=subline(review, "E-PIN-14", "depends: [D3]", "depends: []")), "decisions.complete.E-PIN-14"),
+        ("review F2 of #53: D4 removed from a traversal case (E-TRV-01)", dict(review=subline(review, "E-TRV-01", "depends: [D4]", "depends: []")), "decisions.complete.E-TRV-01"),
+        ("review F2 of #53: D5 removed from the not-a-string case (E-RDR-02)", dict(review=subline(review, "E-RDR-02", "depends: [D5, D6]", "depends: [D6]")), "decisions.complete.E-RDR-02"),
+        ("review F2 of #53: D6 removed from a reader-error case (E-RDR-01)", dict(review=subline(review, "E-RDR-01", "depends: [D6]", "depends: []")), "decisions.complete.E-RDR-01"),
     ]
     for name, files, needle in faults:
         d = tempfile.mkdtemp()
