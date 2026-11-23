@@ -113,6 +113,20 @@ def main(argv):
             unmet.append("decision %s is %s" % (i, d["status"]))
     for i in set(decs) - set(DECISIONS):
         bad("decision.unknown.%s" % i, "a decision this check does not know")
+    # the owner's recorded statement: required when a decision is confirmed, and consistent with the decisions (the status and the chosen order of each)
+    st_ = rec.get("owner_statement")
+    if any(d.get("status") == "confirmed" for d in decs.values()):
+        if not (isinstance(st_, dict) and st_.get("kind") == "owner_statement" and re.fullmatch(r"\d{4}-\d\d-\d\d", str(st_.get("date", ""))) and str(st_.get("reference", "")).strip() and str(st_.get("authenticity", "")).strip() and str(st_.get("verbatim", "")).strip()):
+            bad("statement.provenance", "a confirmed decision needs the owner's recorded statement: a kind owner_statement, a date, a reference, a statement of its authenticity and the verbatim text")
+        else:
+            stated = {m.group(1): m.group(2) for m in re.finditer(r"\*\*(Q\d+[ab]?): CONFIRMED(?:, chosen: (\w+))?\*\*", st_["verbatim"])}
+            for i, d in decs.items():
+                if d.get("status") == "confirmed" and i not in stated:
+                    bad("decision.not-in-statement.%s" % i, "the decision is confirmed in the record but the owner's statement does not confirm it")
+                elif i in stated and d.get("status") != "confirmed":
+                    bad("decision.vs-statement.%s" % i, "the owner's statement confirms it, the record says %r" % d.get("status"))
+                elif i in stated and stated[i] is not None and d.get("chosen") != stated[i]:
+                    bad("decision.vs-statement.%s" % i, "the owner's statement chose %r, the record says %r" % (stated[i], d.get("chosen")))
     strict = (decs.get("Q6a") or {}).get("chosen") == "strict"
     eff = lambda c: ("pre" if (strict and c.get("strict_phase") == "pre") else c.get("phase"))
     conds = rec.get("conditions", []); seen = set()

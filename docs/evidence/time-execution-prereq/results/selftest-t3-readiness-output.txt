@@ -1,4 +1,4 @@
-A real record: NOT_PREPARED, valid (no FAIL-EXPECT), the unmet items listed, the confirmations stated as NOT authenticated, no GO OK exit=1
+A real record: all six decisions confirmed by the owner's recorded statement, NOT_PREPARED only because pre-execution conditions are open, valid, confirmations stated as NOT authenticated, no GO OK exit=1
 A real record with the review document: the tables and the counts of the document equal the record                     OK exit=1
 B PREPARED: every decision confirmed, every pre-execution condition verified (staged order), NO GO record: PREPARED_FOR_OWNER_GO and still not the GO OK exit=0 verdict=PREPARED_FOR_OWNER_GO
 B a valid separate GO record binds the prepared state: GO_RECORDED                                                     OK exit=0 verdict=GO_RECORDED
@@ -16,6 +16,10 @@ C planted: a confirmed decision without a recorded statement (Q2)               
 C planted: a confirmation that does not even claim to be the owner's (stated_by reviewer)                              OK exit=1 verdict=INVALID needle=decision.confirmation.Q2
 C planted: a decision that is only proposed carries a confirmation                                                     OK exit=1 verdict=INVALID needle=decision.confirmation.Q1a
 C planted: a decision with an unknown status                                                                           OK exit=1 verdict=INVALID needle=decision.status.Q3
+C planted: a decision is confirmed in the record but the owner's recorded statement is missing                         OK exit=1 verdict=INVALID needle=statement.provenance
+C planted: the owner's statement has no statement of its authenticity                                                  OK exit=1 verdict=INVALID needle=statement.provenance
+C planted: the record confirms Q2 but the owner's statement does not (the verbatim text lacks it)                      OK exit=1 verdict=INVALID needle=decision.not-in-statement.Q2
+C planted: the record says another order than the owner's statement chose (strict against staged)                      OK exit=1 verdict=INVALID needle=decision.vs-statement.Q6a
 C planted: Q6a confirmed but the order is not chosen                                                                   OK exit=1 verdict=INVALID needle=decision.chosen.Q6a
 C planted: Q6a with an order that is neither staged nor strict                                                         OK exit=1 verdict=INVALID needle=decision.chosen.Q6a
 C planted: a verified condition without evidence                                                                       OK exit=1 verdict=INVALID needle=condition.evidence.C-Q6-1
@@ -51,7 +55,7 @@ C planted: a record of the manifest at another commit than the expected set pins
 C planted: the inventory has no expected set of open records                                                           OK exit=1 verdict=INVALID needle=manifest.set.empty
 C planted: the source has no statement of its authenticity                                                             OK exit=1 verdict=INVALID needle=source.provenance
 C planted: the record format is not 2                                                                                  OK exit=1 verdict=INVALID needle=record.format
-C planted (document): the decisions table of the document edited by hand (Q2 marked confirmed)                         OK exit=1 needle=doc.table.decisions
+C planted (document): the decisions table of the document edited by hand (Q2 marked proposed)                          OK exit=1 needle=doc.table.decisions
 C planted (document): the conditions table of the document edited by hand (C-Q6-1 marked verified)                     OK exit=1 needle=doc.table.conditions
 C planted (document): the document states other counts of the conditions                                               OK exit=1 needle=doc.counts
 C planted (document): the document without the decisions table markers                                                 OK exit=1 needle=doc.markers.decisions

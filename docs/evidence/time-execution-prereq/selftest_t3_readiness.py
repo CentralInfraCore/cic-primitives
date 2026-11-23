@@ -61,6 +61,14 @@ def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="stage
             d["status"] = "confirmed"; d["confirmation"] = {"stated_by": "owner", "date": "2026-11-24", "reference": "fixture"}
             if d["id"] == "Q6a":
                 d["chosen"] = order
+        if order == "strict":                                                      # the fixture's statement says the order the fixture chose
+            rec["owner_statement"]["verbatim"] = rec["owner_statement"]["verbatim"].replace("chosen: staged", "chosen: strict")
+    else:                                                                          # the owner has not (yet) confirmed: every decision proposed, no statement
+        for d in rec["decisions"]:
+            d["status"] = "proposed"; d["confirmation"] = None
+            if d["id"] == "Q6a":
+                d["chosen"] = None
+        rec["owner_statement"] = None
     man = open(MANIFEST, "rb").read()
     mp = os.path.join(root, "docs", "evidence", "time-manifest", "results"); os.makedirs(mp, exist_ok=True)
     if man_mut:
@@ -90,7 +98,7 @@ def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="stage
 
 def main():
     rc, o = run([])
-    report("A real record: NOT_PREPARED, valid (no FAIL-EXPECT), the unmet items listed, the confirmations stated as NOT authenticated, no GO", rc == 1 and verdict(o) == "NOT_PREPARED" and "FAIL-EXPECT" not in o and "UNMET decision Q6a is proposed" in o and "NOT authenticated" in o and "execution GO: none recorded" in o, "exit=%d" % rc)
+    report("A real record: all six decisions confirmed by the owner's recorded statement, NOT_PREPARED only because pre-execution conditions are open, valid, confirmations stated as NOT authenticated, no GO", rc == 1 and verdict(o) == "NOT_PREPARED" and "FAIL-EXPECT" not in o and "UNMET decision" not in o and "UNMET pre-execution condition C-Q2-1 is open" in o and "(order STAGED)" in o and "NOT authenticated" in o and "execution GO: none recorded" in o, "exit=%d" % rc)
     DOC = os.path.join(ROOT, "docs", "en", "T3-EXECUTION-PREREQUISITES.md"); doc = open(DOC, encoding="utf-8").read()
     rc, o = run(["--doc", DOC])
     report("A real record with the review document: the tables and the counts of the document equal the record", rc == 1 and verdict(o) == "NOT_PREPARED" and "FAIL-EXPECT" not in o, "exit=%d" % rc)
@@ -140,6 +148,10 @@ def main():
         ("a confirmation that does not even claim to be the owner's (stated_by reviewer)", dict(mut=lambda r: dec(r, "Q2")["confirmation"].__setitem__("stated_by", "reviewer")), "decision.confirmation.Q2"),
         ("a decision that is only proposed carries a confirmation", dict(confirm=False, mut=lambda r: dec(r, "Q1a").__setitem__("confirmation", {"stated_by": "owner", "date": "2026-11-24", "reference": "x"})), "decision.confirmation.Q1a"),
         ("a decision with an unknown status", dict(mut=lambda r: dec(r, "Q3").__setitem__("status", "approved")), "decision.status.Q3"),
+        ("a decision is confirmed in the record but the owner's recorded statement is missing", dict(mut=lambda r: r.__setitem__("owner_statement", None)), "statement.provenance"),
+        ("the owner's statement has no statement of its authenticity", dict(mut=lambda r: r["owner_statement"].__setitem__("authenticity", "")), "statement.provenance"),
+        ("the record confirms Q2 but the owner's statement does not (the verbatim text lacks it)", dict(mut=lambda r: r["owner_statement"].__setitem__("verbatim", r["owner_statement"]["verbatim"].replace("**Q2: CONFIRMED**", "**Q2: DEFERRED**"))), "decision.not-in-statement.Q2"),
+        ("the record says another order than the owner's statement chose (strict against staged)", dict(mut=lambda r: dec(r, "Q6a").__setitem__("chosen", "strict")), "decision.vs-statement.Q6a"),
         ("Q6a confirmed but the order is not chosen", dict(mut=lambda r: dec(r, "Q6a").__setitem__("chosen", None)), "decision.chosen.Q6a"),
         ("Q6a with an order that is neither staged nor strict", dict(mut=lambda r: dec(r, "Q6a").__setitem__("chosen", "sometime")), "decision.chosen.Q6a"),
         ("a verified condition without evidence", dict(mut=lambda r: cond(r, "C-Q6-1").__setitem__("evidence", None)), "condition.evidence.C-Q6-1"),
@@ -184,7 +196,7 @@ def main():
             shutil.rmtree(d, ignore_errors=True)
         named = [l for l in o.splitlines() if l.startswith("FAIL-EXPECT") and needle in l]
         report("C planted: " + name, rc == 1 and bool(named) and verdict(o) == "INVALID", "exit=%d verdict=%s needle=%s" % (rc, verdict(o), needle))
-    for name, newdoc, needle in (("the decisions table of the document edited by hand (Q2 marked confirmed)", doc.replace("| Q2 | the time-stamp authorities | **proposed** |", "| Q2 | the time-stamp authorities | **confirmed** |", 1), "doc.table.decisions"),
+    for name, newdoc, needle in (("the decisions table of the document edited by hand (Q2 marked proposed)", doc.replace("| Q2 | the time-stamp authorities | **confirmed** |", "| Q2 | the time-stamp authorities | **proposed** |", 1), "doc.table.decisions"),
                                  ("the conditions table of the document edited by hand (C-Q6-1 marked verified)", doc.replace("| C-Q6-1 | Q6 | pre | condition | **open** |", "| C-Q6-1 | Q6 | pre | condition | **verified** |", 1), "doc.table.conditions"),
                                  ("the document states other counts of the conditions", doc.replace("**3 of the 15 pre-execution conditions are verified**", "**4 of the 15 pre-execution conditions are verified**", 1), "doc.counts"),
                                  ("the document without the decisions table markers", doc.replace("<!-- BEGIN DECISIONS TABLE -->", "", 1), "doc.markers.decisions")):

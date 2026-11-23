@@ -1,5 +1,5 @@
 # THE T3 DECISIONS AS PROPOSED, AND THE PREREQUISITES OF THE TIME-STAMPING (the 92 open records). A RECORD, documentation only: it performs nothing. It keeps four things apart:
-#  (1) the DECISIONS (Q1a, Q1b, Q2, Q3, Q6, Q6a): the requirements that BECOME BINDING when the owner confirms them; today every one is `proposed` (a reviewer's recommendation of 2026-11-23, not an owner decision).
+#  (1) the DECISIONS (Q1a, Q1b, Q2, Q3, Q6, Q6a): the requirements that become binding when the owner confirms them. They were `proposed` (a reviewer's recommendation of 2026-11-23); the owner confirmed all six in a statement the same day (`owner_statement` below), Q6a with the order `staged`.
 #      A confirmation is a RECORDED STATEMENT (`stated_by: owner`, a date, a reference): this repository cannot authenticate who wrote it, and the check says so.
 #  (2) the CONDITIONS, each in a PHASE: `pre` (must be verified BEFORE the owner's GO), `capture` (can only be verified AFTER the GO, when the tokens exist), `preserve` (the end state, verified after the capture);
 #      each is `open` until it has evidence that the check can read. Under the STRICT preservation order the `strict_phase: pre` conditions move from `preserve` to `pre`.
@@ -10,55 +10,84 @@
 prerequisites_format: 2
 source: {kind: reviewer_recommendation, date: 2026-11-23, reference: "the review text pasted into the working session by the owner on 2026-11-23, headed 'T3 - javasolt tulajdonosi hatarozatok' (the five proposed resolutions Q1a, Q1b, Q2, Q3, Q6) and the review of the same day that proposed the staged order (Q6a)", authenticity: "a transcribed recommendation: not signed, not verifiable by this repository; it is NOT an owner decision until the owner confirms it"}
 execution_go: null
+owner_statement:
+  kind: owner_statement
+  date: 2026-11-23
+  reference: "the owner's message of 2026-11-23 headed 'T3 - tulajdonosi dontes es korlatozott GO', passed into the working session on the head ad3e89f20f3d30db005b0e1a0b0c5e6af438a3f0"
+  authenticity: "a transcribed statement: NOT signed and not verifiable by this repository; the check verifies its FORM only"
+  verbatim: |
+    **T3 – tulajdonosi döntés és korlátozott GO**
+
+    A T3 `ad3e89f20f3d30db005b0e1a0b0c5e6af438a3f0` fejen rögzített döntési javaslatok alapján:
+
+    - **Q1a: CONFIRMED** – mind a 92 rekord, pontos rekordbájt-digestekkel és teljes halmazellenőrzéssel.
+    - **Q1b: CONFIRMED** – a három lejárt template történeti megőrzése, az UNKNOWN rekord külön vizsgálata; újraaláírás vagy kivonás külön döntés.
+    - **Q2: CONFIRMED** – két szervezetileg független RFC 3161 TSA. A DigiCert és a GlobalSign csak feltételes jelölt, végleges választás a feltételek bizonyítása után.
+    - **Q3: CONFIRMED** – cél 2026-11-30, belső végső határ 2026-12-15.
+    - **Q6: CONFIRMED** – három példány, legalább két független hibadomén, legalább tízéves tervezett megőrzés, évenkénti ellenőrzés és bizonyítékmegújítási terv.
+    - **Q6a: CONFIRMED, chosen: staged** – a GO előtt két előkészített, visszaellenőrzött tárolási hely; az időbélyegzés után azonnali kétpéldányos megőrzés; legkésőbb december 15-ig a teljes hárompéldányos megőrzés ellenőrzése.
+
+    A határozatokat különítsd el a teljesítendő feltételektől és a tényleges végrehajtási GO-tól.
+
+    **Korlátozott GO:** engedélyezem a DigiCert és a GlobalSign szolgáltatói feltételeinek, RFC 3161-kompatibilitásának, trust anchorjainak, TSA-láncainak és hozzáférési feltételeinek kizárólag olvasási alapú kutatását, valamint ennek bizonyítékokkal alátámasztott dokumentálását.
+
+    A kutatás eredménye nem automatikus feltételteljesítés. Ahol nincs megfelelő bizonyíték, maradjon OPEN.
+
+    **HOLD:** tárolók kiépítése, időbélyegzés, kulcshasználat, merge, implementáció, CI-módosítás, normatív publikálás, G-0 lezárás és factory-naplók feltöltése.
+
+    A lezáró PR csak a dokumentációs feladat lezárása és a végső review után nyitható, kizárólag CI-bizonyíték beszerzésére, külön merge-engedély nélkül.
+
+    Egy dolgot még hozzátennék: **a Q2 szolgáltatói kutatását párhuzamosan kezelném az S3/S10 tárolási döntés előkészítésével**. A november 30-i célhoz nem a manifest algoritmusa jelenti már a fő kockázatot, hanem a külső szolgáltatások hozzáférhetősége és a bizonyítékok biztonságos megőrzése.
+limited_go: {scope: "read-only research of the terms, RFC 3161 compatibility, trust anchors, TSA chains and access conditions of DigiCert and GlobalSign, documented with evidence; the result is not an automatic fulfilment of a condition (docs/en/T3-TSA-PROVIDER-RESEARCH.md)", not_covered: "building the storage, time-stamping, any key use, merge, implementation, CI changes, normative publication, the G-0 closure, the upload of the factory logs", date: 2026-11-23}
 dates: {target: "2026-11-30", internal_latest: "2026-12-15"}
 decisions:
 - id: Q1a
-  status: proposed
-  confirmation: null
+  status: confirmed
+  confirmation: {stated_by: owner, date: "2026-11-23", reference: "the owner statement of 2026-11-23 (owner_statement above)"}
   topic: scope and the manifest
   requirements:
   - "All 92 open records are in scope (the 90 countersigned records of the cic-schema-registry and the 2 cic-yang release records)."
   - "One canonical manifest: for each record its identifier, the SHA-256 of the EXACT record bytes, the repository and the commit and tag references (docs/en/T3-MANIFEST-CONTRACT.md); the manifest holds EXACTLY the expected set of records of the inventory (the same identifiers, commits and refs), not merely the same number."
   - "The digest of the manifest's WHOLE byte stream is what is time-stamped."
 - id: Q1b
-  status: proposed
-  confirmation: null
+  status: confirmed
+  confirmation: {stated_by: owner, date: "2026-11-23", reference: "the owner statement of 2026-11-23 (owner_statement above)"}
   topic: the ended and the unknown template releases
   requirements:
   - "The three ended template releases (base@0.5.0, base@0.6.0, golang@0.6.0) are kept as HISTORICAL evidence; their earlier validity is NOT regarded as proved."
   - "Re-signing or retirement of them only by a separate owner decision."
   - "The UNKNOWN state of schema-registry@0.1.0 is settled by a separate investigation."
 - id: Q2
-  status: proposed
-  confirmation: null
+  status: confirmed
+  confirmation: {stated_by: owner, date: "2026-11-23", reference: "the owner statement of 2026-11-23 (owner_statement above)"}
   topic: the time-stamp authorities
   requirements:
   - "FINAL requirement: two organisationally INDEPENDENT RFC 3161 time-stamp authorities, both tied to the same canonical digest."
   - "CONDITIONAL choice: the primary candidate is DigiCert, the second candidate GlobalSign; the final selection only after the terms of service, access and the verification chain of each are verified (the conditions C-Q2-*)."
 - id: Q3
-  status: proposed
-  confirmation: null
+  status: confirmed
+  confirmation: {stated_by: owner, date: "2026-11-23", reference: "the owner statement of 2026-11-23 (owner_statement above)"}
   topic: the schedule
   requirements:
   - "Execution target: 2026-11-30. Internal latest date: 2026-12-15."
   - "The certificate end of 2026-12-31 13:22:39 UTC is not used as a planned execution time."
 - id: Q6
-  status: proposed
-  confirmation: null
+  status: confirmed
+  confirmation: {stated_by: owner, date: "2026-11-23", reference: "the owner statement of 2026-11-23 (owner_statement above)"}
   topic: custody and preservation (the end state)
   requirements:
   - "The manifest, the records, the RFC 3161 tokens, the TSA certificates and the verification aids in at least THREE copies in at least TWO independent storage failure domains: one in immutable object storage, one at a second independent provider, one offline or isolated archive."
   - "The preserved package holds the record bytes (or a digest-verified restorable source), the canonical manifest, the RAW token of each authority, the certificate chains and the frozen version of the verification procedure."
   - "Retention at least 10 years (a PLANNING minimum, not a statement of a legal obligation of the CIC), a restore and cryptographic check every year, and a planned evidence-renewal mechanism for the weakening of hash algorithms and TSA chains."
 - id: Q6a
-  status: proposed
-  confirmation: null
-  chosen: null
-  topic: the ORDER of the preservation (an alternative for the owner to choose)
+  status: confirmed
+  confirmation: {stated_by: owner, date: "2026-11-23", reference: "the owner statement of 2026-11-23 (owner_statement above)"}
+  chosen: staged
+  topic: "the ORDER of the preservation (chosen by the owner: staged)"
   requirements:
   - "STAGED (recommended by the review, with STRICT preconditions): at least TWO separate, verified storage locations are prepared BEFORE the GO (provisioned, a dry-run package read back with its digest verified); the two raw tokens and the certificate chains are placed in both locations IMMEDIATELY after the capture and read back; the three-copy preservation with the restore drills is complete by the internal latest date (2026-12-15)."
   - "STRICT: all THREE storage locations are prepared and verified BEFORE the GO, with a DRY-RUN package (no real tokens) read back from each and restore drills with that package passed (the conditions marked strict_phase move into the pre-execution set); this puts the target date at risk. In BOTH orders the FINAL package with the raw tokens exists only after the capture and is verified there: a strict order never demands evidence that cannot exist before the GO."
-  - "The owner chooses `staged` or `strict`; until then Q6a is not confirmed and the record cannot be PREPARED."
+  - "CHOSEN by the owner on 2026-11-23: STAGED. (Had the owner chosen strict, the conditions marked strict_phase would have moved into the pre-execution set.)"
 conditions:
 - {id: C-Q1a-1, decision: Q1a, phase: pre, kind: condition, text: "the canonical manifest contract is reviewed and accepted", status: open, evidence: null}
 - {id: C-Q1a-2, decision: Q1a, phase: pre, kind: condition, text: "the manifest builder and verifier are tested and shown to fail for the right reasons (22 checks, the mutations are caught)", status: verified, verified_on: "2026-11-23", evidence: {path: docs/evidence/time-manifest/results/selftest-manifest-output.txt, must_contain: "self-test: all as expected"}}
