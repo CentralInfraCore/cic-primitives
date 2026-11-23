@@ -132,6 +132,8 @@ The statuses are `ok` (read and understood), `absent` (looked for, explicitly no
 | Q6 | **Custody** of the new tokens and the manifest | the S3/S10 decisions are open; nothing is backed up |
 | Q7 | Whether **D** (a signed `ts`) is a requirement for the next release | it changes the countersign service and every verifier |
 
+**Follow-up:** the five resolutions Q1a, Q1b, Q2, Q3 and Q6 are recorded **as proposed** (not as owner decisions), together with the conditions that must be verified before the time-stamping may be performed, in `docs/en/T3-EXECUTION-PREREQUISITES.md`; the manifest that is to be time-stamped is specified in `docs/en/T3-MANIFEST-CONTRACT.md`.
+
 ## 9. What this does not show
 
 * The inventory is a statement about **the commits it records** (`inventory.json`, `clones`), taken from fresh clones on 2026-11-23; the repositories move.

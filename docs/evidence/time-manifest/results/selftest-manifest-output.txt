@@ -1,0 +1,23 @@
+B0 a complete build: 3 records (2 registry, 1 yang), the mention-only file and the file outside the record areas are not records OK exit=0
+B1 the build is deterministic: two builds are byte-identical, and the .sha256 file is the digest of the bytes    OK 
+B2 the records are sorted bytewise and carry the exact record bytes' SHA-256                                     OK 
+V0 positive control: the verifier accepts the good manifest                                                      OK exit=0
+V1 the verifier reads the git object at the recorded commit, not the working tree: a later commit and an uncommitted change do not change the result OK exit=0
+V fault: a SHA-256 of a record is altered                                                                        OK exit=1 needle=records.cic-schema-registry:standards/a/a.v0.1.0.yaml
+V fault: a size of a record is altered                                                                           OK exit=1 needle=records.cic-schema-registry:standards/a/a.v0.1.0.yaml
+V fault: two record lines swapped (not sorted bytewise)                                                          OK exit=1 needle=form
+V fault: the count does not match the lines                                                                      OK exit=1 needle=form
+V fault: a record line repeated (a duplicate id)                                                                 OK exit=1 needle=form
+V fault: CRLF line ends                                                                                          OK exit=1 needle=form
+V fault: a byte order mark                                                                                       OK exit=1 needle=form
+V fault: no final LF                                                                                             OK exit=1 needle=form
+V fault: an extra blank line at the end                                                                          OK exit=1 needle=form
+V fault: a record id that is not repo:path                                                                       OK exit=1 needle=form
+V fault: a recorded manifest digest that is not the manifest's                                                   OK exit=1 needle=digest
+V fault: a commit that is not in the repository: git cannot read it, an infrastructure result (exit 2), not a detection OK exit=2 needle=cannot read
+V fault: git cannot show the bytes (an invalid git setting): exit 2, not a detection                             OK exit=2 needle=cannot read
+B3 a file that mentions the block and does not parse: the build is NOT complete (exit 1), no manifest is written, the file is named OK exit=1
+B4 a named tag that does not exist: an input error (exit 2), not a smaller manifest                              OK exit=2
+B5 a tag without its record file: the build is NOT complete (exit 1)                                             OK exit=1
+D infra: the manifest is unreadable (exit 2, not a detection)                                                    OK exit=2
+self-test: all as expected

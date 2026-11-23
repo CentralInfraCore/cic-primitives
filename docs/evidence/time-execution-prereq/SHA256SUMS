@@ -1,0 +1,7 @@
+4acacf4c2fc97f2f008b2fa387c8a1b22edeb00cbf453dcf41360521456f29ec  README.md
+032f36e6a07929bff6c37c44a3bb78c8358b9c9ad221fa20d60aa382643ffe71  check_t3_readiness.py
+ca4da3bf542dc5933857ad82bd03cb58569de2051b68d271357f8daae535485a  selftest_t3_readiness.py
+c5ae51aee72951e441055fb51bacf94c207df2df60266f3dd74b9d8796158dce  results/check_t3_readiness.txt
+1a988a89bd87d7604c3aebcb939b80419f095893f7a7ff40055ff62213ea9382  results/selftest-t3-readiness-output.txt
+392135c5c30fc47b30be4504ac79c72fcc648f48a83f8499bbfe185903c4b35d  ../../design/time-evidence/t3-execution-prerequisites.yaml
+a80fff1dac2458e0eb7c21731e98fa8a26a95b9d069f8d59fd7927b2bd81efe7  ../../en/T3-EXECUTION-PREREQUISITES.md
