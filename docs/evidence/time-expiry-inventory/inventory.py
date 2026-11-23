@@ -10,9 +10,12 @@ COMPLETENESS (review F2 of the T3 package). Every element of the declared scope 
   not_found           a tag the scope names does not exist in the remote: an error (the scope claims it)
   fetch_error         the tag exists (or could not be listed) but could not be fetched: an error, never mixed with `absent`
   parse_error         a file that mentions the signature blocks could not be parsed (YAML, certificate): an error, listed by path, never skipped
+  read_error          git itself failed to read the tag's content (`git grep` with an exit code other than 0 or 1, `git show` or `git ls-tree` failing): an error, never read as "no match" or "absent"
   unknown             a fact that could not be extracted (a certificate in a form the tool cannot read): reported as UNKNOWN downstream, never replaced by another date
 Exit: 0 the inventory is complete, 1 it was produced but is NOT complete (a scope element is an error; the output says which), 2 an input cannot be read (never a result).
-Usage: inventory.py --clones DIR --out results/inventory.json [--chain DIR] [--as-of YYYY-MM-DD] [--scope-json PATH]"""
+THE CLOCK (review F2b): the state of a class is judged at a full UTC INSTANT (`--as-of YYYY-MM-DDTHH:MM:SSZ`, default now), not at a day: a boundary is the last second a certificate is valid, so a class is `ended` only when the
+instant is AFTER its boundary (the boundary second itself is still `open`).
+Usage: inventory.py --clones DIR --out results/inventory.json [--chain DIR] [--as-of YYYY-MM-DDTHH:MM:SSZ] [--scope-json PATH]"""
 import collections, datetime, json, os, re, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -108,7 +111,7 @@ def class_summary(cid, label, items, as_of):
     d_min = min(declared) if declared else None
     cands = [x for x in ([earliest[0]] if earliest else []) + ([d_min] if d_min else [])]
     boundary = min(cands) if cands else None
-    ended = bool(boundary) and boundary < as_of + "T00:00:00Z"
+    ended = bool(boundary) and boundary < as_of                         # both are full UTC instants of the same format; the boundary second itself is still valid
     state = "ended" if ended else ("UNKNOWN" if (unknown or not cands) else "open")
     return {"id": cid, "label": label, "records": len(items), "earliest_cert_end": ({"not_after": earliest[0], "role": earliest[1], "subject_cn": earliest[2]} if earliest else None),
             "declared_validity_until_min": d_min, "boundary": boundary, "unknown_certs": dict(collections.Counter(unknown)), "state_at_as_of": state}
@@ -118,10 +121,10 @@ def main(argv):
     import yaml
     arg = lambda n, d: argv[argv.index(n) + 1] if n in argv and argv.index(n) + 1 < len(argv) else d
     clones, out, chain = arg("--clones", None), arg("--out", os.path.join(HERE, "results", "inventory.json")), arg("--chain", CHAIN_DEFAULT)
-    as_of = arg("--as-of", datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
+    as_of = arg("--as-of", datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     tags = TAGS
     try:
-        assert clones and os.path.isdir(clones) and re.fullmatch(r"\d{4}-\d\d-\d\d", as_of)
+        assert clones and os.path.isdir(clones) and re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", as_of)
         if "--scope-json" in argv:
             tags = json.load(open(arg("--scope-json", None), encoding="utf-8"))
         inv = {"inventory_format": 2, "as_of": as_of, "clones": {}, "chain": [], "scope": [], "registry": {}, "classes": [], "tag_records": [], "anchors": []}
@@ -184,13 +187,18 @@ def main(argv):
                 if fe.returncode != 0:
                     scope(sid, "release-tag", "fetch_error", "git fetch failed: %s" % fe.stderr.strip()[:120]); continue
                 g = sh(["git", "grep", "-l", "cic_countersign", t, "--", "*.yaml", "*.yml"], cl)
+                if g.returncode not in (0, 1):                                   # 0 a match, 1 no match, anything else git could not read the tag's content
+                    scope(sid, "release-tag", "read_error", "git grep failed (exit %d): %s" % (g.returncode, g.stderr.strip()[:120])); continue
                 files = [x.split(":", 1)[1] for x in g.stdout.split() if ":" in x]
                 excluded = [f for f in files if "schema.yaml" in f or "/tests/" in f or ".mypy_cache" in f]
                 files = [f for f in files if f not in excluded]
-                found, perr = 0, []
+                found, perr, rerr = 0, [], []
                 for f in files:
+                    sw = sh(["git", "show", "%s:%s" % (t, f)], cl)
+                    if sw.returncode != 0:
+                        rerr.append(f); continue
                     try:
-                        d = yaml.safe_load(sh(["git", "show", "%s:%s" % (t, f)], cl).stdout)
+                        d = yaml.safe_load(sw.stdout)
                     except BaseException:
                         perr.append(f); continue
                     if not isinstance(d, dict) or not isinstance(d.get("cic_countersign"), dict):
@@ -200,13 +208,20 @@ def main(argv):
                     inv["tag_records"].append({"repo": repo, "tag": t, "file": f, "format": "yaml-record", "ts": cs.get("ts"), "own_release_record": own, "certs": [{"role": c["role"], "not_after": (c["info"] or {}).get("not_after"), "subject_cn": (c["info"] or {}).get("subject_cn")} for c in record_certs(d)]})
                     if own:
                         cls_items["primitives" if repo == "cic-primitives" else "yang"].append({"certs": record_certs(d), "declared_until": None})
+                if rerr:
+                    scope(sid, "release-tag", "read_error", "git show failed for: %s" % ", ".join(rerr)); continue
                 if perr:
                     scope(sid, "release-tag", "parse_error", "unparsable: %s" % ", ".join(perr)); continue
                 if found:
                     scope(sid, "release-tag", "ok", "%d signed record file(s); %d excluded (schema or test files)" % (found, len(excluded))); continue
+                lt = sh(["git", "ls-tree", "--name-only", t, "--", "project.yaml"], cl)
+                if lt.returncode != 0:
+                    scope(sid, "release-tag", "read_error", "git ls-tree failed (exit %d): %s" % (lt.returncode, lt.stderr.strip()[:120])); continue
+                if not lt.stdout.strip():
+                    scope(sid, "release-tag", "absent", "no signed record file and no project.yaml at the tag"); continue      # looked for and explicitly not there
                 pr = sh(["git", "show", "%s:project.yaml" % t], cl)
                 if pr.returncode != 0:
-                    scope(sid, "release-tag", "absent", "no signed record file and no project.yaml at the tag"); continue
+                    scope(sid, "release-tag", "read_error", "git show project.yaml failed (exit %d): %s" % (pr.returncode, pr.stderr.strip()[:120])); continue
                 try:
                     py = yaml.safe_load(pr.stdout) or {}
                 except BaseException:

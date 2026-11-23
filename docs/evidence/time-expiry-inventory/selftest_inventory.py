@@ -68,9 +68,9 @@ def make_fixture(root, registry_files=None, tags=None, no_origin=()):
         git(d, "remote", "add", "origin", "/nonexistent/remote.git" if repo in no_origin else d)
 
 
-def inv_run(clones, scope, extra=()):
+def inv_run(clones, scope, extra=(), as_of="2026-11-23T12:00:00Z"):
     out = os.path.join(clones, "out.json"); sj = os.path.join(clones, "scope.json"); json.dump(scope, open(sj, "w"))
-    rc, o = run(INVENTORY, ["--clones", clones, "--out", out, "--chain", CHAIN, "--as-of", "2026-11-23", "--scope-json", sj] + list(extra))
+    rc, o = run(INVENTORY, ["--clones", clones, "--out", out, "--chain", CHAIN, "--as-of", as_of, "--scope-json", sj] + list(extra))
     return rc, o, (json.load(open(out)) if os.path.exists(out) else None)
 
 
@@ -122,6 +122,37 @@ def main():
                  registry_files={"standards/a.yaml": record_yaml(dev="-----BEGIN CERTIFICATE-----\nnot a certificate\n-----END CERTIFICATE-----\n")})
     reg = next((c for c in j["classes"] if c["id"] == "registry"), None) if j else None
     report("T fault: ...the class lists the unreadable certificate and its earliest end stays the one that WAS read", bool(reg) and reg["unknown_certs"] == {"developer": 1} and reg["earliest_cert_end"]["not_after"] == "2026-12-31T13:22:39Z" and reg["state_at_as_of"] == "UNKNOWN", "unknown=%s state=%s" % (reg and reg["unknown_certs"], reg and reg["state_at_as_of"]))
+    # F2a: git itself failing to READ a tag's content is a read_error, never "no match" and never "absent". The failures are made by an invalid git setting in ONE clone (grep.patternType makes `git grep`
+    # fail; log.date makes `git show` fail while `git grep` still works), so that exactly one command fails and fetch, ls-remote and ls-tree succeed.
+    def badcfg(repo, key):
+        return lambda root: git(os.path.join(root, repo), "config", key, "bogus")
+    j = isolated("git grep fails on the tag (an invalid grep setting in the clone): read_error, not an empty result", badcfg("cic-yang", "grep.patternType"), "tag:cic-yang:yang/@v0.1.2", "read_error")
+    d_ = next((x["detail"] for x in j["scope"] if x["id"] == "tag:cic-yang:yang/@v0.1.2"), "") if j else ""
+    report("T fault: ...and the detail names the failing command and its exit code, not a silent absence", "git grep failed (exit" in d_, d_[:90])
+    j = isolated("git show fails for a record file while git grep works (an invalid log.date): read_error, the record is not skipped", badcfg("cic-yang", "log.date"), "tag:cic-yang:yang/@v0.1.2", "read_error")
+    d_ = next((x["detail"] for x in j["scope"] if x["id"] == "tag:cic-yang:yang/@v0.1.2"), "") if j else ""
+    report("T fault: ...and the detail names the files that could not be read", "git show failed for: release/cic-yang-v0.1.2.yaml" in d_, d_[:90])
+    j = isolated("git show fails for a project.yaml that IS in the tree: read_error, not absent", badcfg("base-repo", "log.date"), "tag:base-repo:base@0.6.0", "read_error",
+                 scope_={"cic-primitives": ["primitives/@v0.1.5"], "cic-yang": ["yang/@v0.1.2"], "base-repo": ["base@0.6.0"]})
+    d_ = next((x["detail"] for x in j["scope"] if x["id"] == "tag:base-repo:base@0.6.0"), "") if j else ""
+    report("T fault: ...and the detail says the project.yaml read failed (the file exists: ls-tree lists it)", "git show project.yaml failed" in d_, d_[:90])
+    # F2b: the state at a full UTC instant (boundary - 1 s, the boundary second, boundary + 1 s, the day-granularity case)
+    for label, instant, want in (("boundary - 1 s", "2026-12-31T13:22:38Z", "open"), ("the boundary second itself (still valid)", "2026-12-31T13:22:39Z", "open"), ("boundary + 1 s", "2026-12-31T13:22:40Z", "ended"), ("2026-12-31 14:00 UTC (the case a day-granularity clock called open)", "2026-12-31T14:00:00Z", "ended")):
+        d = tempfile.mkdtemp()
+        try:
+            make_fixture(d, tags=good_tags)
+            rc, o, j = inv_run(d, scope, as_of=instant)
+            reg = next((c for c in j["classes"] if c["id"] == "registry"), None) if j else None
+            report("T clock: the registry class at %s is %s" % (label, want), bool(reg) and reg["boundary"] == "2026-12-31T13:22:39Z" and reg["state_at_as_of"] == want and j["as_of"] == instant, "state=%s" % (reg and reg["state_at_as_of"]))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+    d = tempfile.mkdtemp()
+    try:
+        make_fixture(d, tags=good_tags)
+        rc, o, j = inv_run(d, scope, as_of="2026-12-31")
+        report("T clock: a day-only --as-of is refused (exit 2), the instant must be full", rc == 2 and "INCOMPLETE" in o, "exit=%d" % rc)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
     rc, o = run(INVENTORY, ["--clones", "/nonexistent/clones", "--out", os.path.join(tempfile.gettempdir(), "x.json"), "--chain", CHAIN])
     report("T infra: the clones directory does not exist (exit 2, not a detection)", rc == 2 and "INCOMPLETE" in o, "exit=%d" % rc)
 
@@ -153,6 +184,8 @@ def main():
         ("the complete flag says true while an element is an error", dict(inv=mut(lambda x: (setstatus(tpl, "fetch_error")(x), x.__setitem__("complete", True)))), "complete.flag"),
         ("a registry file that mentions the blocks is unaccounted for", dict(inv=mut(lambda x: x["registry"].__setitem__("files_mentioning_blocks", x["registry"]["files_mentioning_blocks"] + 1))), "complete.registry-accounting"),
         ("a tag record has no scope element", dict(inv=mut(lambda x: x["scope"].__delitem__(next(i for i, s in enumerate(x["scope"]) if s["id"] == "tag:cic-yang:yang/@v0.1.3")))), "complete.tag-scope.cic-yang:yang/@v0.1.3"),
+        ("the instant of the inventory is after a class's boundary but the class is still declared open (the boundary + 1 s case)", dict(inv=mut(lambda x: x.__setitem__("as_of", "2026-12-31T13:22:40Z"))), "consistent.state.registry"),
+        ("the instant of the inventory is exactly the boundary but the class is declared ended", dict(inv=mut(lambda x: (x.__setitem__("as_of", "2026-12-31T13:22:39Z"), cls(x, "registry").__setitem__("state_at_as_of", "ended")))), "consistent.state.registry"),
         ("the state of a class does not follow from its boundary (an ended class declared open)", dict(inv=mut(lambda x: cls(x, "template:base@0.6.0").__setitem__("state_at_as_of", "open"))), "consistent.state.template:base@0.6.0"),
         ("the registry class's earliest certificate end differs from the kept Source CA", dict(inv=mut(lambda x: cls(x, "registry")["earliest_cert_end"].__setitem__("not_after", "2026-12-31T13:22:40Z"))), "consistent.registry-source-ca"),
         ("the inventory's Source CA end differs from the kept certificate", dict(inv=mut(lambda x: [c.__setitem__("not_after", "2026-12-31T13:22:40Z") for c in x["chain"] if c["file"] == "source-ca.pem"])), "chain.dates.source-ca.pem"),

@@ -5,6 +5,7 @@ Checks (a failure is a FAIL-EXPECT line, exit 1; an unreadable input is INCOMPLE
               certificate has its scope element
   chain       the four chain certificates of the inventory equal, by end and fingerprint, the certificates kept in evidence/time/digicert-2026-11-03/cic-chain (openssl reads them again)
   consistent  the registry class names the kept Source CA as its earliest certificate end; the three stamped releases of the manifest are tags of the inventory; a class's state follows from its boundary
+              AT THE FULL UTC INSTANT of the inventory (ended only when the instant is after the boundary second)
   verifiers   the claims about the three verifiers rest on the recorded anchors (the registry verifier has NO time word and names no `ts`, the primitives verifier reads the clock, the Relay chain
               verification builds x509.VerifyOptions WITHOUT CurrentTime)
   doc         the tables of the review document (chain, boundaries, evidence, scope, verifiers) are exactly the tables rendered from the inventory and the manifest (nothing is hand-edited into them); the
@@ -126,7 +127,7 @@ def main(argv):
     for c in inv["chain"]:
         expect("complete.chain-scope.%s" % c["file"], "chain:%s" % c["file"] in ids)
     for c in inv["classes"]:
-        expect("consistent.state.%s" % c["id"], c["state_at_as_of"] == ("ended" if c["boundary"] and c["boundary"] < inv["as_of"] + "T00:00:00Z" else ("UNKNOWN" if (c["unknown_certs"] or not c["boundary"]) else "open")), "the state of the class does not follow from its boundary")
+        expect("consistent.state.%s" % c["id"], c["state_at_as_of"] == ("ended" if c["boundary"] and c["boundary"] < inv["as_of"] else ("UNKNOWN" if (c["unknown_certs"] or not c["boundary"]) else "open")), "the state of the class does not follow from its boundary")
     # chain
     for c in inv["chain"]:
         try:

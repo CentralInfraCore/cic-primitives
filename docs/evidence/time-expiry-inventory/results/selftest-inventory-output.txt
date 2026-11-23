@@ -7,6 +7,17 @@ T fault: a tag without a project.yaml is ABSENT (a result), not an error and not
 T fault: a project.yaml without a signature block is ABSENT (a result)                                                 OK exit=0 tag:base-repo:plain@0.1=absent changed=[]
 T fault: a certificate in a form the tool cannot read is UNKNOWN downstream, never replaced by another date            OK exit=0 registry-scan=ok changed=[]
 T fault: ...the class lists the unreadable certificate and its earliest end stays the one that WAS read                OK unknown={'developer': 1} state=UNKNOWN
+T fault: git grep fails on the tag (an invalid grep setting in the clone): read_error, not an empty result             OK exit=1 tag:cic-yang:yang/@v0.1.2=read_error changed=['tag:cic-yang:yang/@v0.1.2']
+T fault: ...and the detail names the failing command and its exit code, not a silent absence                           OK git grep failed (exit 128): fatal: bad grep.patterntype argument: bogus
+T fault: git show fails for a record file while git grep works (an invalid log.date): read_error, the record is not skipped OK exit=1 tag:cic-yang:yang/@v0.1.2=read_error changed=['tag:cic-yang:yang/@v0.1.2']
+T fault: ...and the detail names the files that could not be read                                                      OK git show failed for: release/cic-yang-v0.1.2.yaml
+T fault: git show fails for a project.yaml that IS in the tree: read_error, not absent                                 OK exit=1 tag:base-repo:base@0.6.0=read_error changed=['tag:base-repo:base@0.6.0']
+T fault: ...and the detail says the project.yaml read failed (the file exists: ls-tree lists it)                       OK git show project.yaml failed (exit 128): fatal: unknown date format bogus
+T clock: the registry class at boundary - 1 s is open                                                                  OK state=open
+T clock: the registry class at the boundary second itself (still valid) is open                                        OK state=open
+T clock: the registry class at boundary + 1 s is ended                                                                 OK state=ended
+T clock: the registry class at 2026-12-31 14:00 UTC (the case a day-granularity clock called open) is ended            OK state=ended
+T clock: a day-only --as-of is refused (exit 2), the instant must be full                                              OK exit=2
 T infra: the clones directory does not exist (exit 2, not a detection)                                                 OK exit=2
 A positive control: the check on the package as it is                                                                  OK exit=0
 C planted: a scope element is a fetch_error (the inventory is not complete)                                            OK exit=1 needle=complete.element.tag:base-repo:base@0.6.0
@@ -15,6 +26,8 @@ C planted: a scope element is not_found                                         
 C planted: the complete flag says true while an element is an error                                                    OK exit=1 needle=complete.flag
 C planted: a registry file that mentions the blocks is unaccounted for                                                 OK exit=1 needle=complete.registry-accounting
 C planted: a tag record has no scope element                                                                           OK exit=1 needle=complete.tag-scope.cic-yang:yang/@v0.1.3
+C planted: the instant of the inventory is after a class's boundary but the class is still declared open (the boundary + 1 s case) OK exit=1 needle=consistent.state.registry
+C planted: the instant of the inventory is exactly the boundary but the class is declared ended                        OK exit=1 needle=consistent.state.registry
 C planted: the state of a class does not follow from its boundary (an ended class declared open)                       OK exit=1 needle=consistent.state.template:base@0.6.0
 C planted: the registry class's earliest certificate end differs from the kept Source CA                               OK exit=1 needle=consistent.registry-source-ca
 C planted: the inventory's Source CA end differs from the kept certificate                                             OK exit=1 needle=chain.dates.source-ca.pem

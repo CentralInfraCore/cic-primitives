@@ -89,7 +89,7 @@
    "repo": "CIC_Relay"
   }
  ],
- "as_of": "2026-11-23",
+ "as_of": "2026-11-23T16:14:41Z",
  "chain": [
   {
    "file": "root.pem",
