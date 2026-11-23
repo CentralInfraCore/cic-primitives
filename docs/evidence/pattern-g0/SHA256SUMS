@@ -1,0 +1,7 @@
+72dd48ceff8fdcf1b5becd7ea8811f53d220cef85e3b1f67abf7f0254c0c09a8  README.md
+bf1e01eacb2c1aa2ea2c10129d0b33048fd83da7c495c0a510ab7314cb691214  check_g0.py
+f8235aed4175664a0cfbcb87ccd4ea496b791ce9ff75d4dccbb4027310429559  selftest_g0.py
+d9775f66423d701c1bca1a5aa3606dd854a7b7ada95451b4abfce5ae472f70fc  results/check_g0.txt
+aeede190a2193f3ad21010761ca24bc357e66d74b95b004dbd75116dded6631f  results/selftest-g0-output.txt
+879006aad7287386bc75209f33a56f184cef435a0c223ca024c20e478ac10f03  ../../design/pattern-profile-plan/decisions.yaml
+7b8cbac9616d7999bb869ea1ab521580cdc1e50d73921247938b79c081ba875b  ../../en/GRAMMAR-PATTERN-OWNER-DECISIONS.md

@@ -1,0 +1,77 @@
+# THE OWNER'S DECISIONS ON THE PATTERN PROFILE (P1), as RECORDED from the owner's statement of 2026-11-23. A DECISION RECORD: documentation only. It changes no approved file, creates no normative extension and
+# closes no gate. It separates three things that must not be confused: (1) the owner's DECISION (a statement, recorded here with its source and date), (2) the EVIDENCE that backs it (files bound by SHA-256 to a
+# base commit, and artifacts the plan names), (3) the state of the GATE G-0 (closed only by a separate owner closure record; none exists). Checked by docs/evidence/pattern-g0/check_g0.py.
+# `status` vocabulary: confirmed (D1 to D6), decided (OP-1, OP-4), accepted_content (OP-2: the content of the 47 cases is accepted, they are NOT a normative conformance set), partial (OP-3), hold (D7, D8).
+decision_record_format: 1
+recorded_on: 2026-11-23
+source:
+  kind: owner_statement
+  date: 2026-11-23
+  channel: "the owner's own message in the working session, which states the decisions and overrides the earlier state 'awaiting owner confirmation'"
+  reference: "cic-factory theads/2026-11-19_session-relay-162-artifact-auth-primitives-p1.md (the session thread log), the owner message of 2026-11-23 headed 'Tulajdonosi dontes megerositve'"
+  authenticity: "a transcribed statement: NOT cryptographically signed and not verifiable by this repository; the weight of the record is the owner's own confirmation of it in the review of this package"
+  verbatim: |
+    | Azonosito | Dontes | Allapot |
+    | D1-D6 | A #52 szerinti szemantika | CONFIRMED |
+    | OP-1 | YAML 1.2 Core Schema, tipusmegorzes, szigoru reader-szabalyok | DECIDED |
+    | OP-2 | Mind a 47 bovito eset tartalmi elfogadasa | ACCEPTED |
+    | OP-3 | Merasi modszer elfogadva, `c` es muveletszamlalas meg rogzitendo | PARTIAL |
+    | OP-4 | Onallo harness es Go/Rust cross-check | DECIDED |
+    | D7-D8 | Halasztott kerdesek | HOLD |
+    Fontos kulonbseg: a 47 eset tartalmilag elfogadott, de meg nem normativ konformanciakeszlet. Az elfogadott 513 vektor es annak SHA-256 referenciaja valtozatlan.
+  note: "the verbatim text is quoted without Hungarian accents here only to keep the file ASCII; the meaning is unchanged"
+bound_to:
+  repository: cic-primitives
+  base_commit: cc6b614b5dedf0397e2f7b20952789394ec2c7f8
+  note: "the files below are the state at base_commit; a change to any of them invalidates the evidence that names it (SHA-256 recomputed by the check)"
+  files:
+    spec: {path: docs/en/GRAMMAR-PATTERN-IMPLEMENTATION-SPEC.md, sha256: c2cfae0e83581b15b2bc457267c729dc0c27f6f8356394eb97de14b0bf034ff3}
+    obligations: {path: docs/design/pattern-profile-spec/obligations.yaml, sha256: d33789d78a8b3b6edede1741fa3ddc560e001c31348c54f8d65611f5b80d9e24}
+    extension_cases: {path: docs/design/pattern-profile-spec/extension-cases.yaml, sha256: ee240cd810f2835273b6ff6f16b194e494dddb3bfb77d34381b40f895dc6c593}
+    extension_review: {path: docs/design/pattern-profile-spec/extension-review.yaml, sha256: 4edf3f814a3c3c56d42d87b51ea6263b4ba4f6a0c32fb00e86904efff5b75199}
+    plan: {path: docs/design/pattern-profile-plan/plan.yaml, sha256: 1344a488f6c9d245ed9c8cecdd286532c755846b3618f96a9f62f8e04f29389d}
+    vectors: {path: docs/design/pattern-profile-vectors/pattern-profile.yaml, sha256: e7ece43a9486187c16a482a96a86d22cf82407711be940920155f4e3abe277e0}
+    plan_doc: {path: docs/en/GRAMMAR-PATTERN-IMPLEMENTATION-PLAN.md, sha256: f2b51861d4046b8de2f53484c321cdf10cde0d6746df608278cd550fba9dc278}
+    review_doc: {path: docs/en/GRAMMAR-PATTERN-EXTENSION-CASES-REVIEW.md, sha256: 830d781583da6b594695241c50a7dab8a6c961848cdf6c1ca456b5f6f7e63e3a}
+decisions:
+- {id: D1, kind: decision, status: confirmed, text: "a wrong-typed pin is pattern_profile_unknown, no new code", evidence_files: [spec, extension_review]}
+- {id: D2, kind: decision, status: confirmed, text: "an explicit null declaration is unknown", evidence_files: [spec, extension_review]}
+- {id: D3, kind: decision, status: confirmed, text: "a schema without a pattern contract evaluates no pin", evidence_files: [spec, extension_review]}
+- {id: D4, kind: decision, status: confirmed, text: "the traversal is source order", evidence_files: [spec, extension_review]}
+- {id: D5, kind: decision, status: confirmed, text: "an expression that is not a string is a reader error", evidence_files: [spec, extension_review]}
+- {id: D6, kind: decision, status: confirmed, text: "the schema layer's own error vocabulary is a separate contract", evidence_files: [spec, extension_review]}
+- id: OP-1
+  kind: open_point
+  status: decided
+  closes_at: G-0
+  text: "the YAML 1.2 Core Schema, type preservation, strict reader rules"
+  detail: "the owner's statement does not itemise the strict reader rules; the working basis is the fixation proposed in the plan (the core scalars, only the core tags, duplicate keys, aliases and merge keys are reader errors); the specification text that FIXES them is the evidence the plan asks of gate G-0 and is NOT yet written"
+  evidence_files: [plan]
+  spec_text: null
+- id: OP-2
+  kind: open_point
+  status: accepted_content
+  closes_at: G-0
+  text: "the content of all 47 proposed extension cases is accepted unchanged"
+  normative: false
+  case_count: 47
+  normative_extension_file: "not created (on hold); 560 is not claimed; the 513 approved vectors and their SHA-256 are unchanged"
+  evidence_files: [extension_cases, extension_review, review_doc, vectors]
+- id: OP-3
+  kind: open_point
+  status: partial
+  closes_at: G-6
+  text: "the measurement method is accepted; the constant c and the counted operations are still to be fixed"
+  precondition: "c and the counted operations are fixed BEFORE the acceptance measurement of G-6, not adjusted to its results"
+  evidence_files: [plan]
+- id: OP-4
+  kind: open_point
+  status: decided
+  closes_at: G-4
+  text: "a standalone harness and the Go/Rust cross-check"
+  detail: "the decision is recorded here; gate G-4 still requires the executed cross-check"
+  evidence_files: [plan]
+- {id: D7, kind: decision, status: hold, text: "the composition of schema parts and the order of their pin declarations: deferred (plan item P-09)", evidence_files: [spec]}
+- {id: D8, kind: decision, status: hold, text: "the order of several violating values in one record: deferred (plan item P-09)", evidence_files: [spec]}
+gate_closure:
+  G-0: null
