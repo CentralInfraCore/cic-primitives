@@ -1,0 +1,30 @@
+A positive control (the package as it is)                                                                        OK exit=0
+B planted reading: the YAML 1.1 booleans, octal and underscore integers                                          OK exit=1 needles=['V-SC-017', 'V-SC-038', 'V-SC-052']
+B planted reading: duplicate keys by the host language's equality                                                OK exit=1 needles=['V-KY-016', 'V-KY-017', 'V-KY-009']
+B planted reading: aliases and anchors accepted (an undefined alias stays an error)                              OK exit=1 needles=['V-AL-001', 'V-AL-002']
+B planted reading: merge keys accepted                                                                           OK exit=1 needles=['V-AL-007']
+B planted reading: any tag accepted                                                                              OK exit=1 needles=['V-TG-031', 'V-TG-026']
+B planted reading: an overflowing float read as an infinity                                                      OK exit=1 needles=['V-SC-105']
+B planted reading: a byte order mark accepted                                                                    OK exit=1 needles=['V-EN-005']
+B planted reading: a duplicate key ignored                                                                       OK exit=1 needles=['V-KY-001']
+C planted: a vector expects the YAML 1.1 reading of 010 (the int 8)                                              OK exit=1 needle=reference.V-SC-038
+C planted: a vector with an unknown rule                                                                         OK exit=1 needle=vectors.rule.V-SC-038
+C planted: a vector whose error kind is not in the closed set                                                    OK exit=1 needle=vectors.error-kind.V-SC-105
+C planted: a vector with two expectations                                                                        OK exit=1 needle=vectors.one-expectation.V-SC-038
+C planted: a malformed typed tree (a float with 15 hex digits)                                                   OK exit=1 needle=vectors.tree.V-SC-061
+C planted: every vector of the error kind float_overflow removed                                                 OK exit=1 needle=contract.kind.produced.float_overflow
+C planted: every vector of the rule RC-16 removed                                                                OK exit=1 needle=contract.rule.has-vectors.RC-16
+C planted: a rule names an error kind that is not in the closed set                                              OK exit=1 needle=contract.rule.kinds.RC-01
+C planted: an open question that names an unknown rule                                                           OK exit=1 needle=contract.question.rules.OQ-1
+C planted: a rule with an unknown basis                                                                          OK exit=1 needle=contract.rule.basis.RC-04
+C planted: an accepted extension case that no longer agrees (E-PIN-29 expects no reader error)                   OK exit=1 needle=extension.E-PIN-29
+C planted: an accepted extension case with a reader error the reading does not give (E-PIN-28 expects duplicate_key) OK exit=1 needle=extension.E-PIN-28
+C planted: the rule table of the document edited by hand                                                         OK exit=1 needle=doc.table.rules
+C planted: the coverage table of the document edited by hand                                                     OK exit=1 needle=doc.table.coverage
+C planted: the open-question table of the document edited by hand                                                OK exit=1 needle=doc.table.questions
+C planted: the measurement table of the document edited by hand                                                  OK exit=1 needle=doc.table.measurement
+C planted: the measurement file no longer matches the document                                                   OK exit=1 needle=doc.table.measurement
+C planted: the document without the rule table markers                                                           OK exit=1 needle=doc.markers.rules
+C planted: the document states another number of vectors                                                         OK exit=1 needle=doc.count.vectors
+D infra: the vectors are unreadable (exit 2, not a detection)                                                    OK exit=2
+self-test: all as expected

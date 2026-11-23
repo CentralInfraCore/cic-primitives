@@ -1,0 +1,2 @@
+rules 19 (basis: owner_decision 13, proposal 4, review_recommendation 2); vectors 270 (boundary 20, negative 160, positive 90); reference differences 0; extension cases checked 47; open questions 12
+all expectations held

@@ -1,0 +1,277 @@
+# DRAFT TEST VECTORS of the reader contract (OP-1), written from the RULES of reader-contract.yaml and from nothing else. They are a draft for review: NOT the approved 513 vectors, NOT the 47 extension cases, NOT a publication.
+# kind: scalar = the document "- <text>" (a sequence of one item) and `expect.node` is that item; doc = the whole text, `expect.tree` is the typed tree; bytes = the input is the hex string, so that the encoding can be tested.
+# expect.error = the reader error kind (the closed set of the contract); a vector has exactly one expectation. mode: plain (default) or schema (every key must be a str).
+# The typed tree: [n] null, [b, true|false], [i, "<decimal>"], [f, "<16 hex digits of the IEEE binary64 bit pattern; all NaN are 7ff8000000000000>"], [s, "<text>"], [seq, [...]], [map, [[key, value], ...]] (the entries in source order).
+# class: positive = a document the contract reads; negative = the reader error the contract states (or a near-miss that stays a str); boundary = an edge of a rule. The JSON-style lines are YAML flow mappings.
+vectors_format: 1
+vectors:
+- {"id": "V-SC-001", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "~", "expect": {"node": ["n"]}}
+- {"id": "V-SC-002", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "null", "expect": {"node": ["n"]}}
+- {"id": "V-SC-003", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "Null", "expect": {"node": ["n"]}}
+- {"id": "V-SC-004", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "NULL", "expect": {"node": ["n"]}}
+- {"id": "V-SC-005", "rule": "RC-05", "class": "boundary", "kind": "doc", "text": "k:\n", "expect": {"tree": ["map", [[["s", "k"], ["n"]]]]}, "note": "the empty plain scalar is null"}
+- {"id": "V-SC-006", "rule": "RC-09", "class": "negative", "kind": "scalar", "text": "tRUE", "expect": {"node": ["s", "tRUE"]}, "note": "a near-spelling is a str"}
+- {"id": "V-SC-007", "rule": "RC-09", "class": "negative", "kind": "scalar", "text": "NULl", "expect": {"node": ["s", "NULl"]}, "note": "a near-spelling is a str"}
+- {"id": "V-SC-008", "rule": "RC-09", "class": "negative", "kind": "scalar", "text": "~~", "expect": {"node": ["s", "~~"]}, "note": "a near-spelling is a str"}
+- {"id": "V-SC-009", "rule": "RC-09", "class": "negative", "kind": "scalar", "text": "nULL", "expect": {"node": ["s", "nULL"]}, "note": "a near-spelling is a str"}
+- {"id": "V-SC-010", "rule": "RC-09", "class": "negative", "kind": "scalar", "text": "NuLL", "expect": {"node": ["s", "NuLL"]}, "note": "a near-spelling is a str"}
+- {"id": "V-SC-011", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "true", "expect": {"node": ["b", true]}}
+- {"id": "V-SC-012", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "True", "expect": {"node": ["b", true]}}
+- {"id": "V-SC-013", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "TRUE", "expect": {"node": ["b", true]}}
+- {"id": "V-SC-014", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "false", "expect": {"node": ["b", false]}}
+- {"id": "V-SC-015", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "False", "expect": {"node": ["b", false]}}
+- {"id": "V-SC-016", "rule": "RC-05", "class": "positive", "kind": "scalar", "text": "FALSE", "expect": {"node": ["b", false]}}
+- {"id": "V-SC-017", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "yes", "expect": {"node": ["s", "yes"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-018", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "no", "expect": {"node": ["s", "no"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-019", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "on", "expect": {"node": ["s", "on"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-020", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "off", "expect": {"node": ["s", "off"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-021", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "y", "expect": {"node": ["s", "y"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-022", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "n", "expect": {"node": ["s", "n"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-023", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "Yes", "expect": {"node": ["s", "Yes"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-024", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "NO", "expect": {"node": ["s", "NO"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-025", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "On", "expect": {"node": ["s", "On"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-026", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "OFF", "expect": {"node": ["s", "OFF"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-027", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "Y", "expect": {"node": ["s", "Y"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-028", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "N", "expect": {"node": ["s", "N"]}, "note": "a YAML 1.1 boolean is a str here"}
+- {"id": "V-SC-029", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "0", "expect": {"node": ["i", "0"]}}
+- {"id": "V-SC-030", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "-0", "expect": {"node": ["i", "0"]}, "note": "an int has no negative zero"}
+- {"id": "V-SC-031", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "+0", "expect": {"node": ["i", "0"]}}
+- {"id": "V-SC-032", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "+1", "expect": {"node": ["i", "1"]}}
+- {"id": "V-SC-033", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "1", "expect": {"node": ["i", "1"]}}
+- {"id": "V-SC-034", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "-1", "expect": {"node": ["i", "-1"]}}
+- {"id": "V-SC-035", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "00", "expect": {"node": ["i", "0"]}}
+- {"id": "V-SC-036", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "007", "expect": {"node": ["i", "7"]}}
+- {"id": "V-SC-037", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "017", "expect": {"node": ["i", "17"]}, "note": "decimal 17, not the octal 15"}
+- {"id": "V-SC-038", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "010", "expect": {"node": ["i", "10"]}, "note": "decimal 10: a leading zero is not an octal"}
+- {"id": "V-SC-039", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "-010", "expect": {"node": ["i", "-10"]}}
+- {"id": "V-SC-040", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "0o17", "expect": {"node": ["i", "15"]}, "note": "octal 15"}
+- {"id": "V-SC-041", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "0o0", "expect": {"node": ["i", "0"]}}
+- {"id": "V-SC-042", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "0x1F", "expect": {"node": ["i", "31"]}, "note": "hexadecimal 31"}
+- {"id": "V-SC-043", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "0xff", "expect": {"node": ["i", "255"]}}
+- {"id": "V-SC-044", "rule": "RC-07", "class": "positive", "kind": "scalar", "text": "0xFF", "expect": {"node": ["i", "255"]}}
+- {"id": "V-SC-045", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "123456789012345678901234567890", "expect": {"node": ["i", "123456789012345678901234567890"]}}
+- {"id": "V-SC-046", "rule": "RC-07", "class": "boundary", "kind": "scalar", "text": "-123456789012345678901234567890", "expect": {"node": ["i", "-123456789012345678901234567890"]}}
+- {"id": "V-SC-047", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0o8", "expect": {"node": ["s", "0o8"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-048", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0X1F", "expect": {"node": ["s", "0X1F"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-049", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0x", "expect": {"node": ["s", "0x"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-050", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0xG", "expect": {"node": ["s", "0xG"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-051", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0o", "expect": {"node": ["s", "0o"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-052", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "1_000", "expect": {"node": ["s", "1_000"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-053", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0b10", "expect": {"node": ["s", "0b10"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-054", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "1,000", "expect": {"node": ["s", "1,000"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-055", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "++1", "expect": {"node": ["s", "++1"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-056", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "1-2", "expect": {"node": ["s", "1-2"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-057", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "1 2", "expect": {"node": ["s", "1 2"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-058", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "0b", "expect": {"node": ["s", "0b"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-059", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "1__0", "expect": {"node": ["s", "1__0"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-060", "rule": "RC-07", "class": "negative", "kind": "scalar", "text": "०१", "expect": {"node": ["s", "०१"]}, "note": "not an int syntax: a str"}
+- {"id": "V-SC-061", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "1.0", "expect": {"node": ["f", "3ff0000000000000"]}}
+- {"id": "V-SC-062", "rule": "RC-08", "class": "boundary", "kind": "scalar", "text": "1.", "expect": {"node": ["f", "3ff0000000000000"]}, "note": "a dot with no fraction"}
+- {"id": "V-SC-063", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".5", "expect": {"node": ["f", "3fe0000000000000"]}}
+- {"id": "V-SC-064", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "-.5", "expect": {"node": ["f", "bfe0000000000000"]}}
+- {"id": "V-SC-065", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "+.5", "expect": {"node": ["f", "3fe0000000000000"]}}
+- {"id": "V-SC-066", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "1e3", "expect": {"node": ["f", "408f400000000000"]}}
+- {"id": "V-SC-067", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "1E3", "expect": {"node": ["f", "408f400000000000"]}}
+- {"id": "V-SC-068", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "1e+3", "expect": {"node": ["f", "408f400000000000"]}}
+- {"id": "V-SC-069", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "1.5e-2", "expect": {"node": ["f", "3f8eb851eb851eb8"]}}
+- {"id": "V-SC-070", "rule": "RC-08", "class": "boundary", "kind": "scalar", "text": "1.e3", "expect": {"node": ["f", "408f400000000000"]}, "note": "digits, a dot with no fraction, an exponent"}
+- {"id": "V-SC-071", "rule": "RC-08", "class": "boundary", "kind": "scalar", "text": "-0.0", "expect": {"node": ["f", "8000000000000000"]}, "note": "a negative zero"}
+- {"id": "V-SC-072", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "+0.0", "expect": {"node": ["f", "0000000000000000"]}}
+- {"id": "V-SC-073", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "0.0", "expect": {"node": ["f", "0000000000000000"]}}
+- {"id": "V-SC-074", "rule": "RC-08", "class": "boundary", "kind": "scalar", "text": "5e-324", "expect": {"node": ["f", "0000000000000001"]}, "note": "the smallest subnormal"}
+- {"id": "V-SC-075", "rule": "RC-08", "class": "boundary", "kind": "scalar", "text": "1e-400", "expect": {"node": ["f", "0000000000000000"]}, "note": "underflow: rounded to zero, accepted"}
+- {"id": "V-SC-076", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "1e308", "expect": {"node": ["f", "7fe1ccf385ebc8a0"]}}
+- {"id": "V-SC-077", "rule": "RC-08", "class": "boundary", "kind": "scalar", "text": "1.7976931348623157e308", "expect": {"node": ["f", "7fefffffffffffff"]}}
+- {"id": "V-SC-078", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".inf", "expect": {"node": ["f", "7ff0000000000000"]}}
+- {"id": "V-SC-079", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "-.inf", "expect": {"node": ["f", "fff0000000000000"]}}
+- {"id": "V-SC-080", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "+.inf", "expect": {"node": ["f", "7ff0000000000000"]}}
+- {"id": "V-SC-081", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".Inf", "expect": {"node": ["f", "7ff0000000000000"]}}
+- {"id": "V-SC-082", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".INF", "expect": {"node": ["f", "7ff0000000000000"]}}
+- {"id": "V-SC-083", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": "-.Inf", "expect": {"node": ["f", "fff0000000000000"]}}
+- {"id": "V-SC-084", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".nan", "expect": {"node": ["f", "7ff8000000000000"]}, "note": "all NaN are one value"}
+- {"id": "V-SC-085", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".NaN", "expect": {"node": ["f", "7ff8000000000000"]}, "note": "all NaN are one value"}
+- {"id": "V-SC-086", "rule": "RC-08", "class": "positive", "kind": "scalar", "text": ".NAN", "expect": {"node": ["f", "7ff8000000000000"]}, "note": "all NaN are one value"}
+- {"id": "V-SC-087", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": ".iNf", "expect": {"node": ["s", ".iNf"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-088", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": ".infinity", "expect": {"node": ["s", ".infinity"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-089", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "+.nan", "expect": {"node": ["s", "+.nan"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-090", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "-.nan", "expect": {"node": ["s", "-.nan"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-091", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": ".", "expect": {"node": ["s", "."]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-092", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "e3", "expect": {"node": ["s", "e3"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-093", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": ".e3", "expect": {"node": ["s", ".e3"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-094", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "1e", "expect": {"node": ["s", "1e"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-095", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "1e+", "expect": {"node": ["s", "1e+"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-096", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": ".nanx", "expect": {"node": ["s", ".nanx"]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-097", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "-.", "expect": {"node": ["s", "-."]}, "note": "not a float syntax: a str"}
+- {"id": "V-SC-098", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "0.1.2", "expect": {"node": ["s", "0.1.2"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-099", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "1.2.3", "expect": {"node": ["s", "1.2.3"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-100", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "1:30", "expect": {"node": ["s", "1:30"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-101", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "2001-01-01", "expect": {"node": ["s", "2001-01-01"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-102", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "12:30:45", "expect": {"node": ["s", "12:30:45"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-103", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "1e3e3", "expect": {"node": ["s", "1e3e3"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-104", "rule": "RC-05", "class": "negative", "kind": "scalar", "text": "2001-01-01T00:00:00Z", "expect": {"node": ["s", "2001-01-01T00:00:00Z"]}, "note": "no other implicit type: a str"}
+- {"id": "V-SC-105", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "1e999", "expect": {"error": "float_overflow"}, "note": "rounds to infinity without being written as one"}
+- {"id": "V-SC-106", "rule": "RC-08", "class": "negative", "kind": "scalar", "text": "-1e999", "expect": {"error": "float_overflow"}}
+- {"id": "V-SC-107", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "'1'", "expect": {"node": ["s", "1"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-108", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "\"1\"", "expect": {"node": ["s", "1"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-109", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "'true'", "expect": {"node": ["s", "true"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-110", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "\"null\"", "expect": {"node": ["s", "null"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-111", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "'~'", "expect": {"node": ["s", "~"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-112", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "''", "expect": {"node": ["s", ""]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-113", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "\"\"", "expect": {"node": ["s", ""]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-114", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "'010'", "expect": {"node": ["s", "010"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-115", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "\"1e3\"", "expect": {"node": ["s", "1e3"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-SC-116", "rule": "RC-06", "class": "positive", "kind": "scalar", "text": "'.inf'", "expect": {"node": ["s", ".inf"]}, "note": "a quoted scalar is a str"}
+- {"id": "V-BL-001", "rule": "RC-06", "class": "positive", "kind": "doc", "text": "- |\n  10\n", "expect": {"tree": ["seq", [["s", "10\n"]]]}, "note": "a literal block scalar is a str, the text of the lines"}
+- {"id": "V-BL-002", "rule": "RC-06", "class": "positive", "kind": "doc", "text": "- >\n  a\n  b\n", "expect": {"tree": ["seq", [["s", "a b\n"]]]}, "note": "a folded block scalar"}
+- {"id": "V-BL-003", "rule": "RC-06", "class": "boundary", "kind": "doc", "text": "- |\n  true\n", "expect": {"tree": ["seq", [["s", "true\n"]]]}}
+- {"id": "V-UN-001", "rule": "RC-01", "class": "positive", "kind": "doc", "text": "- é\n", "expect": {"tree": ["seq", [["s", "é"]]]}, "note": "U+00E9, one code point"}
+- {"id": "V-UN-002", "rule": "RC-15", "class": "boundary", "kind": "doc", "text": "- é\n", "expect": {"tree": ["seq", [["s", "é"]]]}, "note": "e and U+0301: two code points, not normalised to U+00E9"}
+- {"id": "V-UN-003", "rule": "RC-15", "class": "positive", "kind": "doc", "text": "[a, \"a\", 'a']\n", "expect": {"tree": ["seq", [["s", "a"], ["s", "a"], ["s", "a"]]]}, "note": "plain and quoted spellings of one text are one str"}
+- {"id": "V-TG-001", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!str 1", "expect": {"node": ["s", "1"]}, "note": "the tag makes the text a str"}
+- {"id": "V-TG-002", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!str true", "expect": {"node": ["s", "true"]}}
+- {"id": "V-TG-003", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!str ~", "expect": {"node": ["s", "~"]}}
+- {"id": "V-TG-004", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!int 10", "expect": {"node": ["i", "10"]}}
+- {"id": "V-TG-005", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!int 010", "expect": {"node": ["i", "10"]}}
+- {"id": "V-TG-006", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!int 0x10", "expect": {"node": ["i", "16"]}}
+- {"id": "V-TG-007", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!int \"10\"", "expect": {"node": ["i", "10"]}, "note": "OQ-9: the tag reads the text of a quoted scalar"}
+- {"id": "V-TG-008", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!float 1", "expect": {"node": ["f", "3ff0000000000000"]}, "note": "OQ-8: digits alone are a float syntax"}
+- {"id": "V-TG-009", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!float .inf", "expect": {"node": ["f", "7ff0000000000000"]}}
+- {"id": "V-TG-010", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!float 1e3", "expect": {"node": ["f", "408f400000000000"]}}
+- {"id": "V-TG-011", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!bool true", "expect": {"node": ["b", true]}}
+- {"id": "V-TG-012", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!bool False", "expect": {"node": ["b", false]}}
+- {"id": "V-TG-013", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!null ~", "expect": {"node": ["n"]}}
+- {"id": "V-TG-014", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!!null \"\"", "expect": {"node": ["n"]}, "note": "the empty text is a null spelling"}
+- {"id": "V-TG-015", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!<tag:yaml.org,2002:int> 5", "expect": {"node": ["i", "5"]}, "note": "the verbatim form of a core tag"}
+- {"id": "V-TG-016", "rule": "RC-11", "class": "positive", "kind": "scalar", "text": "!<tag:yaml.org,2002:str> 5", "expect": {"node": ["s", "5"]}}
+- {"id": "V-TG-017", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!int 1.5", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-018", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!int abc", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-019", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!int 1_000", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-020", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!bool yes", "expect": {"error": "tag_mismatch"}, "note": "a YAML 1.1 boolean is not a bool"}
+- {"id": "V-TG-021", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!bool 1", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-022", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!float abc", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-023", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!null x", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-024", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!seq x", "expect": {"error": "tag_mismatch"}, "note": "a scalar is not a sequence"}
+- {"id": "V-TG-025", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!map x", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-026", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!set {a}", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-027", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!omap [a: 1]", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-028", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!binary AAAA", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-029", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!timestamp 2001-01-01", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-030", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!merge <<", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-031", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!local 1", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-032", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "! 1", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-033", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!python/object:os.system {}", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-034", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!<tag:example.com,2002:x> 1", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-035", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!<!foo> 1", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-036", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!pairs [a: 1]", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-037", "rule": "RC-11", "class": "negative", "kind": "scalar", "text": "!!value x", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-038", "rule": "RC-11", "class": "positive", "kind": "doc", "text": "- !!seq [1, 2]\n", "expect": {"tree": ["seq", [["seq", [["i", "1"], ["i", "2"]]]]]}}
+- {"id": "V-TG-039", "rule": "RC-11", "class": "positive", "kind": "doc", "text": "- !!map {a: 1}\n", "expect": {"tree": ["seq", [["map", [[["s", "a"], ["i", "1"]]]]]]}}
+- {"id": "V-TG-040", "rule": "RC-11", "class": "negative", "kind": "doc", "text": "- !!str [1]\n", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-041", "rule": "RC-11", "class": "negative", "kind": "doc", "text": "- !!int {a: 1}\n", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-042", "rule": "RC-11", "class": "negative", "kind": "doc", "text": "- !!seq {a: 1}\n", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-043", "rule": "RC-11", "class": "negative", "kind": "doc", "text": "- !!map [1]\n", "expect": {"error": "tag_mismatch"}}
+- {"id": "V-TG-044", "rule": "RC-11", "class": "negative", "kind": "doc", "text": "- !x [1]\n", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-TG-045", "rule": "RC-11", "class": "negative", "kind": "doc", "text": "!x\na: 1\n", "expect": {"error": "tag_not_allowed"}}
+- {"id": "V-KY-001", "rule": "RC-14", "class": "negative", "kind": "doc", "text": "{a: 1, a: 2}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-002", "rule": "RC-14", "class": "negative", "kind": "doc", "text": "{1: a, 1: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-003", "rule": "RC-14", "class": "negative", "kind": "doc", "text": "{a: 1, b: 2, a: 3}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-004", "rule": "RC-14", "class": "negative", "kind": "doc", "text": "x: {a: 1, a: 2}\n", "expect": {"error": "duplicate_key"}, "note": "at depth"}
+- {"id": "V-KY-005", "rule": "RC-14", "class": "negative", "kind": "doc", "text": "- {a: 1}\n- {b: 1, b: 2}\n", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-006", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{010: a, 10: b}", "expect": {"error": "duplicate_key"}, "note": "one int"}
+- {"id": "V-KY-007", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{0x10: a, 16: b}", "expect": {"error": "duplicate_key"}, "note": "one int"}
+- {"id": "V-KY-008", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{\"a\": 1, a: 2}", "expect": {"error": "duplicate_key"}, "note": "a quoted and a plain spelling of one str"}
+- {"id": "V-KY-009", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{.nan: a, .nan: b}", "expect": {"error": "duplicate_key"}, "note": "NaN is identical to NaN"}
+- {"id": "V-KY-010", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{.nan: a, .NaN: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-011", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{null: a, ~: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-012", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{true: a, True: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-013", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{1.0: a, 1.: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-014", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{0.0: a, +0.0: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-015", "rule": "RC-15", "class": "negative", "kind": "doc", "text": "{.inf: a, +.inf: b}", "expect": {"error": "duplicate_key"}}
+- {"id": "V-KY-016", "rule": "RC-10", "class": "positive", "kind": "doc", "text": "{1: a, true: b, 1.0: c, \"1\": d}", "expect": {"tree": ["map", [[["i", "1"], ["s", "a"]], [["b", true], ["s", "b"]], [["f", "3ff0000000000000"], ["s", "c"]], [["s", "1"], ["s", "d"]]]]}, "note": "four type classes, four keys: no duplicate"}
+- {"id": "V-KY-017", "rule": "RC-15", "class": "boundary", "kind": "doc", "text": "{0.0: a, -0.0: b}", "expect": {"tree": ["map", [[["f", "0000000000000000"], ["s", "a"]], [["f", "8000000000000000"], ["s", "b"]]]]}, "note": "two different floats"}
+- {"id": "V-KY-018", "rule": "RC-10", "class": "positive", "kind": "doc", "text": "{1: a, 1.0: b}", "expect": {"tree": ["map", [[["i", "1"], ["s", "a"]], [["f", "3ff0000000000000"], ["s", "b"]]]]}}
+- {"id": "V-KY-019", "rule": "RC-10", "class": "positive", "kind": "doc", "text": "{~: a, \"~\": b}", "expect": {"tree": ["map", [[["n"], ["s", "a"]], [["s", "~"], ["s", "b"]]]]}, "note": "null and the text ~"}
+- {"id": "V-KY-020", "rule": "RC-10", "class": "positive", "kind": "doc", "text": "{true: a, \"true\": b, 1: c}", "expect": {"tree": ["map", [[["b", true], ["s", "a"]], [["s", "true"], ["s", "b"]], [["i", "1"], ["s", "c"]]]]}}
+- {"id": "V-KY-021", "rule": "RC-13", "class": "positive", "kind": "doc", "text": "{null: a}", "expect": {"tree": ["map", [[["n"], ["s", "a"]]]]}, "note": "OQ-12: a null key is a key"}
+- {"id": "V-KY-022", "rule": "RC-14", "class": "positive", "kind": "doc", "text": "- {a: 1}\n- {a: 2}\n", "expect": {"tree": ["seq", [["map", [[["s", "a"], ["i", "1"]]]], ["map", [[["s", "a"], ["i", "2"]]]]]]}, "note": "keys of different mappings never clash"}
+- {"id": "V-KY-023", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "{? [1, 2] : a}", "expect": {"error": "non_scalar_key"}}
+- {"id": "V-KY-024", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "{? {a: 1} : b}", "expect": {"error": "non_scalar_key"}}
+- {"id": "V-KY-025", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "? - 1\n: a\n", "expect": {"error": "non_scalar_key"}, "note": "a block sequence as a key"}
+- {"id": "V-KY-026", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "? a: 1\n: b\n", "expect": {"error": "non_scalar_key"}, "note": "a block mapping as a key"}
+- {"id": "V-KY-027", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "1: x\n", "mode": "schema", "expect": {"error": "non_string_key"}}
+- {"id": "V-KY-028", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "true: x\n", "mode": "schema", "expect": {"error": "non_string_key"}}
+- {"id": "V-KY-029", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "null: x\n", "mode": "schema", "expect": {"error": "non_string_key"}}
+- {"id": "V-KY-030", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "1.5: x\n", "mode": "schema", "expect": {"error": "non_string_key"}}
+- {"id": "V-KY-031", "rule": "RC-13", "class": "positive", "kind": "doc", "text": "\"1\": x\n", "mode": "schema", "expect": {"tree": ["map", [[["s", "1"], ["s", "x"]]]]}, "note": "a quoted 1 is a str key"}
+- {"id": "V-KY-032", "rule": "RC-13", "class": "positive", "kind": "doc", "text": "a: {1: x}\n", "expect": {"tree": ["map", [[["s", "a"], ["map", [[["i", "1"], ["s", "x"]]]]]]]}, "note": "plain mode: any scalar key"}
+- {"id": "V-KY-033", "rule": "RC-13", "class": "negative", "kind": "doc", "text": "a: {1: x}\n", "mode": "schema", "expect": {"error": "non_string_key"}, "note": "at depth"}
+- {"id": "V-KY-034", "rule": "RC-16", "class": "positive", "kind": "doc", "text": "b: 1\na: 2\nc: 3\n", "expect": {"tree": ["map", [[["s", "b"], ["i", "1"]], [["s", "a"], ["i", "2"]], [["s", "c"], ["i", "3"]]]]}, "note": "source order, not sorted"}
+- {"id": "V-KY-035", "rule": "RC-16", "class": "positive", "kind": "doc", "text": "[3, 1, 2]\n", "expect": {"tree": ["seq", [["i", "3"], ["i", "1"], ["i", "2"]]]}}
+- {"id": "V-KY-036", "rule": "RC-16", "class": "positive", "kind": "doc", "text": "{z: 1, a: 2, m: 3}\n", "expect": {"tree": ["map", [[["s", "z"], ["i", "1"]], [["s", "a"], ["i", "2"]], [["s", "m"], ["i", "3"]]]]}}
+- {"id": "V-KY-037", "rule": "RC-14", "class": "negative", "kind": "doc", "text": "a: 1\nb: 2\na: 3\n", "expect": {"error": "duplicate_key"}, "note": "in block style"}
+- {"id": "V-AL-001", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "a: &x 1\n", "expect": {"error": "anchor_not_allowed"}}
+- {"id": "V-AL-002", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "a: &x 1\nb: *x\n", "expect": {"error": "anchor_not_allowed"}, "note": "the anchor comes first"}
+- {"id": "V-AL-003", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "- *x\n", "expect": {"error": "alias_not_allowed"}, "note": "an undefined alias is still an alias"}
+- {"id": "V-AL-004", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "a: &m {b: 1}\nc: {<<: *m}\n", "expect": {"error": "anchor_not_allowed"}}
+- {"id": "V-AL-005", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "- &s [1, 2]\n", "expect": {"error": "anchor_not_allowed"}, "note": "an anchor on a sequence"}
+- {"id": "V-AL-006", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "&r {a: 1}\n", "expect": {"error": "anchor_not_allowed"}, "note": "an anchor on the root"}
+- {"id": "V-AL-007", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "{<<: {b: 1}}", "expect": {"error": "merge_key_not_allowed"}}
+- {"id": "V-AL-008", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "a: 1\n<<: {b: 2}\n", "expect": {"error": "merge_key_not_allowed"}}
+- {"id": "V-AL-009", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "\"<<\": 1\n", "expect": {"error": "merge_key_not_allowed"}, "note": "OQ-6: a quoted merge key"}
+- {"id": "V-AL-010", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "'<<': 1\n", "expect": {"error": "merge_key_not_allowed"}}
+- {"id": "V-AL-011", "rule": "RC-12", "class": "negative", "kind": "doc", "text": "? <<\n: 1\n", "expect": {"error": "merge_key_not_allowed"}}
+- {"id": "V-AL-012", "rule": "RC-12", "class": "positive", "kind": "doc", "text": "a: \"<<\"\n", "expect": {"tree": ["map", [[["s", "a"], ["s", "<<"]]]]}, "note": "the text << as a VALUE is an ordinary str"}
+- {"id": "V-AL-013", "rule": "RC-12", "class": "positive", "kind": "doc", "text": "a: <<\n", "expect": {"tree": ["map", [[["s", "a"], ["s", "<<"]]]]}}
+- {"id": "V-AL-014", "rule": "RC-12", "class": "positive", "kind": "doc", "text": "{\"a<<\": 1}\n", "expect": {"tree": ["map", [[["s", "a<<"], ["i", "1"]]]]}, "note": "a key that merely contains << is an ordinary key"}
+- {"id": "V-DR-001", "rule": "RC-03", "class": "negative", "kind": "doc", "text": "%YAML 1.2\n---\na: 1\n", "expect": {"error": "directive_not_allowed"}}
+- {"id": "V-DR-002", "rule": "RC-03", "class": "negative", "kind": "doc", "text": "%YAML 1.1\n---\na: 1\n", "expect": {"error": "directive_not_allowed"}}
+- {"id": "V-DR-003", "rule": "RC-03", "class": "negative", "kind": "doc", "text": "%TAG !e! tag:example.com,2000:\n---\na: 1\n", "expect": {"error": "directive_not_allowed"}}
+- {"id": "V-DR-004", "rule": "RC-03", "class": "negative", "kind": "doc", "text": "%FOO bar\n---\na: 1\n", "expect": {"error": "directive_not_allowed"}}
+- {"id": "V-DC-001", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "", "expect": {"error": "empty_document"}}
+- {"id": "V-DC-002", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "\n\n", "expect": {"error": "empty_document"}}
+- {"id": "V-DC-003", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "# only a comment\n", "expect": {"error": "empty_document"}}
+- {"id": "V-DC-004", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "---\n", "expect": {"error": "empty_document"}, "note": "only a document marker"}
+- {"id": "V-DC-005", "rule": "RC-02", "class": "positive", "kind": "doc", "text": "---\na: 1\n", "expect": {"tree": ["map", [[["s", "a"], ["i", "1"]]]]}, "note": "the start marker"}
+- {"id": "V-DC-006", "rule": "RC-02", "class": "positive", "kind": "doc", "text": "---\na: 1\n...\n", "expect": {"tree": ["map", [[["s", "a"], ["i", "1"]]]]}, "note": "start and end markers"}
+- {"id": "V-DC-007", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "a: 1\n---\nb: 2\n", "expect": {"error": "multiple_documents"}}
+- {"id": "V-DC-008", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "--- a\n--- b\n", "expect": {"error": "multiple_documents"}}
+- {"id": "V-DC-009", "rule": "RC-02", "class": "negative", "kind": "doc", "text": "---\na: 1\n...\n---\nb: 2\n", "expect": {"error": "multiple_documents"}}
+- {"id": "V-DC-010", "rule": "RC-02", "class": "positive", "kind": "doc", "text": "!!null\n", "expect": {"tree": ["n"]}, "note": "a document with an explicit tag and no text is a null, not an empty document"}
+- {"id": "V-SY-001", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: [\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-002", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: {\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-003", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: b: c\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-004", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: 'x\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-005", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: \"x\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-006", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "- a\nb: 1\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-007", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: 1\n  b: 2\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-008", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "[1, 2\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-009", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "{a: 1,, b: 2}\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-010", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: ]\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-011", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "\ta: 1\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-012", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: @x\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-SY-013", "rule": "RC-04", "class": "negative", "kind": "doc", "text": "a: `x\n", "expect": {"error": "yaml_syntax"}}
+- {"id": "V-EN-001", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "80", "expect": {"error": "encoding"}, "note": "a stray continuation byte"}
+- {"id": "V-EN-002", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "c328", "expect": {"error": "encoding"}, "note": "an invalid two-byte sequence"}
+- {"id": "V-EN-003", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "eda080", "expect": {"error": "encoding"}, "note": "an encoded lone surrogate, U+D800"}
+- {"id": "V-EN-004", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "f4908080", "expect": {"error": "encoding"}, "note": "above U+10FFFF"}
+- {"id": "V-EN-005", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "efbbbf613a2031", "expect": {"error": "encoding"}, "note": "OQ-1: a UTF-8 byte order mark"}
+- {"id": "V-EN-006", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "fffe6100", "expect": {"error": "encoding"}, "note": "a UTF-16 byte order mark"}
+- {"id": "V-EN-007", "rule": "RC-01", "class": "negative", "kind": "bytes", "hex": "feff0061", "expect": {"error": "encoding"}}
+- {"id": "V-EN-008", "rule": "RC-01", "class": "positive", "kind": "bytes", "hex": "613a2031", "expect": {"tree": ["map", [[["s", "a"], ["i", "1"]]]]}, "note": "a: 1 in UTF-8"}
+- {"id": "V-EN-009", "rule": "RC-01", "class": "positive", "kind": "bytes", "hex": "613a20c3a9", "expect": {"tree": ["map", [[["s", "a"], ["s", "é"]]]]}, "note": "a: and U+00E9 in UTF-8"}
+- {"id": "V-EN-010", "rule": "RC-01", "class": "positive", "kind": "bytes", "hex": "613a20f09f9880", "expect": {"tree": ["map", [[["s", "a"], ["s", "😀"]]]]}, "note": "a code point above U+FFFF"}
+- {"id": "V-PR-001", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "a: &x 1\nb: [\n", "expect": {"error": "yaml_syntax"}, "note": "a syntax error beats an earlier semantic error"}
+- {"id": "V-PR-002", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "%YAML 1.2\n---\na: &x 1\n", "expect": {"error": "directive_not_allowed"}, "note": "a directive beats a semantic error"}
+- {"id": "V-PR-003", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "%YAML 1.2\n---\na\n---\nb\n", "expect": {"error": "directive_not_allowed"}, "note": "a directive beats the document count"}
+- {"id": "V-PR-004", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "a\n---\nb: [\n", "expect": {"error": "yaml_syntax"}, "note": "a syntax error beats the document count"}
+- {"id": "V-PR-005", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "{a: 1, a: 2, b: *x}", "expect": {"error": "duplicate_key"}, "note": "the first offending node in source order"}
+- {"id": "V-PR-006", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "{b: *x, a: 1, a: 2}", "expect": {"error": "alias_not_allowed"}, "note": "the first offending node in source order"}
+- {"id": "V-PR-007", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "- !!set {}\n- &x 1\n", "expect": {"error": "tag_not_allowed"}, "note": "the earlier node"}
+- {"id": "V-PR-008", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "- &x 1\n- !!set {}\n", "expect": {"error": "anchor_not_allowed"}, "note": "the earlier node"}
+- {"id": "V-PR-009", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "- &x !!set {}\n", "expect": {"error": "anchor_not_allowed"}, "note": "within one node the anchor first"}
+- {"id": "V-PR-010", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "- !!int abc\n- 1e999\n", "expect": {"error": "tag_mismatch"}, "note": "the earlier node"}
+- {"id": "V-PR-011", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "- 1e999\n- !!int abc\n", "expect": {"error": "float_overflow"}, "note": "the earlier node"}
+- {"id": "V-PR-012", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "{1: a, 1: b, <<: c}", "expect": {"error": "duplicate_key"}, "note": "the second key of the duplicate comes before the later merge key"}
+- {"id": "V-PR-013", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "{<<: c, 1: a, 1: b}", "expect": {"error": "merge_key_not_allowed"}, "note": "the earlier key"}
+- {"id": "V-PR-014", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "1: x\n? [1]\n: y\n", "mode": "schema", "expect": {"error": "non_string_key"}, "note": "in schema mode the first key is already a non-string"}
+- {"id": "V-PR-015", "rule": "RC-17", "class": "negative", "kind": "doc", "text": "? [1]\n: y\n1: x\n", "mode": "schema", "expect": {"error": "non_scalar_key"}, "note": "the earlier key"}
