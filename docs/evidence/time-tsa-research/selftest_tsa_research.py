@@ -17,7 +17,7 @@ def cond(r, i): return next(c for c in r["conditions"] if c["id"] == i)
 errs = C.check_record(copy.deepcopy(rec0), copy.deepcopy(ready0))
 report("A real record: valid, no detection", errs == [], str(errs)[:80])
 out = []; C.check_record(copy.deepcopy(rec0), None, chain=False, out=out)
-report("A derived: exactly C-Q2-1 supported, the other six open (nothing is promoted by inference)", [o for o in out if o.endswith("supported")] == ["C-Q2-1 supported"] and len(out) == 7, str(out))
+report("A derived: exactly C-Q2-1 and C-Q2-2 supported, the other five open (nothing is promoted by inference)", [o for o in out if o.endswith("supported")] == ["C-Q2-1 supported", "C-Q2-2 supported"] and len(out) == 7, str(out))
 
 def planted(name, mut, needle, ready=None, chain=False):
     r = copy.deepcopy(rec0); mut(r)

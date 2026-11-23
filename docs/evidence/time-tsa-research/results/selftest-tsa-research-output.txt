@@ -1,5 +1,5 @@
 A real record: valid, no detection                                                                             OK []
-A derived: exactly C-Q2-1 supported, the other six open (nothing is promoted by inference)                     OK ['C-Q2-1 supported', 'C-Q2-2 open', 'C-Q2-3 open', 'C-Q2-4 open', 'C-Q2-5 open', 'C-Q2-6 open', 'C-Q2-7 open']
+A derived: exactly C-Q2-1 and C-Q2-2 supported, the other five open (nothing is promoted by inference)         OK ['C-Q2-1 supported', 'C-Q2-2 supported', 'C-Q2-3 open', 'C-Q2-4 open', 'C-Q2-5 open', 'C-Q2-6 open', 'C-Q2-7 open']
 B planted: a finding from a search result supports                                                             OK FAIL-EXPECT finding.search-support.R-GS-04
 B planted: a condition marked supported on silent findings                                                     OK FAIL-EXPECT condition.status.C-Q2-3
 B planted: C-Q2-1 marked open although its decisive primary finding supports                                   OK FAIL-EXPECT condition.status.C-Q2-1

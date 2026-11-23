@@ -98,7 +98,7 @@ def build(root, mut=None, inv_mut=None, man_mut=None, confirm=True, order="stage
 
 def main():
     rc, o = run([])
-    report("A real record: all six decisions confirmed by the owner's recorded statement, NOT_PREPARED only because pre-execution conditions are open, valid, confirmations stated as NOT authenticated, no GO", rc == 1 and verdict(o) == "NOT_PREPARED" and "FAIL-EXPECT" not in o and "UNMET decision" not in o and "UNMET pre-execution condition C-Q2-2 is open" in o and "(order STAGED)" in o and "NOT authenticated" in o and "execution GO: none recorded" in o, "exit=%d" % rc)
+    report("A real record: all six decisions confirmed by the owner's recorded statement, NOT_PREPARED only because pre-execution conditions are open, valid, confirmations stated as NOT authenticated, no GO", rc == 1 and verdict(o) == "NOT_PREPARED" and "FAIL-EXPECT" not in o and "UNMET decision" not in o and "UNMET pre-execution condition C-Q2-3 is open" in o and "(order STAGED)" in o and "NOT authenticated" in o and "execution GO: none recorded" in o, "exit=%d" % rc)
     DOC = os.path.join(ROOT, "docs", "en", "T3-EXECUTION-PREREQUISITES.md"); doc = open(DOC, encoding="utf-8").read()
     rc, o = run(["--doc", DOC])
     report("A real record with the review document: the tables and the counts of the document equal the record", rc == 1 and verdict(o) == "NOT_PREPARED" and "FAIL-EXPECT" not in o, "exit=%d" % rc)
@@ -169,6 +169,7 @@ def main():
         ("a GO record without a date", dict(go=True, go_mut=lambda g: g.__setitem__("date", "")), "go.format"),
         ("a GO record that binds another prepared state (the digest of a state that changed)", dict(go=True, go_mut=lambda g: g.__setitem__("prepared_digest", "0" * 64)), "go.digest"),
         ("a GO record while the record is not prepared (a pre-execution condition is open)", dict(go=True, mut=lambda r: cond(r, "C-Q2-1").update(status="open", evidence=None)), "go.not-prepared"),
+        ("T3-F7: a pre-execution condition (C-Q2-2) that again asks for the chain of the NEW tokens", dict(mut=lambda r: cond(r, "C-Q2-2").__setitem__("text", "DigiCert: the TSA certificate chain and a trust anchor from an independent source are obtained and checked for the new tokens")), "condition.tokens-text.C-Q2-2"),
         ("a condition that needs the tokens placed in the PRE phase", dict(mut=lambda r: cond(r, "C-CAP-1").__setitem__("phase", "pre")), "condition.tokens-phase.C-CAP-1"),
         ("a token condition that carries a strict_phase (the defect of the earlier strict order: it would demand the tokens before the GO)", dict(mut=lambda r: cond(r, "C-PRES-1").__setitem__("strict_phase", "pre")), "strict.needs-tokens.C-PRES-1"),
         ("...and under the STRICT order that token condition IS pre-execution, which is refused", dict(order="strict", mut=lambda r: cond(r, "C-PRES-1").__setitem__("strict_phase", "pre")), "phase.tokens-before-go.C-PRES-1"),
@@ -198,7 +199,7 @@ def main():
         report("C planted: " + name, rc == 1 and bool(named) and verdict(o) == "INVALID", "exit=%d verdict=%s needle=%s" % (rc, verdict(o), needle))
     for name, newdoc, needle in (("the decisions table of the document edited by hand (Q2 marked proposed)", doc.replace("| Q2 | the time-stamp authorities | **confirmed** |", "| Q2 | the time-stamp authorities | **proposed** |", 1), "doc.table.decisions"),
                                  ("the conditions table of the document edited by hand (C-Q6-1 marked verified)", doc.replace("| C-Q6-1 | Q6 | pre | condition | **open** |", "| C-Q6-1 | Q6 | pre | condition | **verified** |", 1), "doc.table.conditions"),
-                                 ("the document states other counts of the conditions", doc.replace("**4 of the 15 pre-execution conditions are verified**", "**2 of the 15 pre-execution conditions are verified**", 1), "doc.counts"),
+                                 ("the document states other counts of the conditions", doc.replace("**5 of the 15 pre-execution conditions are verified**", "**2 of the 15 pre-execution conditions are verified**", 1), "doc.counts"),
                                  ("the document without the decisions table markers", doc.replace("<!-- BEGIN DECISIONS TABLE -->", "", 1), "doc.markers.decisions")):
         dd = tempfile.mkdtemp()
         try:

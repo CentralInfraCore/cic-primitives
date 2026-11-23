@@ -1,13 +1,12 @@
 id    status     pre-execution conditions verified
 Q1a   confirmed  2 of 3
 Q1b   confirmed  1 of 1
-Q2    confirmed  1 of 7
+Q2    confirmed  2 of 7
 Q3    confirmed  0 of 1
 Q6    confirmed  0 of 3
 Q6a   confirmed  0 of 0
-phases (order STAGED): pre 4 of 15 verified, capture 0 of 4, preserve 0 of 7
+phases (order STAGED): pre 5 of 15 verified, capture 0 of 4, preserve 0 of 7
 UNMET pre-execution condition C-Q1a-1 is open: the canonical manifest contract is reviewed and accepted
-UNMET pre-execution condition C-Q2-2 is open: DigiCert: the TSA certificate chain and a trust anchor from an independent source are obta
 UNMET pre-execution condition C-Q2-3 is open: DigiCert: the terms of use of the endpoint and the permission to use it are verified (none
 UNMET pre-execution condition C-Q2-4 is open: GlobalSign: RFC 3161 compatibility, the digest-based API and the request form are verified
 UNMET pre-execution condition C-Q2-5 is open: GlobalSign: the TSA certificate chain and a trust anchor from an independent source are ob

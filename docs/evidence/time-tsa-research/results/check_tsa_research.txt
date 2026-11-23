@@ -1,5 +1,5 @@
 C-Q2-1 supported
-C-Q2-2 open
+C-Q2-2 supported
 C-Q2-3 open
 C-Q2-4 open
 C-Q2-5 open

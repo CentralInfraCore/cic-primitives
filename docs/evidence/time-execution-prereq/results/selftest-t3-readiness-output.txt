@@ -37,6 +37,7 @@ C planted: a GO record that is not stated by the owner                          
 C planted: a GO record without a date                                                                                  OK exit=1 verdict=INVALID needle=go.format
 C planted: a GO record that binds another prepared state (the digest of a state that changed)                          OK exit=1 verdict=INVALID needle=go.digest
 C planted: a GO record while the record is not prepared (a pre-execution condition is open)                            OK exit=1 verdict=INVALID needle=go.not-prepared
+C planted: T3-F7: a pre-execution condition (C-Q2-2) that again asks for the chain of the NEW tokens                   OK exit=1 verdict=INVALID needle=condition.tokens-text.C-Q2-2
 C planted: a condition that needs the tokens placed in the PRE phase                                                   OK exit=1 verdict=INVALID needle=condition.tokens-phase.C-CAP-1
 C planted: a token condition that carries a strict_phase (the defect of the earlier strict order: it would demand the tokens before the GO) OK exit=1 verdict=INVALID needle=strict.needs-tokens.C-PRES-1
 C planted: ...and under the STRICT order that token condition IS pre-execution, which is refused                       OK exit=1 verdict=INVALID needle=phase.tokens-before-go.C-PRES-1

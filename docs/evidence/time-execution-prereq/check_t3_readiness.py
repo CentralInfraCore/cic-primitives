@@ -146,6 +146,8 @@ def main(argv):
                 bad("condition.tokens-phase.%s" % cid, "a condition that needs the tokens cannot be in the pre-execution phase: the tokens do not exist before the GO")
             if c.get("strict_phase"):
                 bad("strict.needs-tokens.%s" % cid, "a condition that needs the tokens carries a strict_phase: the strict order would demand evidence that cannot exist before the GO")
+        if c.get("phase") == "pre" and not c.get("needs_tokens") and re.search(r"\bnew tokens?\b", str(c.get("text", "")), re.I):
+            bad("condition.tokens-text.%s" % cid, "a pre-execution condition asks for something about the NEW tokens (they do not exist before the GO): mark it needs_tokens in the capture phase, or state what is checkable without them (review T3-F7)")
         st, ev = c.get("status"), c.get("evidence")
         if st == "open":
             if ev is not None:

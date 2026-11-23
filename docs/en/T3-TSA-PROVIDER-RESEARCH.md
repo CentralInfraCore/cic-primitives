@@ -9,14 +9,14 @@
 | Condition | Result | Why |
 |---|---|---|
 | C-Q2-1 DigiCert RFC 3161 compatibility | **supported, verified in the readiness record** | DigiCert's own page documents an RFC 3161 server (`http://timestamp.digicert.com`); the three tokens of 2026-11-03 show the request form we use is accepted |
-| C-Q2-2 DigiCert chain and independent anchor for the **new** tokens | **open** | the PUBLISHED chain verifies (below), but the condition is about the new tokens, which exist only after the GO; closed at the capture (C-CAP-1) |
+| C-Q2-2 DigiCert PUBLISHED chain, independent anchor and the named verification procedure | **supported, verified in the readiness record** | the published chain verifies to the pinned anchor (below) with a tested procedure; **review T3-F7:** the pre-condition no longer asks for the chain of the tokens made later, which is `C-CAP-1` (`needs_tokens`, capture phase) |
 | C-Q2-3 DigiCert terms and permission | **open** | the sources are **silent**: no terms of use, permission or limit for the public endpoint; the absence is neither permission nor prohibition |
 | C-Q2-4 GlobalSign RFC 3161 compatibility | **open** | a marketing page and a reseller's reproduction of a notice; the request form was not tested |
 | C-Q2-5 GlobalSign chain and anchor | **open** | the R45 time-stamping CA is named; no certificate or root was obtained |
 | C-Q2-6 GlobalSign terms, eligibility, access | **open** | a commercial account/purchase flow; the terms of using the endpoint were not found |
 | C-Q2-7 independence of the two | **open** | different names and hierarchies only; ownership and shared infrastructure not examined |
 
-**One of seven conditions is closed by the research; six stay open.** That is the honest result: the research cannot show GlobalSign usable, and neither provider's permission for this use.
+**Two of seven conditions are closed by the research; five stay open.** That is the honest result: the research cannot show GlobalSign usable, and neither provider's permission for this use.
 
 ## 2. DigiCert
 
@@ -39,3 +39,8 @@
 * The independence of the authorities (C-Q2-7) is not examined beyond names and hierarchies.
 * **To close the open conditions** an owner action is needed: contact the providers (or accept the use of the public endpoint without a written permission, a decision for the owner), and for GlobalSign obtain the R45 chain from GlobalSign's own repository. Those are outside the read-only authorisation and are **not started**.
 * The storage decision (S3/S10) that the staged order requires before any GO is a separate piece of preparation; nothing is provisioned.
+
+## 5. Review T3-F7 and the archiving note
+
+* **T3-F7 (HIGH, fixed):** `C-Q2-2` was a pre-execution condition that asked for the chain of the NEW tokens, which cannot exist before the GO, so the record could never be prepared. It now requires only what exists beforehand (the published chain, the independent anchor, the named and tested procedure); the chain of the tokens themselves is `C-CAP-1` (`needs_tokens`, capture). **Measured:** the previous checker accepted the old text; the new rule `condition.tokens-text` rejects it (a planted test restores the old text and expects exactly that label).
+* **Archiving (LOW, open, a documentation task for the closing evidence package):** the retrieved pages are recorded by a 16-hex prefix of their SHA-256 and are not stored. The closing package should hold the provider terms, agreements and certificates as full files with the full digest, source identifier and retrieval date. This is not a contact with a provider and not a permission to stamp.
